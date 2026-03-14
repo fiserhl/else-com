@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Else School — Corporate Outreach Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Open Sans',sans-serif;background:#fafaf7;color:#2C2C2A;min-height:100vh}
+.wrap{max-width:920px;margin:0 auto;padding:20px 16px}
+.hdr{margin-bottom:24px;border-bottom:3px solid #21145F;padding-bottom:16px;display:flex;align-items:center;gap:12px}
+.logo{width:36px;height:36px;background:#21145F;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;font-family:'EB Garamond',Georgia,serif}
+.hdr h1{margin:0;font-size:20px;font-weight:700;color:#21145F;font-family:'EB Garamond',Georgia,serif;letter-spacing:-0.3px}
+.hdr small{font-size:11px;color:#75787B;letter-spacing:0.5px;display:block}
+.metrics{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.metric{background:#fff;border:1px solid #e8e6df;border-radius:10px;padding:16px 18px;flex:1 1 120px;min-width:120px}
+.metric .lbl{font-size:11px;color:#888780;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.metric .val{font-size:28px;font-weight:700;color:#21145F;font-family:'EB Garamond',Georgia,serif}
+.alert{background:#FAEEDA;border:1px solid #FAC775;border-radius:10px;padding:12px 16px;margin-bottom:20px}
+.alert .ah{font-size:12px;font-weight:700;color:#633806;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px}
+.orow{display:grid;grid-template-columns:1.5fr 1.5fr 1fr 0.6fr;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(250,199,117,0.3);font-size:13px;align-items:center;cursor:pointer;transition:background 0.1s}
+.orow:hover{background:rgba(250,199,117,0.15)}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap;letter-spacing:0.3px}
+.toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.toolbar input,.toolbar select{padding:8px 10px;border:1px solid #d3d1c7;border-radius:6px;font-size:13px;font-family:inherit;background:#fafaf7}
+.toolbar input[type=text]{flex:1 1 200px}
+.btn{background:#21145F;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn:hover{background:#2d1d7a}
+.btn-s{background:none;border:1px solid #d3d1c7;color:#5F5E5A;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;font-family:inherit}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.card{background:#fff;border:1px solid #e8e6df;border-radius:10px;padding:14px 16px;cursor:pointer;transition:all 0.15s}
+.card:hover{box-shadow:0 2px 12px rgba(33,20,95,0.08);transform:translateY(-1px)}
+.card .nm{font-weight:700;font-size:14px;color:#21145F}
+.card .ti{font-size:12px;color:#75787B;margin:2px 0}
+.card .org{font-size:12px;color:#5F5E5A;font-weight:600}
+.card .meta{display:flex;gap:12px;margin-top:8px;font-size:11px;color:#888780;flex-wrap:wrap}
+.dcard{background:#fff;border:1px solid #e8e6df;border-radius:12px;padding:24px;margin-bottom:16px}
+.dcard h2{margin:0;font-size:22px;color:#21145F;font-family:'EB Garamond',Georgia,serif}
+.dcard .sub{color:#75787B;font-size:14px;margin-top:2px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:13px}
+.fields .f{padding:4px 0;border-bottom:1px solid #f5f4f0}
+.fields .fl{color:#888780;margin-right:8px}
+.fields .fv{color:#2C2C2A;font-weight:500}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg label{font-size:11px;color:#888780;display:block;margin-bottom:3px}
+.fg input,.fg select,.fg textarea{width:100%;padding:8px 10px;border:1px solid #d3d1c7;border-radius:6px;font-size:13px;font-family:inherit;background:#fafaf7;box-sizing:border-box}
+.fg textarea{min-height:70px;resize:vertical}
+.irow{padding:12px 0;border-bottom:1px solid #f5f4f0}
+.itype{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#21145F;background:#EEEDFE;padding:2px 8px;border-radius:4px;display:inline-block}
+.idate{font-size:12px;color:#888780;margin-left:8px}
+.iby{font-size:11px;color:#B4B2A9;margin-left:8px}
+.isum{font-size:13px;color:#2C2C2A;line-height:1.5;margin-top:4px}
+.back{background:none;border:none;color:#21145F;cursor:pointer;font-size:13px;font-weight:600;padding:0;margin-bottom:16px;font-family:inherit}
+.footer{margin-top:32px;padding-top:12px;border-top:1px solid #e8e6df;font-size:10px;color:#B4B2A9;text-align:center}
+.cnt{font-size:12px;color:#888780;margin-bottom:8px}
+.iform{background:#fafaf7;border:1px solid #e8e6df;border-radius:8px;padding:16px;margin-bottom:16px;display:none}
+.iform.show{display:block}
+.efields{display:none}
+.efields.show{display:block}
+.vfields.hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div style="display:flex;align-items:center;justify-content:center;min-height:300px;color:#75787B">Loading pipeline data...</div></div>
+<script>
+var SB_URL='https://akegekomjwggrvpphxog.supabase.co';
+var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrZWdla29tandnZ3J2cHBoeG9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NTA3MjYsImV4cCI6MjA4OTAyNjcyNn0.yo3lXeRzQTLAZYfYY8QM0vuHYw5AzJwIdZjE2n8bpnw';
+
+function apiCall(path,opts){
+  opts=opts||{};
+  var h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
+  return fetch(SB_URL+'/rest/v1/'+path,Object.assign({headers:h},opts)).then(function(r){
+    if(!r.ok) return r.text().then(function(t){throw new Error(t)});
+    return r.text().then(function(t){return t?JSON.parse(t):[]});
+  });
+}
+
+var SC={
+  'Prospective':{bg:'#EEEDFE',tx:'#3C3489',bd:'#AFA9EC'},
+  'In-Development':{bg:'#E6F1FB',tx:'#0C447C',bd:'#85B7EB'},
+  'Active Pipeline':{bg:'#E1F5EE',tx:'#085041',bd:'#5DCAA5'},
+  'Closed Won':{bg:'#EAF3DE',tx:'#27500A',bd:'#97C459'},
+  'Closed Lost':{bg:'#FCEBEB',tx:'#791F1F',bd:'#F09595'},
+  'Low ROI':{bg:'#F1EFE8',tx:'#444441',bd:'#B4B2A9'},
+  'Dormant':{bg:'#F1EFE8',tx:'#5F5E5A',bd:'#D3D1C7'},
+  'Unassigned':{bg:'#FAEEDA',tx:'#633806',bd:'#FAC775'}
+};
+var STATUSES=Object.keys(SC);
+var TYPES=['email','phone_call','in_person_meeting','event','presentation','site_visit','referral','note'];
+var TEAM=['Fiser, Harvey','Pickering, Steve','McCaa, Meg','Freeman, Naomi','Dorman, Bonnie'];
+
+var contacts=[];
+var interactions=[];
+var curView='list';
+var selId=null;
+var searchVal='';
+var fStatus='all';
+var fAssign='all';
+
+function makeBadge(s){
+  var c=SC[s]||SC['Unassigned'];
+  return '<span class="badge" style="background:'+c.bg+';color:'+c.tx+';border:1px solid '+c.bd+'">'+s+'</span>';
+}
+
+function fmtDate(d){
+  if(!d) return '\u2014';
+  return new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+
+function shortDate(d){
+  if(!d) return '';
+  return new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+function daysOverdue(d){return Math.floor((Date.now()-new Date(d))/86400000)}
+
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function loadData(){
+  return Promise.all([
+    apiCall('contacts?order=name.asc'),
+    apiCall('interactions?order=interaction_date.desc.nullslast')
+  ]).then(function(res){
+    contacts=res[0];
+    interactions=res[1];
+    render();
+  });
+}
+
+function getOverdue(){
+  return contacts.filter(function(c){
+    return c.follow_up_date && new Date(c.follow_up_date)<new Date() && ['Closed Won','Closed Lost','Low ROI'].indexOf(c.pipeline_status)===-1;
+  }).sort(function(a,b){return new Date(a.follow_up_date)-new Date(b.follow_up_date)});
+}
+
+function getFiltered(){
+  return contacts.filter(function(c){
+    if(searchVal){
+      var hay=((c.name||'')+' '+(c.organization||'')+' '+(c.title||'')).toLowerCase();
+      if(hay.indexOf(searchVal.toLowerCase())===-1) return false;
+    }
+    if(fStatus!=='all' && c.pipeline_status!==fStatus) return false;
+    if(fAssign!=='all' && (!c.assigned_to || c.assigned_to.indexOf(fAssign)===-1)) return false;
+    return true;
+  });
+}
+
+function render(){
+  var el=document.getElementById('app');
+  if(curView==='detail') return renderDetail(el);
+  var od=getOverdue();
+  var fl=getFiltered();
+  var sc={};
+  contacts.forEach(function(c){sc[c.pipeline_status]=(sc[c.pipeline_status]||0)+1});
+
+  var h='<div class="hdr"><div class="logo">E</div><div><h1>Else School &mdash; Corporate outreach</h1><small>PIPELINE TRACKER</small></div></div>';
+
+  h+='<div class="metrics">';
+  h+='<div class="metric"><div class="lbl">Total</div><div class="val">'+contacts.length+'</div></div>';
+  h+='<div class="metric"><div class="lbl">Active pipeline</div><div class="val" style="color:#1D9E75">'+(sc['Active Pipeline']||0)+'</div></div>';
+  h+='<div class="metric"><div class="lbl">In development</div><div class="val" style="color:#378ADD">'+(sc['In-Development']||0)+'</div></div>';
+  h+='<div class="metric"><div class="lbl">Overdue</div><div class="val" style="color:'+(od.length?'#A32D2D':'#1D9E75')+'">'+od.length+'</div></div>';
+  h+='</div>';
+
+  if(od.length){
+    h+='<div class="alert"><div class="ah">Overdue follow-ups ('+od.length+')</div>';
+    od.slice(0,5).forEach(function(c){
+      var d=daysOverdue(c.follow_up_date);
+      var dc=d>90?'#A32D2D':d>30?'#BA7517':'#5F5E5A';
+      h+='<div class="orow" onclick="openContact('+c.contact_id+')">';
+      h+='<div style="font-weight:600;color:#21145F">'+esc(c.name)+'</div>';
+      h+='<div style="color:#75787B">'+esc(c.organization||'')+'</div>';
+      h+=makeBadge(c.pipeline_status);
+      h+='<div style="text-align:right;font-weight:700;color:'+dc+'">'+d+'d</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+
+  h+='<div class="toolbar">';
+  h+='<input type="text" placeholder="Search contacts..." value="'+esc(searchVal)+'" oninput="searchVal=this.value;render()">';
+  h+='<select onchange="fStatus=this.value;render()"><option value="all">All statuses</option>';
+  STATUSES.forEach(function(s){h+='<option value="'+s+'"'+(fStatus===s?' selected':'')+'>'+s+' ('+(sc[s]||0)+')</option>'});
+  h+='</select>';
+  h+='<select onchange="fAssign=this.value;render()"><option value="all">All team</option>';
+  TEAM.forEach(function(t){h+='<option value="'+esc(t)+'"'+(fAssign===t?' selected':'')+'>'+t.split(',')[0]+'</option>'});
+  h+='</select>';
+  h+='<button class="btn" onclick="curView=\'add\';render()">+ Add contact</button>';
+  h+='</div>';
+
+  if(curView==='add'){
+    h+='<div class="dcard"><h3 style="margin:0 0 16px;font-size:16px;color:#21145F;font-family:EB Garamond,Georgia,serif">Add new contact</h3>';
+    h+='<div class="fg">';
+    h+='<div><label>Name *</label><input id="af-name"></div>';
+    h+='<div><label>Organization</label><input id="af-org"></div>';
+    h+='<div><label>Title</label><input id="af-title"></div>';
+    h+='<div><label>Email</label><input id="af-email"></div>';
+    h+='<div><label>Phone</label><input id="af-phone"></div>';
+    h+='<div><label>Status</label><select id="af-status">';
+    STATUSES.forEach(function(s){h+='<option value="'+s+'"'+(s==='Prospective'?' selected':'')+'>'+s+'</option>'});
+    h+='</select></div>';
+    h+='<div><label>Assigned to</label><select id="af-assign">';
+    TEAM.forEach(function(t){h+='<option value="'+esc(t)+'">'+esc(t)+'</option>'});
+    h+='</select></div>';
+    h+='<div><label>Follow-up by</label><input type="date" id="af-fu"></div>';
+    h+='<div style="grid-column:1/-1;display:flex;gap:8px;margin-top:8px"><button class="btn" onclick="saveNewContact()">Add contact</button><button class="btn-s" onclick="curView=\'list\';render()">Cancel</button></div>';
+    h+='</div></div>';
+  }
+
+  h+='<div class="cnt">'+fl.length+' contact'+(fl.length!==1?'s':'')+'</div>';
+  h+='<div class="grid">';
+  fl.forEach(function(c){
+    var bc=(SC[c.pipeline_status]||SC['Unassigned']).bd;
+    h+='<div class="card" style="border-left:4px solid '+bc+'" onclick="openContact('+c.contact_id+')">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><div class="nm">'+esc(c.name)+'</div>'+makeBadge(c.pipeline_status)+'</div>';
+    h+='<div class="ti">'+esc(c.title||'No title')+'</div>';
+    h+='<div class="org">'+esc(c.organization||'No org')+'</div>';
+    h+='<div class="meta">';
+    if(c.assigned_to) h+='<span>&rarr; '+esc(c.assigned_to.split(';')[0].trim())+'</span>';
+    if(c.last_contact_date) h+='<span>Last: '+shortDate(c.last_contact_date)+'</span>';
+    if(c.follow_up_date){
+      var overColor=new Date(c.follow_up_date)<new Date()?'#A32D2D':'#1D9E75';
+      h+='<span style="color:'+overColor+'">F/U: '+shortDate(c.follow_up_date)+'</span>';
+    }
+    h+='</div></div>';
+  });
+  h+='</div>';
+  if(!fl.length) h+='<div style="text-align:center;padding:40px;color:#888780">No contacts match your filters</div>';
+  h+='<div class="footer">Else School of Management &mdash; Corporate Outreach Tracker &mdash; Millsaps College</div>';
+  el.innerHTML=h;
+}
+
+function renderDetail(el){
+  var c=null;
+  for(var i=0;i<contacts.length;i++){if(contacts[i].contact_id===selId){c=contacts[i];break}}
+  if(!c){curView='list';render();return}
+  var ci=interactions.filter(function(x){return x.contact_id===selId});
+  var today=new Date().toISOString().slice(0,10);
+
+  var h='<button class="back" onclick="curView=\'list\';render()">&larr; Back to contacts</button>';
+  h+='<div class="dcard">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">';
+  h+='<div><h2>'+esc(c.name)+'</h2><div class="sub">'+esc(c.title||'No title')+' &mdash; '+esc(c.organization||'No org')+'</div></div>';
+  h+='<div style="display:flex;gap:8px;align-items:center">'+makeBadge(c.pipeline_status)+'<button class="btn" onclick="toggleEditFields()">Edit</button></div>';
+  h+='</div>';
+
+  // View fields
+  h+='<div id="vf" class="vfields"><div class="fields">';
+  var pairs=[['Email',c.email],['Phone',c.phone],['Assigned to',c.assigned_to],['Alum',c.is_alum?'Yes':'No'],['LinkedIn',c.linkedin_url?'Linked':null],['Last contact',fmtDate(c.last_contact_date)],['Follow-up',fmtDate(c.follow_up_date)],['Address',[c.address,c.city_state_zip].filter(Boolean).join(', ')]];
+  pairs.forEach(function(p){
+    h+='<div class="f"><span class="fl">'+p[0]+':</span><span class="fv">'+esc(p[1]||'\u2014')+'</span></div>';
+  });
+  h+='</div></div>';
+
+  // Edit fields
+  h+='<div id="ef" class="efields"><div class="fg">';
+  h+='<div><label>Name</label><input id="ef-name" value="'+esc(c.name)+'"></div>';
+  h+='<div><label>Organization</label><input id="ef-org" value="'+esc(c.organization||'')+'"></div>';
+  h+='<div><label>Title</label><input id="ef-title" value="'+esc(c.title||'')+'"></div>';
+  h+='<div><label>Email</label><input id="ef-email" value="'+esc(c.email||'')+'"></div>';
+  h+='<div><label>Phone</label><input id="ef-phone" value="'+esc(c.phone||'')+'"></div>';
+  h+='<div><label>Status</label><select id="ef-status">';
+  STATUSES.forEach(function(s){h+='<option value="'+s+'"'+(c.pipeline_status===s?' selected':'')+'>'+s+'</option>'});
+  h+='</select></div>';
+  h+='<div><label>Assigned to</label><select id="ef-assign"><option value="">Unassigned</option>';
+  TEAM.forEach(function(t){h+='<option value="'+esc(t)+'"'+(c.assigned_to===t?' selected':'')+'>'+esc(t)+'</option>'});
+  h+='</select></div>';
+  h+='<div><label>Follow-up by</label><input type="date" id="ef-fu" value="'+(c.follow_up_date||'')+'"></div>';
+  h+='<div style="grid-column:1/-1;display:flex;gap:8px;margin-top:8px"><button class="btn" onclick="saveEditContact('+c.contact_id+')">Save changes</button><button class="btn-s" onclick="toggleEditFields()">Cancel</button></div>';
+  h+='</div></div>';
+  h+='</div>';
+
+  // Interactions
+  h+='<div class="dcard">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="margin:0;font-size:16px;color:#21145F;font-family:EB Garamond,Georgia,serif">Interaction history</h3><button class="btn" onclick="toggleIntForm()">+ Log interaction</button></div>';
+
+  h+='<div id="iform" class="iform"><div class="fg" style="grid-template-columns:1fr 1fr 1fr">';
+  h+='<div><label>Date</label><input type="date" id="if-date" value="'+today+'"></div>';
+  h+='<div><label>Type</label><select id="if-type">';
+  TYPES.forEach(function(t){h+='<option value="'+t+'">'+t.replace(/_/g,' ')+'</option>'});
+  h+='</select></div>';
+  h+='<div><label>Logged by</label><select id="if-by">';
+  TEAM.forEach(function(t){h+='<option value="'+esc(t)+'">'+esc(t)+'</option>'});
+  h+='</select></div>';
+  h+='<div style="grid-column:1/-1"><label>Notes</label><textarea id="if-sum" placeholder="What happened? Key details, next steps..."></textarea></div>';
+  h+='<div style="grid-column:1/-1;margin-top:4px"><button class="btn" onclick="saveInteraction('+c.contact_id+')">Save interaction</button></div>';
+  h+='</div></div>';
+
+  if(!ci.length){
+    h+='<div style="text-align:center;padding:24px;color:#888780;font-size:13px">No interactions logged yet</div>';
+  } else {
+    ci.forEach(function(i){
+      h+='<div class="irow"><div><span class="itype">'+(i.interaction_type||'note').replace(/_/g,' ')+'</span>';
+      h+='<span class="idate">'+fmtDate(i.interaction_date)+'</span>';
+      if(i.logged_by) h+='<span class="iby">&mdash; '+esc(i.logged_by)+'</span>';
+      h+='</div><div class="isum">'+esc(i.summary||'')+'</div></div>';
+    });
+  }
+  h+='</div>';
+  h+='<div class="footer">Else School of Management &mdash; Corporate Outreach Tracker &mdash; Millsaps College</div>';
+  el.innerHTML=h;
+}
+
+function openContact(id){selId=id;curView='detail';render()}
+
+function toggleEditFields(){
+  var v=document.getElementById('vf');
+  var e=document.getElementById('ef');
+  v.classList.toggle('hide');
+  e.classList.toggle('show');
+}
+
+function toggleIntForm(){
+  document.getElementById('iform').classList.toggle('show');
+}
+
+function saveNewContact(){
+  var nm=document.getElementById('af-name').value.trim();
+  if(!nm) return;
+  var b={name:nm,organization:document.getElementById('af-org').value.trim()||null,title:document.getElementById('af-title').value.trim()||null,email:document.getElementById('af-email').value.trim()||null,phone:document.getElementById('af-phone').value.trim()||null,pipeline_status:document.getElementById('af-status').value,assigned_to:document.getElementById('af-assign').value};
+  var fu=document.getElementById('af-fu').value;
+  if(fu) b.follow_up_date=fu;
+  apiCall('contacts',{method:'POST',body:JSON.stringify(b)}).then(function(){curView='list';return loadData()});
+}
+
+function saveEditContact(id){
+  var b={name:document.getElementById('ef-name').value.trim(),organization:document.getElementById('ef-org').value.trim()||null,title:document.getElementById('ef-title').value.trim()||null,email:document.getElementById('ef-email').value.trim()||null,phone:document.getElementById('ef-phone').value.trim()||null,pipeline_status:document.getElementById('ef-status').value,assigned_to:document.getElementById('ef-assign').value||null,follow_up_date:document.getElementById('ef-fu').value||null};
+  apiCall('contacts?contact_id=eq.'+id,{method:'PATCH',body:JSON.stringify(b)}).then(function(){return loadData()});
+}
+
+function saveInteraction(cid){
+  var sum=document.getElementById('if-sum').value.trim();
+  if(!sum) return;
+  var dt=document.getElementById('if-date').value;
+  var b={contact_id:cid,interaction_date:dt,interaction_type:document.getElementById('if-type').value,summary:sum,logged_by:document.getElementById('if-by').value};
+  apiCall('interactions',{method:'POST',body:JSON.stringify(b)}).then(function(){
+    return apiCall('contacts?contact_id=eq.'+cid,{method:'PATCH',body:JSON.stringify({last_contact_date:dt})});
+  }).then(function(){return loadData()});
+}
+
+loadData().catch(function(e){
+  document.getElementById('app').innerHTML='<div style="padding:40px;text-align:center;color:#A32D2D">Connection error: '+e.message+'</div>';
+});
+</script>
+</body>
+</html>
