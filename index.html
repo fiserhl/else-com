@@ -1,2 +1,1097 @@
 <!DOCTYPE html>
-<html><head><title>Test</title></head><body>Test</body></html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Else School — Contact Database</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Millsaps Official Brand */
+  --purple: #21145f;
+  --purple-light: #3a2d7a;
+  --purple-soft: #e8e5f3;
+  --purple-wash: #f4f3f9;
+  --gray: #75787b;
+  --gray-light: #b0b2b5;
+
+  --bg: #f8f8fa;
+  --surface: #ffffff;
+  --surface-alt: #fafafc;
+  --border: #e5e5ea;
+  --border-light: #eeeef2;
+  --text: #2c2a29;
+  --text-secondary: #5a585a;
+  --text-muted: #8a888c;
+  --accent: #21145f;
+  --accent-light: #3a2d7a;
+  --accent-bg: #e8e5f3;
+  --green: #1a7a4c;
+  --green-bg: #e6f4ed;
+  --blue: #1d5a9e;
+  --blue-bg: #e5eef8;
+  --orange: #b85c14;
+  --orange-bg: #fef3e8;
+  --red: #b82030;
+  --red-bg: #fce8ea;
+  --teal: #1a6b5a;
+  --teal-bg: #e5f3f0;
+  --shadow-sm: 0 1px 4px rgba(33,20,95,0.06);
+  --shadow-md: 0 4px 16px rgba(33,20,95,0.08);
+  --shadow-lg: 0 8px 32px rgba(33,20,95,0.12);
+  --radius: 6px;
+  --radius-lg: 10px;
+  --serif: 'EB Garamond', Georgia, serif;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; font-size: 13px; }
+
+.header { background: var(--purple); padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+.header-left { display: flex; align-items: center; gap: 14px; }
+.header h1 { font-family: var(--serif); font-size: 21px; font-weight: 500; color: #fff; letter-spacing: 0.2px; }
+.header h1 span { opacity: 0.7; font-style: italic; font-size: 16px; font-weight: 400; }
+.header-badge { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--purple); background: rgba(255,255,255,0.92); padding: 3px 10px; border-radius: 3px; }
+
+.tabs { display: flex; gap: 0; background: var(--accent-light); padding: 0 32px; }
+.tab { padding: 8px 20px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.55); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; font-family: var(--sans); letter-spacing: 0.3px; }
+.tab:hover { color: rgba(255,255,255,0.8); }
+.tab.active { color: #fff; border-bottom-color: #fff; background: rgba(255,255,255,0.08); }
+
+.stats-row { display: flex; gap: 1px; background: var(--border); margin: 0; }
+.stat-card { background: var(--surface); padding: 14px 24px; flex: 1; text-align: center; box-shadow: none; border: none; border-radius: 0; min-width: auto; }
+.stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 2px; }
+.stat-value { font-family: var(--serif); font-size: 28px; font-weight: 500; color: var(--accent); }
+.stat-card.highlight { border-left: none; }
+.stat-card.warn { border-left: none; }
+.stat-card.warn .stat-value { color: var(--red); }
+
+.toolbar { padding: 14px 32px; display: flex; align-items: center; gap: 10px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.search-box { flex: 1; min-width: 200px; max-width: 340px; position: relative; }
+.search-box input { width: 100%; padding: 7px 12px 7px 32px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); background: var(--bg); color: var(--text); outline: none; transition: all 0.2s; }
+.search-box input:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px rgba(33,20,95,0.08); }
+.search-box::before { content: '⌕'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 16px; }
+
+select { padding: 7px 26px 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; font-family: var(--sans); background: var(--bg); color: var(--text); cursor: pointer; outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2375787b' d='M2.5 3.5l2.5 3 2.5-3'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; transition: all 0.2s; }
+select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,0.08); }
+
+.toolbar-right { display: flex; gap: 8px; margin-left: auto; }
+.btn { padding: 7px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.btn:hover { background: var(--surface-alt); }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-light); }
+.btn-export { background: var(--green); color: #fff; border-color: var(--green); }
+.btn-export:hover { opacity: 0.9; }
+.btn-danger { background: none; color: var(--red); border-color: var(--red); }
+.btn-danger:hover { background: var(--red-bg); }
+.count-label { font-size: 12px; color: var(--text-muted); padding: 8px 0; font-weight: 500; }
+
+/* ─── Collapsible Filter Panel ─── */
+.filter-group { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; background: var(--surface); border-bottom: 0 solid var(--border); padding: 0; }
+.filter-group.open { max-height: 500px; border-bottom-width: 1px; padding: 14px 32px 16px; }
+.filter-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray); width: 100%; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.filter-group-label .clear-link { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--accent); cursor: pointer; font-size: 11px; }
+.filter-group-label .clear-link:hover { text-decoration: underline; }
+.btn-filter { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-bg); }
+.btn-filter:hover { background: #d8d4e8; }
+.btn-filter.has-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-chip { padding: 4px 11px; border-radius: 4px; font-size: 11px; font-weight: 500; border: 1px solid var(--border); background: var(--bg); color: var(--text-secondary); cursor: pointer; transition: all 0.12s; user-select: none; }
+.filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+.filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-chip .chip-count { font-size: 9px; opacity: 0.6; margin-left: 3px; }
+.filter-chip.sub { font-size: 10px; padding: 3px 9px; border-style: dashed; margin-left: 14px; }
+.filter-chip.sub.active { border-style: solid; }
+.sub-chips { display: none; gap: 4px; flex-wrap: wrap; padding: 4px 0 2px 4px; }
+.sub-chips.open { display: flex; }
+.expand-btn { font-size: 9px; padding: 3px 6px; border-radius: 3px; border: 1px solid var(--border); background: var(--surface); color: var(--gray); cursor: pointer; font-family: var(--sans); line-height: 1; }
+.expand-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ─── Contact List ─── */
+.contact-list { padding: 0 32px 32px; }
+.contact-row { display: grid; grid-template-columns: 200px 1fr 180px 120px 110px; align-items: center; gap: 14px; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius); margin-bottom: 3px; cursor: pointer; transition: all 0.12s; }
+.contact-row:hover { border-color: var(--border); box-shadow: var(--shadow-sm); }
+.contact-name { font-weight: 600; font-size: 13px; color: var(--text); }
+.contact-org { font-size: 11px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+.contact-title-cell { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contact-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+
+.tag { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 2px; letter-spacing: 0.3px; text-transform: uppercase; white-space: nowrap; }
+.tag-corporate { background: var(--blue-bg); color: var(--blue); }
+.tag-prospect { background: var(--orange-bg); color: var(--orange); }
+.tag-exec-alum { background: var(--green-bg); color: var(--green); }
+.tag-advisory { background: var(--accent-bg); color: var(--accent); }
+.tag-else-alum { background: #f0e8d8; color: #7a6530; }
+.tag-millsaps { background: #eae8e0; color: #5a5a50; }
+.tag-donor { background: var(--teal-bg); color: var(--teal); }
+.tag-faculty { background: #e5e5ee; color: #4a4a6a; }
+.tag-vendor { background: #eaeae0; color: #5a5a40; }
+.tag-community { background: #e0eaea; color: #3a5a5a; }
+.tag-speaker { background: var(--red-bg); color: var(--red); }
+
+.pipeline-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 3px; white-space: nowrap; display: inline-block; }
+.pipeline-prospective { background: var(--orange-bg); color: var(--orange); }
+.pipeline-in-development { background: var(--blue-bg); color: var(--blue); }
+.pipeline-active { background: var(--green-bg); color: var(--green); }
+.pipeline-closed-won { background: #d4edda; color: #155724; }
+.pipeline-closed-lost { background: #f8d7da; color: #721c24; }
+.pipeline-low-roi { background: #fff3cd; color: #856404; }
+.pipeline-dormant { background: #e2e3e5; color: #383d41; }
+.pipeline-unassigned { background: var(--border-light); color: var(--text-muted); }
+
+.mailing-tier { font-size: 11px; color: var(--text-muted); }
+.tier-1 { color: var(--accent); font-weight: 600; }
+.tier-2 { color: var(--green); font-weight: 500; }
+.tier-3 { color: var(--blue); font-weight: 500; }
+.tier-4 { color: var(--text-secondary); }
+.tier-5 { color: var(--text-muted); }
+
+.contact-meta { font-size: 10px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+.contact-meta .assigned { color: var(--text-secondary); font-weight: 500; }
+.contact-meta .overdue { color: var(--red); font-weight: 700; }
+
+/* ─── Modal ─── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(33,20,95,0.35); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s; backdrop-filter: blur(2px); }
+.modal-overlay.open { opacity: 1; visibility: visible; }
+.modal { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 720px; max-width: 95vw; max-height: 90vh; overflow-y: auto; padding: 28px; }
+.modal h2 { font-family: var(--serif); font-size: 22px; font-weight: 500; margin-bottom: 20px; color: var(--accent); }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.modal-grid .full-width { grid-column: 1 / -1; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); }
+.form-group input, .form-group select, .form-group textarea { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: var(--sans); color: var(--text); outline: none; transition: all 0.15s; }
+.form-group input:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,0.06); }
+
+/* Hierarchical checkbox layout */
+.role-section { margin-bottom: 6px; }
+.role-section:last-child { margin-bottom: 0; }
+.role-section-header { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--text); cursor: pointer; padding: 5px 6px; border-radius: 4px; transition: background 0.1s; }
+.role-section-header:hover { background: var(--surface-alt); }
+.role-section-header input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; flex-shrink: 0; }
+.role-section-header .toggle-arrow { font-size: 8px; color: var(--gray-light); margin-left: auto; transition: transform 0.2s; padding: 2px 4px; }
+.role-section-header .toggle-arrow.expanded { transform: rotate(90deg); }
+.sub-options { padding-left: 28px; display: none; }
+.sub-options.open { display: block; }
+.sub-option { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer; padding: 3px 6px; border-radius: 3px; transition: background 0.1s; }
+.sub-option:hover { background: var(--surface-alt); }
+.sub-option input[type="checkbox"] { accent-color: var(--accent-light); width: 13px; height: 13px; flex-shrink: 0; }
+
+.modal-actions { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-light); }
+.modal-actions .left-actions { display: flex; gap: 8px; }
+
+/* Export */
+.export-dropdown { position: relative; }
+.export-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); z-index: 50; min-width: 200px; display: none; }
+.export-menu.open { display: block; }
+.export-option { padding: 10px 14px; font-size: 13px; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 8px; border: none; background: none; width: 100%; font-family: inherit; text-align: left; }
+.export-option:hover { background: var(--surface-alt); }
+.export-option:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.export-option:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+.export-option small { color: var(--text-muted); font-size: 11px; }
+
+@media (max-width: 900px) {
+  .contact-row { grid-template-columns: 1fr; gap: 6px; }
+  .modal-grid { grid-template-columns: 1fr; }
+}
+.footer { text-align: center; padding: 24px 32px; font-size: 11px; color: var(--gray-light); letter-spacing: 0.3px; }
+.footer strong { color: var(--gray); font-weight: 600; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ═══════════ LOGIN SCREEN ═══════════ -->
+<div id="loginScreen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);">
+  <div style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:48px 40px;width:380px;max-width:90vw;text-align:center;">
+    <div style="width:56px;height:56px;background:var(--purple);border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;">
+      <span style="color:#fff;font-size:24px;font-family:var(--serif);font-weight:600;">E</span>
+    </div>
+    <h2 style="font-family:var(--serif);font-size:22px;font-weight:500;color:var(--purple);margin-bottom:4px;">Else School of Management</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:28px;">Contact Database — Millsaps College</p>
+    <div style="text-align:left;margin-bottom:12px;">
+      <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);display:block;margin-bottom:4px;">Username</label>
+      <input type="text" id="loginUser" placeholder="Enter username" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);outline:none;" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div style="text-align:left;margin-bottom:20px;">
+      <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);display:block;margin-bottom:4px;">Password</label>
+      <input type="password" id="loginPass" placeholder="Enter password" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);outline:none;" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button onclick="doLogin()" style="width:100%;padding:10px;background:var(--purple);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;letter-spacing:0.3px;">Sign In</button>
+    <p id="loginError" style="color:var(--red);font-size:12px;margin-top:12px;display:none;">Invalid username or password</p>
+  </div>
+</div>
+
+<!-- ═══════════ MAIN APP (hidden until login) ═══════════ -->
+<div id="appContainer" style="display:none;">
+
+<div class="header">
+  <div class="header-left">
+    <h1>Else School of Management <span>— Contact Database</span></h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span class="header-badge">Millsaps College</span>
+    <button onclick="openSettings()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:16px;padding:4px;" title="Settings">⚙</button>
+    <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;cursor:pointer;font-size:11px;font-family:var(--sans);padding:4px 10px;border-radius:4px;font-weight:500;" title="Sign out">Sign Out</button>
+  </div>
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="contacts">Contacts</button>
+  <button class="tab" data-tab="tasks">Tasks</button>
+  <button class="tab" data-tab="campaigns">Campaigns</button>
+  <button class="tab" data-tab="mailings">Mailings</button>
+  <button class="tab" data-tab="compliance">Compliance</button>
+  <button class="tab" data-tab="audit">Audit Log</button>
+</div>
+
+<div class="stats-row" id="statsRow"></div>
+
+<div class="toolbar">
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search by name, org, title, email...">
+  </div>
+  <select id="filterStatus"><option value="all">All statuses</option></select>
+  <select id="filterTeam"><option value="all">Assigned to…</option></select>
+  <select id="filterTier"><option value="all">All mailing tiers</option></select>
+  <button class="btn btn-filter" id="filterToggleBtn" onclick="toggleFilterPanel()">☷ Roles</button>
+  <div class="toolbar-right">
+    <div class="export-dropdown">
+      <button class="btn btn-export" id="exportBtn">↓ Export</button>
+      <div class="export-menu" id="exportMenu">
+        <button class="export-option" onclick="exportCSV()">📄 CSV <small>— universal</small></button>
+        <button class="export-option" onclick="exportExcel()">📊 Excel (.xlsx) <small>— formatted</small></button>
+        <button class="export-option" onclick="exportMailchimp()">📬 Mailchimp <small>— ready to import</small></button>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">+ Add Contact</button>
+  </div>
+</div>
+
+<div class="filter-group" id="roleFilters"></div>
+<div id="subChipsContainer"></div>
+
+<div style="padding: 8px 32px; display:flex; align-items:center; justify-content:space-between;">
+  <span class="count-label" id="countLabel"></span>
+</div>
+
+<div class="contact-list" id="contactList"></div>
+
+<div class="footer"><strong>Else School of Management</strong> — Corporate Outreach &amp; Contact Database — Millsaps College, Jackson MS</div>
+
+<!-- ═══════════ SETTINGS MODAL ═══════════ -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal" style="width:500px;">
+    <div style="border-bottom:1px solid var(--border-light);padding-bottom:16px;margin-bottom:20px;">
+      <h2 style="font-family:var(--serif);font-size:22px;font-weight:500;color:var(--accent);margin:0;">Account Settings</h2>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">Signed in as: <strong id="settingsCurrentUser" style="color:var(--text);"></strong></p>
+    </div>
+
+    <!-- Change Own Password -->
+    <div style="margin-bottom:24px;">
+      <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:12px;">Change Your Password</h3>
+      <div style="display:grid;gap:10px;">
+        <div class="form-group">
+          <label>Current Password</label>
+          <input type="password" id="s_currentPass" placeholder="Enter current password">
+        </div>
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" id="s_newPass" placeholder="Enter new password">
+        </div>
+        <div class="form-group">
+          <label>Confirm New Password</label>
+          <input type="password" id="s_confirmPass" placeholder="Confirm new password">
+        </div>
+        <div>
+          <button class="btn btn-primary" onclick="changeOwnPassword()" style="width:100%;">Update Password</button>
+          <p id="passMsg" style="font-size:12px;margin-top:8px;display:none;"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin: Manage Users (only visible to 'else' account) -->
+    <div id="adminSection" style="display:none;border-top:1px solid var(--border-light);padding-top:20px;">
+      <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:12px;">Manage Users <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:11px;">(Admin only)</span></h3>
+      <div id="userList" style="margin-bottom:14px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+        <div class="form-group">
+          <label>New Username</label>
+          <input type="text" id="s_newUser" placeholder="username">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="text" id="s_newUserPass" placeholder="password">
+        </div>
+        <button class="btn btn-primary" onclick="addUser()" style="margin-bottom:1px;">+ Add</button>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-light);text-align:right;">
+      <button class="btn" onclick="closeSettings()">Close</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- end appContainer -->
+
+<!-- Contact Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">Add Contact</h2>
+    <div class="modal-grid">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="f_name" placeholder="First Last"></div>
+      <div class="form-group"><label>Organization</label><input type="text" id="f_org" placeholder="Company or institution"></div>
+      <div class="form-group"><label>Title</label><input type="text" id="f_title" placeholder="Job title"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="f_email" placeholder="email@example.com"></div>
+      <div class="form-group"><label>Phone</label><input type="text" id="f_phone" placeholder="Phone number"></div>
+      <div class="form-group"><label>LinkedIn URL</label><input type="url" id="f_linkedin" placeholder="https://linkedin.com/in/..."></div>
+      <div class="form-group"><label>Pipeline Status</label>
+        <select id="f_pipeline">
+          <option value="Unassigned">Unassigned</option><option value="Prospective">Prospective</option>
+          <option value="In-Development">In-Development</option><option value="Active Pipeline">Active Pipeline</option>
+          <option value="Closed Won">Closed Won</option><option value="Closed Lost">Closed Lost</option>
+          <option value="Low ROI">Low ROI</option><option value="Dormant">Dormant</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Assigned To</label>
+        <select id="f_assigned">
+          <option value="">Unassigned</option>
+          <option value="Fiser, Harvey">Fiser, Harvey</option><option value="Pickering, Steve">Pickering, Steve</option>
+          <option value="McCaa, Meg">McCaa, Meg</option><option value="Freeman, Naomi">Freeman, Naomi</option>
+          <option value="Fender, Peyton">Fender, Peyton</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Mailing Tier</label>
+        <select id="f_tier">
+          <option value="">No tier assigned</option>
+          <option value="1">Tier 1 — Inner Circle</option><option value="2">Tier 2 — Engaged Network</option>
+          <option value="3">Tier 3 — Exec Ed Marketing</option><option value="4">Tier 4 — Informed</option>
+          <option value="5">Tier 5 — Minimal / Do Not Contact</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Last Contact Date</label><input type="date" id="f_lastContact"></div>
+      <div class="form-group"><label>Follow-up Date</label><input type="date" id="f_followUp"></div>
+      <div class="form-group"><label>Address / City, State, Zip</label><input type="text" id="f_address" placeholder="City, State ZIP"></div>
+      <div class="form-group full-width">
+        <label>Roles &amp; Relationships</label>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--bg);max-height:260px;overflow-y:auto;" id="roleCheckboxes"></div>
+      </div>
+      <div class="form-group full-width">
+        <label>Notes</label>
+        <textarea id="f_notes" rows="2" style="resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;" placeholder="Any additional notes..."></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <div class="left-actions"><button class="btn btn-danger" id="deleteBtn" onclick="deleteContact()" style="display:none">Delete</button></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveContact()">Save Contact</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+// ═══════════════════════════════════════════════════════════════
+// SUPABASE CLIENT
+// ═══════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://akegekomjwggrvpphxog.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrZWdla29tandnZ3J2cHBoeG9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NTA3MjYsImV4cCI6MjA4OTAyNjcyNn0.yo3lXeRzQTLAZYfYY8QM0vuHYw5AzJwIdZjE2n8bpnw';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ═══════════════════════════════════════════════════════════════
+// LOGIN & USER MANAGEMENT (Supabase-backed)
+// ═══════════════════════════════════════════════════════════════
+
+async function doLogin() {
+  const user = document.getElementById('loginUser').value.trim().toLowerCase();
+  const pass = document.getElementById('loginPass').value;
+  document.getElementById('loginError').style.display = 'none';
+  try {
+    const { data, error } = await db.from('app_users').select('username, role').eq('username', user).eq('password', pass).maybeSingle();
+    if (data) {
+      sessionStorage.setItem('else_auth', 'true');
+      sessionStorage.setItem('else_user', user);
+      sessionStorage.setItem('else_role', data.role || 'user');
+      showApp();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+      document.getElementById('loginPass').value = '';
+    }
+  } catch(e) {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('loginPass').value = '';
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('else_auth');
+  sessionStorage.removeItem('else_user');
+  sessionStorage.removeItem('else_role');
+  document.getElementById('appContainer').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appContainer').style.display = 'block';
+  loadContacts();
+}
+
+// Auto-login if session is still active
+if (sessionStorage.getItem('else_auth') === 'true') { showApp(); }
+
+// ═══════════ SETTINGS / PASSWORD MANAGEMENT ═══════════
+function openSettings() {
+  const currentUser = sessionStorage.getItem('else_user') || '';
+  document.getElementById('settingsCurrentUser').textContent = currentUser;
+  document.getElementById('s_currentPass').value = '';
+  document.getElementById('s_newPass').value = '';
+  document.getElementById('s_confirmPass').value = '';
+  document.getElementById('passMsg').style.display = 'none';
+
+  // Show admin section only for 'else' account
+  const isAdmin = currentUser === 'else';
+  document.getElementById('adminSection').style.display = isAdmin ? 'block' : 'none';
+  if (isAdmin) renderUserList();
+
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.remove('open');
+}
+
+function changeOwnPassword() {
+  const currentUser = sessionStorage.getItem('else_user');
+  const users = getUsers();
+  const current = document.getElementById('s_currentPass').value;
+  const newP = document.getElementById('s_newPass').value;
+  const confirm = document.getElementById('s_confirmPass').value;
+  const msg = document.getElementById('passMsg');
+
+  if (!current || !newP || !confirm) {
+    msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Please fill in all fields.'; return;
+  }
+  if (users[currentUser] !== current) {
+    msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Current password is incorrect.'; return;
+  }
+  if (newP.length < 4) {
+    msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'New password must be at least 4 characters.'; return;
+  }
+  if (newP !== confirm) {
+    msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'New passwords do not match.'; return;
+  }
+
+  users[currentUser] = newP;
+  saveUsers(users);
+  msg.style.display = 'block'; msg.style.color = 'var(--green)'; msg.textContent = '✓ Password updated successfully.';
+  document.getElementById('s_currentPass').value = '';
+  document.getElementById('s_newPass').value = '';
+  document.getElementById('s_confirmPass').value = '';
+}
+
+function renderUserList() {
+  const users = getUsers();
+  const currentUser = sessionStorage.getItem('else_user');
+  const container = document.getElementById('userList');
+  container.innerHTML = Object.keys(users).map(u => {
+    const isYou = u === currentUser;
+    const isElse = u === 'else';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg);border-radius:4px;margin-bottom:4px;font-size:13px;">
+      <div><strong>${u}</strong>${isYou ? ' <span style="color:var(--accent);font-size:10px;">(you)</span>' : ''}${isElse ? ' <span style="color:var(--text-muted);font-size:10px;">admin</span>' : ''}</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="resetUserPassword('${u}')">Reset PW</button>
+        ${!isElse ? `<button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" onclick="removeUser('${u}')">Remove</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function resetUserPassword(username) {
+  const newPass = prompt(`Enter new password for "${username}":`);
+  if (!newPass || newPass.length < 4) { alert('Password must be at least 4 characters.'); return; }
+  const { error } = await db.from('app_users').update({ password: newPass }).eq('username', username);
+  if (!error) alert(`Password for "${username}" has been reset.`);
+  else alert('Error updating password. Please try again.');
+}
+
+async function removeUser(username) {
+  if (username === 'else') { alert('Cannot remove the admin account.'); return; }
+  if (!confirm(`Remove user "${username}"? They will no longer be able to sign in.`)) return;
+  const { error } = await db.from('app_users').delete().eq('username', username);
+  if (!error) renderUserList();
+  else alert('Error removing user. Please try again.');
+}
+
+async function addUser() {
+  const username = document.getElementById('s_newUser').value.trim().toLowerCase();
+  const password = document.getElementById('s_newUserPass').value;
+  if (!username || !password) { alert('Please enter both a username and password.'); return; }
+  if (password.length < 4) { alert('Password must be at least 4 characters.'); return; }
+  const users = getUsers();
+  if (users[username]) { alert(`User "${username}" already exists.`); return; }
+  users[username] = password;
+  saveUsers(users);
+  document.getElementById('s_newUser').value = '';
+  document.getElementById('s_newUserPass').value = '';
+  renderUserList();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HIERARCHICAL ROLE DEFINITIONS
+// Each role can optionally have `children` sub-categories.
+// A contact stores roles like: ["corporate", "exec_alum", "exec_alum:open_enrollment", "exec_alum:bap"]
+// Parent key = top-level tag; "parent:child" = specific sub-category.
+// ═══════════════════════════════════════════════════════════════
+const ROLES = [
+  { key: 'corporate', label: 'Corporate / Exec Ed Contact', tagClass: 'tag-corporate' },
+  { key: 'exec_prospect', label: 'Exec Ed Prospect', tagClass: 'tag-prospect',
+    children: [
+      { key: 'open_enrollment', label: 'Open Enrollment' },
+      { key: 'bap',             label: 'BAP' },
+      { key: 'aalp',            label: 'AALP' },
+      { key: 'workshop',        label: 'Workshop' },
+      { key: 'custom_program',  label: 'Custom Program' }
+    ]
+  },
+  { key: 'exec_alum', label: 'Exec Ed Alumni', tagClass: 'tag-exec-alum',
+    children: [
+      { key: 'open_enrollment', label: 'Open Enrollment' },
+      { key: 'bap',             label: 'BAP' },
+      { key: 'aalp',            label: 'AALP' },
+      { key: 'workshop',        label: 'Workshop' },
+      { key: 'custom_program',  label: 'Custom Program' }
+    ]
+  },
+  { key: 'advisory', label: 'Else Advisory Board', tagClass: 'tag-advisory' },
+  { key: 'else_alum', label: 'Else Alum', tagClass: 'tag-else-alum',
+    children: [
+      { key: 'econ',      label: 'Economics' },
+      { key: 'acct',      label: 'Accounting' },
+      { key: 'bus_admin', label: 'Business Administration' }
+    ]
+  },
+  { key: 'millsaps_alum', label: 'Non-Else Millsaps Alum', tagClass: 'tag-millsaps' },
+  { key: 'donor', label: 'Donor / Friend', tagClass: 'tag-donor' },
+  { key: 'faculty', label: 'Faculty / Staff', tagClass: 'tag-faculty' },
+  { key: 'vendor', label: 'Vendor / Partner', tagClass: 'tag-vendor' },
+  { key: 'community', label: 'Community Partner', tagClass: 'tag-community' },
+  { key: 'speaker', label: 'Guest Speaker / Panelist', tagClass: 'tag-speaker' }
+];
+
+const TIER_LABELS = { '1':'T1 · Inner Circle','2':'T2 · Engaged','3':'T3 · Exec Ed Mktg','4':'T4 · Informed','5':'T5 · Minimal' };
+const TIER_LABELS_FULL = { '1':'Tier 1 — Inner Circle','2':'Tier 2 — Engaged Network','3':'Tier 3 — Exec Ed Marketing','4':'Tier 4 — Informed','5':'Tier 5 — Minimal / Do Not Contact' };
+
+// Helper: get ALL keys (parent + "parent:child") that belong under a parent
+function getAllKeysForParent(parentKey) {
+  const role = ROLES.find(r => r.key === parentKey);
+  if (!role) return [parentKey];
+  const keys = [parentKey];
+  if (role.children) role.children.forEach(ch => keys.push(parentKey + ':' + ch.key));
+  return keys;
+}
+
+// Helper: does a contact have any role under a parent?
+function contactHasParentRole(c, parentKey) {
+  const roles = c.roles || [];
+  return getAllKeysForParent(parentKey).some(k => roles.includes(k));
+}
+
+// Helper: resolve a role key to its display label + tagClass
+function resolveRoleDisplay(roleKey) {
+  if (roleKey.includes(':')) {
+    const [parentKey, childKey] = roleKey.split(':');
+    const parent = ROLES.find(r => r.key === parentKey);
+    if (!parent) return { label: roleKey, tagClass: 'tag-corporate' };
+    const child = (parent.children || []).find(ch => ch.key === childKey);
+    return {
+      label: (child ? child.label : childKey),
+      parentLabel: parent.label,
+      tagClass: parent.tagClass
+    };
+  }
+  const r = ROLES.find(x => x.key === roleKey);
+  return r ? { label: r.label, tagClass: r.tagClass } : { label: roleKey, tagClass: '' };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════════════════
+let contacts = [];
+let editingId = null;
+let activeRoleFilters = []; // can be "parent" or "parent:child"
+let expandedFilterParents = new Set();
+
+// loadContacts fetches all contacts from Supabase and re-renders
+async function loadContacts() {
+  try {
+    const { data, error } = await db.from('contacts').select('*').order('name');
+    if (data) {
+      contacts = data;
+      renderAll();
+    } else {
+      console.error('Error loading contacts:', error);
+    }
+  } catch(e) {
+    console.error('Failed to load contacts:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FILTERING
+// ═══════════════════════════════════════════════════════════════
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const status = document.getElementById('filterStatus').value;
+  const team = document.getElementById('filterTeam').value;
+  const tier = document.getElementById('filterTier').value;
+
+  return contacts.filter(c => {
+    if (q) {
+      const haystack = [c.name, c.organization, c.title, c.email, c.notes].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    if (status !== 'all' && c.pipeline_status !== status) return false;
+    if (team === 'none') { if (c.assigned_to) return false; }
+    else if (team !== 'all') { if (!c.assigned_to || !c.assigned_to.includes(team)) return false; }
+    if (tier === 'none') { if (c.mailing_tier) return false; }
+    else if (tier !== 'all' && c.mailing_tier !== tier) return false;
+
+    if (activeRoleFilters.length > 0) {
+      const roles = c.roles || [];
+      // Match if contact has ANY of the active filters
+      // If filter is a parent key, match any sub-key too
+      const match = activeRoleFilters.some(fk => {
+        if (fk.includes(':')) return roles.includes(fk); // exact sub-category match
+        return contactHasParentRole(c, fk); // parent matches itself + all children
+      });
+      if (!match) return false;
+    }
+    return true;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════════════════════════════
+function renderStats() {
+  const total = contacts.length;
+  const active = contacts.filter(c => c.pipeline_status === 'Active Pipeline').length;
+  const inDev = contacts.filter(c => c.pipeline_status === 'In-Development').length;
+  const today = new Date();
+  const overdue = contacts.filter(c => c.follow_up_date && new Date(c.follow_up_date) < today).length;
+  const tagged = contacts.filter(c => (c.roles || []).length > 0).length;
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card highlight"><div class="stat-label">Total</div><div class="stat-value">${total}</div></div>
+    <div class="stat-card"><div class="stat-label">Active Pipeline</div><div class="stat-value">${active}</div></div>
+    <div class="stat-card"><div class="stat-label">In Development</div><div class="stat-value">${inDev}</div></div>
+    <div class="stat-card ${overdue > 0 ? 'warn' : ''}"><div class="stat-label">Overdue</div><div class="stat-value">${overdue}</div></div>
+    <div class="stat-card"><div class="stat-label">Tagged</div><div class="stat-value">${tagged}</div></div>`;
+}
+
+function renderDropdowns() {
+  const statuses = ['Prospective','In-Development','Active Pipeline','Closed Won','Closed Lost','Low ROI','Dormant','Unassigned'];
+  const statusSel = document.getElementById('filterStatus');
+  statusSel.innerHTML = '<option value="all">All statuses</option>';
+  statuses.forEach(s => {
+    const count = contacts.filter(c => c.pipeline_status === s).length;
+    statusSel.innerHTML += `<option value="${s}">${s} (${count})</option>`;
+  });
+
+  const teamSel = document.getElementById('filterTeam');
+  teamSel.innerHTML = '<option value="all">Assigned to…</option>';
+  const teamMembers = ['Fiser, Harvey','Pickering, Steve','McCaa, Meg','Freeman, Naomi','Fender, Peyton'];
+  teamMembers.forEach(tm => {
+    const last = tm.split(',')[0];
+    const count = contacts.filter(c => c.assigned_to && c.assigned_to.includes(tm)).length;
+    teamSel.innerHTML += `<option value="${tm}">${last} (${count})</option>`;
+  });
+  const unassignedCount = contacts.filter(c => !c.assigned_to).length;
+  teamSel.innerHTML += `<option value="none">Unassigned (${unassignedCount})</option>`;
+
+  const tierSel = document.getElementById('filterTier');
+  tierSel.innerHTML = '<option value="all">All tiers</option>';
+  ['1','2','3','4','5'].forEach(t => {
+    const count = contacts.filter(c => c.mailing_tier === t).length;
+    tierSel.innerHTML += `<option value="${t}">${TIER_LABELS_FULL[t]} (${count})</option>`;
+  });
+  tierSel.innerHTML += `<option value="none">No tier (${contacts.filter(c => !c.mailing_tier).length})</option>`;
+}
+
+function toggleFilterPanel() {
+  document.getElementById('roleFilters').classList.toggle('open');
+}
+
+function clearAllRoleFilters() {
+  activeRoleFilters = [];
+  renderRoleFilters();
+  renderList();
+  document.getElementById('filterToggleBtn').textContent = '☷ Roles';
+  document.getElementById('filterToggleBtn').classList.remove('has-active');
+}
+
+function renderRoleFilters() {
+  const container = document.getElementById('roleFilters');
+  const isOpen = container.classList.contains('open');
+  const subContainer = document.getElementById('subChipsContainer');
+  container.innerHTML = '<span class="filter-group-label">Roles &amp; Relationships <span class="clear-link" onclick="clearAllRoleFilters()">Clear all</span></span>';
+  subContainer.innerHTML = '';
+
+  ROLES.forEach(r => {
+    const count = contacts.filter(c => contactHasParentRole(c, r.key)).length;
+    const isActive = activeRoleFilters.includes(r.key);
+    const hasSubs = r.children && r.children.length > 0;
+    const isExpanded = expandedFilterParents.has(r.key);
+
+    let chipHtml = `<span style="display:inline-flex;gap:3px;align-items:center;margin-bottom:4px;"><span class="filter-chip ${isActive ? 'active' : ''}" onclick="toggleRoleFilter('${r.key}')">${r.label}<span class="chip-count">${count}</span></span>`;
+    if (hasSubs) {
+      chipHtml += `<button class="expand-btn" onclick="toggleExpandFilter('${r.key}')">${isExpanded ? '▾' : '▸'}</button>`;
+    }
+    chipHtml += `</span> `;
+    container.innerHTML += chipHtml;
+
+    if (hasSubs) {
+      let subHtml = `<div class="sub-chips ${isExpanded ? 'open' : ''}" id="subChips_${r.key}">`;
+      r.children.forEach(ch => {
+        const subKey = r.key + ':' + ch.key;
+        const subCount = contacts.filter(c => (c.roles || []).includes(subKey)).length;
+        const subActive = activeRoleFilters.includes(subKey);
+        subHtml += `<span class="filter-chip sub ${subActive ? 'active' : ''}" onclick="toggleRoleFilter('${subKey}')">${ch.label}<span class="chip-count">${subCount}</span></span>`;
+      });
+      subHtml += '</div>';
+      subContainer.innerHTML += subHtml;
+    }
+  });
+
+  if (isOpen) container.classList.add('open');
+  // Update filter button label
+  const btn = document.getElementById('filterToggleBtn');
+  btn.textContent = activeRoleFilters.length > 0 ? `☷ Roles (${activeRoleFilters.length})` : '☷ Roles';
+  btn.classList.toggle('has-active', activeRoleFilters.length > 0);
+}
+
+function toggleRoleFilter(key) {
+  const idx = activeRoleFilters.indexOf(key);
+  if (idx >= 0) activeRoleFilters.splice(idx, 1);
+  else activeRoleFilters.push(key);
+  renderRoleFilters();
+  renderList();
+}
+
+function toggleExpandFilter(parentKey) {
+  if (expandedFilterParents.has(parentKey)) expandedFilterParents.delete(parentKey);
+  else expandedFilterParents.add(parentKey);
+  renderRoleFilters();
+}
+
+function pipelineClass(status) {
+  const map = { 'Prospective':'pipeline-prospective','In-Development':'pipeline-in-development','Active Pipeline':'pipeline-active','Closed Won':'pipeline-closed-won','Closed Lost':'pipeline-closed-lost','Low ROI':'pipeline-low-roi','Dormant':'pipeline-dormant','Unassigned':'pipeline-unassigned' };
+  return map[status] || 'pipeline-unassigned';
+}
+
+function renderList() {
+  const filtered = getFiltered();
+  document.getElementById('countLabel').textContent = `${filtered.length} contact${filtered.length !== 1 ? 's' : ''} shown`;
+  const container = document.getElementById('contactList');
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">No contacts match your filters.</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.sort((a, b) => a.name.localeCompare(b.name)).map(c => {
+    // Build role tags — show sub-category label if present, otherwise parent label
+    const roleKeys = c.roles || [];
+    const tagHtml = roleKeys.map(rk => {
+      const d = resolveRoleDisplay(rk);
+      const label = rk.includes(':') ? d.label : d.label;
+      return `<span class="tag ${d.tagClass}" title="${d.parentLabel ? d.parentLabel + ' → ' + d.label : d.label}">${rk.includes(':') ? d.label : d.label}</span>`;
+    }).join('');
+
+    const tierHtml = c.mailing_tier ? `<span class="mailing-tier tier-${c.mailing_tier}">${TIER_LABELS[c.mailing_tier]}</span>` : '';
+    const today = new Date();
+    let metaHtml = '';
+    if (c.assigned_to) metaHtml += `<div class="assigned">→ ${c.assigned_to}</div>`;
+    if (c.last_contact_date) metaHtml += `<div>Last: ${fmtDate(c.last_contact_date)}</div>`;
+    if (c.follow_up_date) {
+      const overdue = new Date(c.follow_up_date) < today;
+      metaHtml += `<div class="${overdue ? 'overdue' : ''}">F/U: ${fmtDate(c.follow_up_date)}${overdue ? ' ⚠' : ''}</div>`;
+    }
+
+    return `<div class="contact-row" onclick="openModal(${c.contact_id})">
+      <div><div class="contact-name">${c.name}</div><div class="contact-org">${c.organization || '—'}</div></div>
+      <div class="contact-tags">${tagHtml || '<span style="color:var(--text-muted);font-size:10px;">No roles</span>'}</div>
+      <div class="contact-title-cell">${c.title || '<span style="color:var(--text-muted)">—</span>'}</div>
+      <div><span class="pipeline-badge ${pipelineClass(c.pipeline_status)}">${c.pipeline_status}</span><br>${tierHtml}</div>
+      <div class="contact-meta">${metaHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODAL — Hierarchical Checkboxes
+// ═══════════════════════════════════════════════════════════════
+function buildRoleCheckboxes() {
+  const container = document.getElementById('roleCheckboxes');
+  container.innerHTML = ROLES.map(r => {
+    const hasSubs = r.children && r.children.length > 0;
+    let html = `<div class="role-section">`;
+    html += `<div class="role-section-header" onclick="${hasSubs ? `toggleSubOptions('${r.key}')` : ''}">
+      <input type="checkbox" value="${r.key}" class="role-cb role-parent-cb" onclick="event.stopPropagation(); parentCheckChanged('${r.key}')">
+      ${r.label}
+      ${hasSubs ? `<span class="toggle-arrow" id="arrow_${r.key}">▸</span>` : ''}
+    </div>`;
+    if (hasSubs) {
+      html += `<div class="sub-options" id="subs_${r.key}">`;
+      r.children.forEach(ch => {
+        const subKey = r.key + ':' + ch.key;
+        html += `<label class="sub-option">
+          <input type="checkbox" value="${subKey}" class="role-cb role-child-cb" data-parent="${r.key}" onclick="childCheckChanged('${r.key}')"> ${ch.label}
+        </label>`;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    return html;
+  }).join('');
+}
+
+function toggleSubOptions(parentKey) {
+  const subs = document.getElementById('subs_' + parentKey);
+  const arrow = document.getElementById('arrow_' + parentKey);
+  if (subs.classList.contains('open')) {
+    subs.classList.remove('open');
+    arrow.classList.remove('expanded');
+  } else {
+    subs.classList.add('open');
+    arrow.classList.add('expanded');
+  }
+}
+
+function parentCheckChanged(parentKey) {
+  const parentCb = document.querySelector(`.role-parent-cb[value="${parentKey}"]`);
+  const childCbs = document.querySelectorAll(`.role-child-cb[data-parent="${parentKey}"]`);
+  // If parent is checked but no children are specifically checked, that's fine (general tag)
+  // If parent is unchecked, uncheck all children
+  if (!parentCb.checked) {
+    childCbs.forEach(cb => cb.checked = false);
+  } else {
+    // Auto-expand sub-options when parent is checked
+    const subs = document.getElementById('subs_' + parentKey);
+    const arrow = document.getElementById('arrow_' + parentKey);
+    if (subs) { subs.classList.add('open'); arrow?.classList.add('expanded'); }
+  }
+}
+
+function childCheckChanged(parentKey) {
+  const parentCb = document.querySelector(`.role-parent-cb[value="${parentKey}"]`);
+  const childCbs = document.querySelectorAll(`.role-child-cb[data-parent="${parentKey}"]`);
+  const anyChecked = Array.from(childCbs).some(cb => cb.checked);
+  // If any child is checked, auto-check the parent
+  if (anyChecked) parentCb.checked = true;
+}
+
+function openModal(id) {
+  editingId = id || null;
+  document.getElementById('modalTitle').textContent = id ? 'Edit Contact' : 'Add Contact';
+  document.getElementById('deleteBtn').style.display = id ? 'inline-flex' : 'none';
+  buildRoleCheckboxes();
+
+  if (id) {
+    const c = contacts.find(x => x.contact_id === id);
+    if (!c) return;
+    document.getElementById('f_name').value = c.name || '';
+    document.getElementById('f_org').value = c.organization || '';
+    document.getElementById('f_title').value = c.title || '';
+    document.getElementById('f_email').value = c.email || '';
+    document.getElementById('f_phone').value = c.phone || '';
+    document.getElementById('f_linkedin').value = c.linkedin_url || '';
+    document.getElementById('f_pipeline').value = c.pipeline_status || 'Unassigned';
+    document.getElementById('f_assigned').value = c.assigned_to || '';
+    document.getElementById('f_tier').value = c.mailing_tier || '';
+    document.getElementById('f_lastContact').value = c.last_contact_date || '';
+    document.getElementById('f_followUp').value = c.follow_up_date || '';
+    document.getElementById('f_address').value = c.city_state_zip || '';
+    document.getElementById('f_notes').value = c.notes || '';
+    const roles = c.roles || [];
+    document.querySelectorAll('.role-cb').forEach(cb => {
+      cb.checked = roles.includes(cb.value);
+    });
+    // Auto-expand any parent that has checked children
+    ROLES.forEach(r => {
+      if (r.children) {
+        const anyChild = r.children.some(ch => roles.includes(r.key + ':' + ch.key));
+        if (anyChild || roles.includes(r.key)) {
+          const subs = document.getElementById('subs_' + r.key);
+          const arrow = document.getElementById('arrow_' + r.key);
+          if (subs && anyChild) { subs.classList.add('open'); arrow?.classList.add('expanded'); }
+        }
+      }
+    });
+  } else {
+    ['f_name','f_org','f_title','f_email','f_phone','f_linkedin','f_lastContact','f_followUp','f_address','f_notes'].forEach(fid => document.getElementById(fid).value = '');
+    document.getElementById('f_pipeline').value = 'Unassigned';
+    document.getElementById('f_assigned').value = '';
+    document.getElementById('f_tier').value = '';
+    document.querySelectorAll('.role-cb').forEach(cb => cb.checked = false);
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); editingId = null; }
+
+async function saveContact() {
+  const name = document.getElementById('f_name').value.trim();
+  if (!name) { alert('Name is required'); return; }
+  const roles = Array.from(document.querySelectorAll('.role-cb:checked')).map(cb => cb.value);
+
+  const data = {
+    name,
+    organization: document.getElementById('f_org').value.trim() || null,
+    title: document.getElementById('f_title').value.trim() || null,
+    email: document.getElementById('f_email').value.trim() || null,
+    phone: document.getElementById('f_phone').value.trim() || null,
+    linkedin_url: document.getElementById('f_linkedin').value.trim() || null,
+    pipeline_status: document.getElementById('f_pipeline').value,
+    assigned_to: document.getElementById('f_assigned').value || null,
+    mailing_tier: document.getElementById('f_tier').value || '',
+    last_contact_date: document.getElementById('f_lastContact').value || null,
+    follow_up_date: document.getElementById('f_followUp').value || null,
+    city_state_zip: document.getElementById('f_address').value.trim() || null,
+    notes: document.getElementById('f_notes').value.trim() || '',
+    roles,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    if (editingId) {
+      const { data: updated, error } = await db.from('contacts').update(data).eq('contact_id', editingId).select().maybeSingle();
+      if (error) throw error;
+      const idx = contacts.findIndex(c => c.contact_id === editingId);
+      if (idx >= 0 && updated) contacts[idx] = updated;
+    } else {
+      const insertData = { ...data, is_alum: false, data_classification: 'internal', ferpa_protected: false, consent_marketing: true };
+      const { data: newContact, error } = await db.from('contacts').insert(insertData).select().maybeSingle();
+      if (error) throw error;
+      if (newContact) contacts.push(newContact);
+    }
+    closeModal(); renderAll();
+  } catch(e) {
+    console.error('Error saving contact:', e);
+    alert('Error saving contact. Please try again.');
+  }
+}
+
+async function deleteContact() {
+  if (!editingId || !confirm('Delete this contact permanently?')) return;
+  try {
+    const { error } = await db.from('contacts').delete().eq('contact_id', editingId);
+    if (error) throw error;
+    contacts = contacts.filter(c => c.contact_id !== editingId);
+    closeModal(); renderAll();
+  } catch(e) {
+    console.error('Error deleting contact:', e);
+    alert('Error deleting contact. Please try again.');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORTS — roles now include sub-categories
+// ═══════════════════════════════════════════════════════════════
+function getExportData() { return getFiltered().sort((a, b) => a.name.localeCompare(b.name)); }
+
+function roleKeysToLabels(roles) {
+  return (roles || []).map(rk => {
+    const d = resolveRoleDisplay(rk);
+    return d.parentLabel ? d.parentLabel + ' > ' + d.label : d.label;
+  }).join('; ');
+}
+
+function exportCSV() {
+  const data = getExportData();
+  const headers = ['Name','Organization','Title','Email','Phone','Pipeline Status','Assigned To','Roles','Mailing Tier','Last Contact','Follow Up','LinkedIn','Address','Notes'];
+  const rows = data.map(c => [
+    c.name, c.organization||'', c.title||'', c.email||'', c.phone||'',
+    c.pipeline_status, c.assigned_to||'', roleKeysToLabels(c.roles),
+    c.mailing_tier ? TIER_LABELS_FULL[c.mailing_tier] : '',
+    c.last_contact_date||'', c.follow_up_date||'', c.linkedin_url||'',
+    c.city_state_zip||'', c.notes||''
+  ]);
+  const csv = [headers,...rows].map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+  downloadFile(csv, 'else_contacts_export.csv', 'text/csv');
+  closeExportMenu();
+}
+
+function exportExcel() {
+  const data = getExportData();
+  const headers = ['Name','Organization','Title','Email','Phone','Pipeline Status','Assigned To','Roles','Mailing Tier','Last Contact','Follow Up','LinkedIn','Address','Notes'];
+  const rows = data.map(c => [
+    c.name, c.organization||'', c.title||'', c.email||'', c.phone||'',
+    c.pipeline_status, c.assigned_to||'', roleKeysToLabels(c.roles),
+    c.mailing_tier ? TIER_LABELS_FULL[c.mailing_tier] : '',
+    c.last_contact_date||'', c.follow_up_date||'', c.linkedin_url||'',
+    c.city_state_zip||'', c.notes||''
+  ]);
+  const tsv = [headers,...rows].map(r => r.join('\t')).join('\n');
+  downloadFile(tsv, 'else_contacts_export.xls', 'application/vnd.ms-excel');
+  closeExportMenu();
+}
+
+function exportMailchimp() {
+  const data = getExportData().filter(c => c.email);
+  const headers = ['Email Address','First Name','Last Name','Tags','MMERGE5','MMERGE6','MMERGE7'];
+  const rows = data.map(c => {
+    const parts = c.name.split(' ');
+    const first = parts[0]||''; const last = parts.slice(1).join(' ')||'';
+    const tags = (c.roles||[]).map(rk => { const d = resolveRoleDisplay(rk); return d.parentLabel ? d.parentLabel+' > '+d.label : d.label; }).join(',');
+    return [c.email, first, last, tags, c.organization||'', c.title||'', c.mailing_tier ? TIER_LABELS_FULL[c.mailing_tier] : ''];
+  });
+  const csv = [headers,...rows].map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+  downloadFile(csv, 'else_mailchimp_import.csv', 'text/csv');
+  closeExportMenu();
+}
+
+function downloadFile(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('exportBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('exportMenu').classList.toggle('open'); });
+function closeExportMenu() { document.getElementById('exportMenu').classList.remove('open'); }
+document.addEventListener('click', closeExportMenu);
+
+document.getElementById('searchInput').addEventListener('input', renderList);
+document.getElementById('filterStatus').addEventListener('change', renderList);
+document.getElementById('filterTeam').addEventListener('change', renderList);
+document.getElementById('filterTier').addEventListener('change', renderList);
+document.getElementById('modalOverlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
+document.getElementById('settingsOverlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeSettings(); });
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+
+function renderAll() { renderStats(); renderDropdowns(); renderRoleFilters(); renderList(); }
+// renderAll() is called by loadContacts() after Supabase data is fetched
+</script>
+</body>
+</html>
