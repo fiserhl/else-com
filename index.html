@@ -7,7 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  /* Millsaps Official Brand */
   --purple: #21145f;
   --purple-light: #3a2d7a;
   --purple-soft: #e8e5f3;
@@ -79,175 +78,124 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .btn-primary:hover { background: var(--accent-light); }
 .btn-export { background: var(--green); color: #fff; border-color: var(--green); }
 .btn-export:hover { opacity: 0.9; }
-.btn-danger { background: none; color: var(--red); border-color: var(--red); }
-.btn-danger:hover { background: var(--red-bg); }
-.count-label { font-size: 12px; color: var(--text-muted); padding: 8px 0; font-weight: 500; }
+.btn-email { background: var(--blue); color: #fff; border-color: var(--blue); }
+.btn-email:hover { opacity: 0.9; }
+.btn-text { background: var(--teal); color: #fff; border-color: var(--teal); }
+.btn-text:hover { opacity: 0.9; }
+.btn-danger { background: var(--red); color: #fff; border-color: var(--red); }
+.btn-danger:hover { opacity: 0.9; }
+.btn-filter { position: relative; }
+.btn-filter.has-active { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
 
-/* ─── Collapsible Filter Panel ─── */
-.filter-group { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; background: var(--surface); border-bottom: 0 solid var(--border); padding: 0; }
-.filter-group.open { max-height: 500px; border-bottom-width: 1px; padding: 14px 32px 16px; }
-.filter-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray); width: 100%; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-.filter-group-label .clear-link { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--accent); cursor: pointer; font-size: 11px; }
-.filter-group-label .clear-link:hover { text-decoration: underline; }
-.btn-filter { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-bg); }
-.btn-filter:hover { background: #d8d4e8; }
-.btn-filter.has-active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.filter-chip { padding: 4px 11px; border-radius: 4px; font-size: 11px; font-weight: 500; border: 1px solid var(--border); background: var(--bg); color: var(--text-secondary); cursor: pointer; transition: all 0.12s; user-select: none; }
-.filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+.export-dropdown { position: relative; }
+.export-menu { position: absolute; top: 100%; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); z-index: 50; min-width: 220px; display: none; overflow: hidden; }
+.export-menu.open { display: block; }
+.export-option { display: block; width: 100%; text-align: left; padding: 10px 16px; font-size: 12px; font-family: var(--sans); border: none; background: none; cursor: pointer; color: var(--text); }
+.export-option:hover { background: var(--bg); }
+.export-option small { color: var(--text-muted); }
+
+.filter-group { display: none; padding: 10px 32px 6px; background: var(--surface-alt); border-bottom: 1px solid var(--border-light); flex-wrap: wrap; gap: 6px; align-items: center; }
+.filter-group.open { display: flex; }
+.filter-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); margin-right: 6px; display: flex; align-items: center; gap: 8px; }
+.clear-link { font-weight: 500; color: var(--accent); cursor: pointer; text-transform: none; letter-spacing: 0; font-size: 11px; }
+.filter-chip { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; transition: all 0.12s; }
+.filter-chip:hover { border-color: var(--accent); }
 .filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.filter-chip .chip-count { font-size: 9px; opacity: 0.6; margin-left: 3px; }
-.filter-chip.sub { font-size: 10px; padding: 3px 9px; border-style: dashed; margin-left: 14px; }
-.filter-chip.sub.active { border-style: solid; }
-.sub-chips { display: none; gap: 4px; flex-wrap: wrap; padding: 4px 0 2px 4px; }
+.filter-chip.sub { font-size: 10px; padding: 2px 8px; }
+.chip-count { font-size: 9px; margin-left: 4px; opacity: 0.6; }
+.expand-btn { background: none; border: none; cursor: pointer; font-size: 11px; color: var(--text-muted); padding: 2px; }
+.sub-chips { display: none; padding: 2px 32px 4px 64px; background: var(--surface-alt); flex-wrap: wrap; gap: 4px; }
 .sub-chips.open { display: flex; }
-.expand-btn { font-size: 9px; padding: 3px 6px; border-radius: 3px; border: 1px solid var(--border); background: var(--surface); color: var(--gray); cursor: pointer; font-family: var(--sans); line-height: 1; }
-.expand-btn:hover { color: var(--accent); border-color: var(--accent); }
 
-/* ─── Contact List ─── */
-.contact-list { padding: 0 32px 32px; }
-.contact-row { display: grid; grid-template-columns: 28px 200px 1fr 180px 120px 110px 60px; align-items: center; gap: 14px; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius); margin-bottom: 3px; cursor: pointer; transition: all 0.12s; }
-.contact-row:hover { border-color: var(--border); box-shadow: var(--shadow-sm); }
+.count-label { font-size: 12px; color: var(--text-muted); }
+
+.contact-list { padding: 0 32px; }
+.contact-row { display: grid; grid-template-columns: 28px 200px 1fr 180px 120px 110px 70px; align-items: center; gap: 14px; padding: 10px 14px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: background 0.1s; }
+.contact-row:hover { background: var(--purple-wash); }
 .contact-name { font-weight: 600; font-size: 13px; color: var(--text); }
-.contact-org { font-size: 11px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
-.contact-title-cell { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contact-org { font-size: 11px; color: var(--text-muted); }
+.contact-title-cell { font-size: 12px; color: var(--text-secondary); }
 .contact-tags { display: flex; flex-wrap: wrap; gap: 3px; }
-.tag { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 2px; letter-spacing: 0.3px; text-transform: uppercase; white-space: nowrap; }
+.tag { font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
 .tag-corporate { background: var(--blue-bg); color: var(--blue); }
 .tag-prospect { background: var(--orange-bg); color: var(--orange); }
 .tag-exec-alum { background: var(--green-bg); color: var(--green); }
 .tag-advisory { background: var(--accent-bg); color: var(--accent); }
-.tag-else-alum { background: #f0e8d8; color: #7a6530; }
-.tag-millsaps { background: #eae8e0; color: #5a5a50; }
 .tag-donor { background: var(--teal-bg); color: var(--teal); }
-.tag-faculty { background: #e5e5ee; color: #4a4a6a; }
-.tag-vendor { background: #eaeae0; color: #5a5a40; }
-.tag-community { background: #e0eaea; color: #3a5a5a; }
-.tag-speaker { background: var(--red-bg); color: var(--red); }
+.tag-community { background: #f5e6ff; color: #7b2d8e; }
+.tag-friend { background: #fff3e0; color: #e65100; }
+.tag-alumni { background: #e3f2fd; color: #1565c0; }
+.tag-student { background: #e8f5e9; color: #2e7d32; }
 
-.pipeline-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 3px; white-space: nowrap; display: inline-block; }
-.pipeline-prospective { background: var(--orange-bg); color: var(--orange); }
-.pipeline-in-development { background: var(--blue-bg); color: var(--blue); }
+.pipeline-badge { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 3px; }
+.pipeline-prospective { background: var(--blue-bg); color: var(--blue); }
+.pipeline-in-development { background: var(--orange-bg); color: var(--orange); }
 .pipeline-active { background: var(--green-bg); color: var(--green); }
-.pipeline-closed-won { background: #d4edda; color: #155724; }
-.pipeline-closed-lost { background: #f8d7da; color: #721c24; }
-.pipeline-low-roi { background: #fff3cd; color: #856404; }
-.pipeline-dormant { background: #e2e3e5; color: #383d41; }
-.pipeline-unassigned { background: var(--border-light); color: var(--text-muted); }
+.pipeline-closed-won { background: var(--accent-bg); color: var(--accent); }
+.pipeline-closed-lost { background: var(--red-bg); color: var(--red); }
+.pipeline-low-roi { background: #f5f5f5; color: #999; }
+.pipeline-dormant { background: #f5f5f5; color: #999; }
+.pipeline-unassigned { background: var(--bg); color: var(--text-muted); }
 
-.mailing-tier { font-size: 11px; color: var(--text-muted); }
-.tier-1 { color: var(--accent); font-weight: 600; }
-.tier-2 { color: var(--green); font-weight: 500; }
-.tier-3 { color: var(--blue); font-weight: 500; }
-.tier-4 { color: var(--text-secondary); }
-.tier-5 { color: var(--text-muted); }
-.contact-meta { font-size: 10px; color: var(--text-muted); text-align: right; line-height: 1.6; }
-.contact-meta .assigned { color: var(--text-secondary); font-weight: 500; }
-.contact-meta .overdue { color: var(--red); font-weight: 700; }
+.mailing-tier { font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 3px; }
+.tier-1 { background: #fce4ec; color: #c62828; }
+.tier-2 { background: #fff3e0; color: #e65100; }
+.tier-3 { background: #e3f2fd; color: #1565c0; }
+.tier-4 { background: #f5f5f5; color: #757575; }
+.tier-5 { background: #fafafa; color: #bdbdbd; }
 
-/* ─── Modal ─── */
-.modal-overlay { position: fixed; inset: 0; background: rgba(33,20,95,0.35); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s; backdrop-filter: blur(2px); }
-.modal-overlay.open { opacity: 1; visibility: visible; }
-.modal { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 720px; max-width: 95vw; max-height: 90vh; overflow-y: auto; padding: 28px; }
-.modal h2 { font-family: var(--serif); font-size: 22px; font-weight: 500; margin-bottom: 20px; color: var(--accent); }
-.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.modal-grid .full-width { grid-column: 1 / -1; }
-.form-group { display: flex; flex-direction: column; gap: 4px; }
-.form-group label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); }
-.form-group input, .form-group select, .form-group textarea { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: var(--sans); color: var(--text); outline: none; transition: all 0.15s; }
-.form-group input:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,0.06); }
+.contact-meta { font-size: 10px; color: var(--text-muted); line-height: 1.4; }
+.contact-meta .assigned { color: var(--accent); font-weight: 500; }
+.contact-meta .overdue { color: var(--red); font-weight: 500; }
 
-/* Hierarchical checkbox layout */
-.role-section { margin-bottom: 6px; }
-.role-section:last-child { margin-bottom: 0; }
-.role-section-header { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--text); cursor: pointer; padding: 5px 6px; border-radius: 4px; transition: background 0.1s; }
-.role-section-header:hover { background: var(--surface-alt); }
-.role-section-header input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; flex-shrink: 0; }
-.role-section-header .toggle-arrow { font-size: 8px; color: var(--gray-light); margin-left: auto; transition: transform 0.2s; padding: 2px 4px; }
-.role-section-header .toggle-arrow.expanded { transform: rotate(90deg); }
-.sub-options { padding-left: 28px; display: none; }
-.sub-options.open { display: block; }
-.sub-option { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer; padding: 3px 6px; border-radius: 3px; transition: background 0.1s; }
-.sub-option:hover { background: var(--surface-alt); }
-.sub-option input[type="checkbox"] { accent-color: var(--accent-light); width: 13px; height: 13px; flex-shrink: 0; }
-.modal-actions { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-light); }
-.modal-actions .left-actions { display: flex; gap: 8px; }
-
-/* Export */
-.export-dropdown { position: relative; }
-.export-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); z-index: 50; min-width: 200px; display: none; }
-.export-menu.open { display: block; }
-.export-option { padding: 10px 14px; font-size: 13px; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 8px; border: none; background: none; width: 100%; font-family: inherit; text-align: left; }
-.export-option:hover { background: var(--surface-alt); }
-.export-option:first-child { border-radius: var(--radius) var(--radius) 0 0; }
-.export-option:last-child { border-radius: 0 0 var(--radius) var(--radius); }
-.export-option small { color: var(--text-muted); font-size: 11px; }
-
-/* ─── EMAIL FEATURE STYLES ─── */
-.btn-email { background: var(--blue); color: #fff; border-color: var(--blue); }
-.btn-email:hover { background: #1a4f8a; }
-.email-icon-btn {
-  background: none; border: 1px solid var(--border); border-radius: 4px;
-  padding: 3px 7px; cursor: pointer; font-size: 13px; color: var(--blue);
-  transition: all 0.15s; display: inline-flex; align-items: center; gap: 3px;
-  font-family: var(--sans); font-size: 10px; font-weight: 600;
-}
+.email-icon-btn { background: none; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 14px; padding: 2px 6px; transition: all 0.12s; color: var(--blue); }
 .email-icon-btn:hover { background: var(--blue-bg); border-color: var(--blue); }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(33,20,95,0.4); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+.modal { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 28px 32px; width: 640px; max-width: 92vw; max-height: 90vh; overflow-y: auto; }
+.modal h2 { font-family: var(--serif); font-size: 22px; font-weight: 500; color: var(--accent); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-grid .full-width { grid-column: 1 / -1; }
+.form-group label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); display: block; margin-bottom: 4px; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); background: var(--bg); color: var(--text); outline: none; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,0.08); }
+.modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-light); }
+.left-actions { display: flex; gap: 8px; }
+
+.role-section { margin-bottom: 8px; border: 1px solid var(--border-light); border-radius: var(--radius); overflow: hidden; }
+.role-section-header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 12px; font-weight: 500; cursor: pointer; background: var(--surface-alt); }
+.sub-options { display: none; padding: 4px 10px 8px 28px; }
+.sub-options.open { display: block; }
+.sub-option { display: flex; align-items: center; gap: 6px; font-size: 11px; padding: 3px 0; cursor: pointer; }
+.toggle-arrow { font-size: 10px; cursor: pointer; color: var(--text-muted); transition: transform 0.2s; user-select: none; }
+.toggle-arrow.expanded { transform: rotate(90deg); }
+
+/* Email compose styles */
 .email-modal { width: 680px; }
-.email-modal h2 { display: flex; align-items: center; gap: 10px; }
-.email-modal h2 .email-count {
-  font-family: var(--sans); font-size: 12px; font-weight: 600;
-  background: var(--blue-bg); color: var(--blue); padding: 2px 10px; border-radius: 12px;
-}
-.recipient-list {
-  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 10px 14px; margin-bottom: 14px; max-height: 120px; overflow-y: auto;
-  font-size: 12px; line-height: 1.8;
-}
-.recipient-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: var(--surface); border: 1px solid var(--border-light);
-  border-radius: 4px; padding: 2px 8px 2px 6px; margin: 2px 3px;
-  font-size: 11px; color: var(--text-secondary); white-space: nowrap;
-}
-.recipient-chip .remove-recipient { cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; margin-left: 2px; }
-.recipient-chip .remove-recipient:hover { color: var(--red); }
-.recipient-chip.no-email { border-color: var(--orange); color: var(--orange); border-style: dashed; opacity: 0.7; }
-.email-template-bar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
-.template-chip {
-  padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 500;
-  border: 1px solid var(--border); background: var(--bg); color: var(--text-secondary);
-  cursor: pointer; transition: all 0.12s; user-select: none;
-}
-.template-chip:hover { border-color: var(--accent); color: var(--accent); }
+.email-count { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+.recipient-list { max-height: 100px; overflow-y: auto; margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 4px; }
+.recipient-chip { font-size: 11px; background: var(--bg); border: 1px solid var(--border); padding: 3px 8px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px; }
+.recipient-chip.no-email { background: var(--red-bg); color: var(--red); border-color: transparent; }
+.remove-recipient { cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; }
+.remove-recipient:hover { color: var(--red); }
+.email-method-toggle { display: flex; gap: 6px; margin-bottom: 14px; }
+.email-method-option { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; text-align: center; font-size: 12px; font-family: var(--sans); transition: all 0.12s; }
+.email-method-option:hover { border-color: var(--accent); }
+.email-method-option.active { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+.email-method-option small { display: block; font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.email-template-bar { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
+.template-chip { padding: 4px 10px; border-radius: 20px; font-size: 11px; border: 1px solid var(--border); cursor: pointer; transition: all 0.12s; }
+.template-chip:hover { border-color: var(--accent); }
 .template-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .email-compose-field { margin-bottom: 12px; }
-.email-compose-field label {
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.8px; color: var(--gray); display: block; margin-bottom: 4px;
-}
-.email-compose-field input, .email-compose-field textarea {
-  width: 100%; padding: 8px 12px; border: 1px solid var(--border);
-  border-radius: var(--radius); font-size: 13px; font-family: var(--sans);
-  color: var(--text); outline: none; transition: all 0.15s;
-}
-.email-compose-field input:focus, .email-compose-field textarea:focus {
-  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,0.06);
-}
-.email-compose-field textarea { resize: vertical; min-height: 140px; line-height: 1.6; }
-.email-method-toggle { display: flex; gap: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }
-.email-method-option {
-  flex: 1; padding: 8px 14px; font-size: 12px; font-weight: 500;
-  text-align: center; cursor: pointer; border: none;
-  background: var(--bg); color: var(--text-secondary);
-  font-family: var(--sans); transition: all 0.15s;
-  border-right: 1px solid var(--border);
-}
-.email-method-option:last-child { border-right: none; }
-.email-method-option:hover { background: var(--surface-alt); }
-.email-method-option.active { background: var(--accent); color: #fff; }
-.email-method-option small { display: block; font-size: 10px; font-weight: 400; margin-top: 2px; opacity: 0.7; }
-.send-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); }
-.send-actions .hint { font-size: 11px; color: var(--text-muted); max-width: 300px; }
+.email-compose-field label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); display: block; margin-bottom: 4px; }
+.email-compose-field input, .email-compose-field textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); outline: none; }
+.email-compose-field textarea { min-height: 120px; resize: vertical; }
+.send-actions { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--border-light); }
+.hint { font-size: 11px; color: var(--text-muted); max-width: 300px; }
+
+/* Group Email Selector */
 .group-email-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
 .group-email-panel h3 { font-family: var(--serif); font-size: 16px; font-weight: 500; color: var(--accent); margin-bottom: 12px; }
 .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; }
@@ -256,24 +204,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .group-option.selected { border-color: var(--accent); background: var(--accent-bg); }
 .group-option input[type="checkbox"] { accent-color: var(--accent); }
 .group-option .group-count { margin-left: auto; font-size: 10px; color: var(--text-muted); background: var(--bg); padding: 1px 6px; border-radius: 3px; }
-.group-sub-options { padding-left: 24px; grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
-.group-sub-option { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); padding: 2px 8px; cursor: pointer; }
-.group-sub-option:hover { color: var(--text-secondary); }
-.group-sub-option input[type="checkbox"] { accent-color: var(--accent); }
-.group-sub-option .group-count { margin-left: auto; font-size: 9px; color: var(--gray-light); }
 .row-checkbox { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
-.sms-icon-btn { background: none; border: none; font-size: 14px; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: background 0.15s; }
-.sms-icon-btn:hover { background: var(--green-bg); }
-.btn-sms { background: var(--green-bg); color: var(--green); border-color: var(--green); }
-.btn-sms:hover { background: var(--green); color: #fff; }
-.sms-status { padding: 10px 14px; border-radius: var(--radius); font-size: 12px; margin-top: 10px; }
-.sms-status.sending { background: var(--blue-bg); color: var(--blue); }
-.sms-status.success { background: var(--green-bg); color: var(--green); }
-.sms-status.error { background: var(--red-bg); color: var(--red); }
-.sms-results { max-height: 120px; overflow-y: auto; font-size: 11px; margin-top: 6px; }
-.sms-result-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--border-light); }
-.sms-result-sent { color: var(--green); }
-.sms-result-failed { color: var(--red); }
 .select-all-bar {
   display: none; align-items: center; gap: 12px; padding: 6px 32px;
   background: var(--accent-bg); border-bottom: 1px solid var(--border);
@@ -281,12 +212,18 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 }
 .select-all-bar .btn { font-size: 11px; padding: 4px 10px; }
 
+/* Tab content areas */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
 @media (max-width: 900px) {
   .contact-row { grid-template-columns: 1fr; gap: 6px; }
   .modal-grid { grid-template-columns: 1fr; }
 }
 .footer { text-align: center; padding: 24px 32px; font-size: 11px; color: var(--gray-light); letter-spacing: 0.3px; }
 .footer strong { color: var(--gray); font-weight: 600; }
+.footer a { color: var(--gray); text-decoration: none; font-size: 10px; }
+.footer a:hover { text-decoration: underline; color: var(--accent); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -335,49 +272,114 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
     <button class="tab" data-tab="audit">Audit Log</button>
   </div>
 
-  <div class="stats-row" id="statsRow"></div>
+  <!-- ═══════════ CONTACTS TAB ═══════════ -->
+  <div class="tab-content active" id="tabContacts">
+    <div class="stats-row" id="statsRow"></div>
 
-  <div class="toolbar">
-    <div class="search-box">
-      <input type="text" id="searchInput" placeholder="Search by name, org, title, email...">
+    <div class="toolbar">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search by name, org, title, email...">
+      </div>
+      <select id="filterStatus"><option value="all">All statuses</option></select>
+      <select id="filterTeam"><option value="all">Assigned to…</option></select>
+      <select id="filterTier"><option value="all">All mailing tiers</option></select>
+      <button class="btn btn-filter" id="filterToggleBtn" onclick="toggleFilterPanel()">☷ Roles</button>
+      <div class="toolbar-right">
+        <button class="btn btn-email" onclick="openGroupEmailSelector()">✉ Group Email</button>
+        <button class="btn btn-text" id="groupTextBtn" onclick="openGroupTextSelector()">💬 Group Text</button>
+        <div class="export-dropdown">
+          <button class="btn btn-export" id="exportBtn">↓ Export</button>
+          <div class="export-menu" id="exportMenu">
+            <button class="export-option" onclick="exportCSV()">📄 CSV <small>— universal</small></button>
+            <button class="export-option" onclick="exportExcel()">📊 Excel (.xlsx) <small>— formatted</small></button>
+            <button class="export-option" onclick="exportMailchimp()">📬 Mailchimp <small>— ready to import</small></button>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="openModal()">+ Add Contact</button>
+      </div>
     </div>
-    <select id="filterStatus"><option value="all">All statuses</option></select>
-    <select id="filterTeam"><option value="all">Assigned to…</option></select>
-    <select id="filterTier"><option value="all">All mailing tiers</option></select>
-    <button class="btn btn-filter" id="filterToggleBtn" onclick="toggleFilterPanel()">☷ Roles</button>
-    <div class="toolbar-right">
-      <button class="btn btn-email" onclick="openGroupEmailSelector()">✉ Group Email</button>
-      <button class="btn btn-sms" onclick="openGroupSmsSelector()">💬 Group Text</button>
-      <div class="export-dropdown">
-        <button class="btn btn-export" id="exportBtn">↓ Export</button>
-        <div class="export-menu" id="exportMenu">
-          <button class="export-option" onclick="exportCSV()">📄 CSV <small>— universal</small></button>
-          <button class="export-option" onclick="exportExcel()">📊 Excel (.xlsx) <small>— formatted</small></button>
-          <button class="export-option" onclick="exportMailchimp()">📬 Mailchimp <small>— ready to import</small></button>
+
+    <div class="filter-group" id="roleFilters"></div>
+    <div id="subChipsContainer"></div>
+
+    <div class="select-all-bar" id="selectionBar">
+      <input type="checkbox" onchange="toggleSelectAll(this)" style="accent-color:var(--accent);">
+      <span class="sel-count">0 selected</span>
+      <button class="btn btn-email" onclick="emailSelectedContacts()">✉ Email Selected</button>
+      <button class="btn" onclick="selectedContactIds.clear(); document.querySelectorAll('.row-checkbox').forEach(c=>c.checked=false); updateSelectionBar();">Clear</button>
+    </div>
+
+    <div style="padding: 8px 32px; display:flex; align-items:center; justify-content:space-between;">
+      <span class="count-label" id="countLabel"></span>
+    </div>
+
+    <div class="contact-list" id="contactList"></div>
+  </div>
+
+  <!-- ═══════════ TASKS TAB ═══════════ -->
+  <div class="tab-content" id="tabTasks">
+    <div style="padding:40px 32px;text-align:center;color:var(--text-muted);">
+      <p style="font-size:14px;">Tasks module — coming soon</p>
+    </div>
+  </div>
+
+  <!-- ═══════════ CAMPAIGNS TAB ═══════════ -->
+  <div class="tab-content" id="tabCampaigns">
+    <div style="padding:40px 32px;text-align:center;color:var(--text-muted);">
+      <p style="font-size:14px;">Campaigns module — coming soon</p>
+    </div>
+  </div>
+
+  <!-- ═══════════ MAILINGS TAB ═══════════ -->
+  <div class="tab-content" id="tabMailings">
+    <div style="padding:40px 32px;text-align:center;color:var(--text-muted);">
+      <p style="font-size:14px;">Mailings module — coming soon</p>
+    </div>
+  </div>
+
+  <!-- ═══════════ COMPLIANCE TAB ═══════════ -->
+  <div class="tab-content" id="tabCompliance">
+    <div style="padding:24px 32px;">
+      <div style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:28px 32px;max-width:700px;">
+        <h3 style="font-family:var(--serif);font-size:20px;font-weight:500;color:var(--accent);margin-bottom:4px;">SMS Compliance & Privacy</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Required policies for Twilio SMS/text messaging service</p>
+        <div style="background:var(--purple-soft);border-left:4px solid var(--purple);padding:14px 18px;border-radius:0 var(--radius) var(--radius) 0;margin-bottom:16px;">
+          <p style="font-size:13px;color:var(--purple);margin:0;">
+            <strong>Public Policy Page:</strong> The following link is publicly accessible (no login required) and can be shared with carriers, included in opt-in flows, or provided to contacts.
+          </p>
+        </div>
+        <a href="privacy.html" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;text-decoration:none;padding:10px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:var(--sans);transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+          📄 View Privacy Policy & SMS Terms
+        </a>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:12px;">
+          URL: <code style="background:var(--bg);padding:2px 6px;border-radius:3px;font-size:11px;">https://fiserhl.github.io/else-com/privacy.html</code> — This URL can be shared publicly.
+        </p>
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="background:var(--bg);padding:12px;border-radius:var(--radius);">
+            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:4px;">Coverage</p>
+            <p style="font-size:12px;color:var(--text);">Privacy Policy + SMS Terms of Service</p>
+          </div>
+          <div style="background:var(--bg);padding:12px;border-radius:var(--radius);">
+            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:4px;">Carrier Requirements</p>
+            <p style="font-size:12px;color:var(--text);">STOP, HELP, carrier liability, rates, frequency</p>
+          </div>
         </div>
       </div>
-      <button class="btn btn-primary" onclick="openModal()">+ Add Contact</button>
     </div>
   </div>
 
-  <div class="filter-group" id="roleFilters"></div>
-  <div id="subChipsContainer"></div>
-
-  <!-- Selection bar for bulk email -->
-  <div class="select-all-bar" id="selectionBar">
-    <input type="checkbox" onchange="toggleSelectAll(this)" style="accent-color:var(--accent);">
-    <span class="sel-count">0 selected</span>
-    <button class="btn btn-email" onclick="emailSelectedContacts()">✉ Email Selected</button>
-    <button class="btn" onclick="selectedContactIds.clear(); document.querySelectorAll('.row-checkbox').forEach(c=>c.checked=false); updateSelectionBar();">Clear</button>
+  <!-- ═══════════ AUDIT LOG TAB ═══════════ -->
+  <div class="tab-content" id="tabAudit">
+    <div style="padding:40px 32px;text-align:center;color:var(--text-muted);">
+      <p style="font-size:14px;">Audit Log — coming soon</p>
+    </div>
   </div>
 
-  <div style="padding: 8px 32px; display:flex; align-items:center; justify-content:space-between;">
-    <span class="count-label" id="countLabel"></span>
+  <div class="footer">
+    <strong>Else School of Management</strong> — Corporate Outreach &amp; Contact Database — Millsaps College, Jackson MS
+    <br>
+    <a href="privacy.html" target="_blank">Privacy Policy & SMS Terms</a>
   </div>
-
-  <div class="contact-list" id="contactList"></div>
-
-  <div class="footer"><strong>Else School of Management</strong> — Corporate Outreach &amp; Contact Database — Millsaps College, Jackson MS</div>
 
   <!-- ═══════════ SETTINGS MODAL ═══════════ -->
   <div class="modal-overlay" id="settingsOverlay">
@@ -412,7 +414,6 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 
   <!-- ═══════════ EMAIL COMPOSE MODAL ═══════════ -->
   <div class="modal-overlay" id="emailOverlay"></div>
-  <div class="modal-overlay" id="smsOverlay"></div>
 
 </div><!-- end appContainer -->
 
@@ -482,6 +483,33 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ═══════════════════════════════════════════════════════════════
+// TEXT PERMISSION CONTROL — Only "else" and "hfiser" can text
+// ═══════════════════════════════════════════════════════════════
+const TEXT_AUTHORIZED_USERS = ['else', 'hfiser'];
+
+function updateTextPermissions() {
+  const currentUser = (sessionStorage.getItem('else_user') || '').toLowerCase();
+  const canText = TEXT_AUTHORIZED_USERS.includes(currentUser);
+  const groupTextBtn = document.getElementById('groupTextBtn');
+  if (groupTextBtn) groupTextBtn.style.display = canText ? 'inline-flex' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const tabName = tab.dataset.tab;
+    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    const tabMap = { contacts:'tabContacts', tasks:'tabTasks', campaigns:'tabCampaigns', mailings:'tabMailings', compliance:'tabCompliance', audit:'tabAudit' };
+    const target = document.getElementById(tabMap[tabName]);
+    if (target) target.classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
 // LOGIN & USER MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
 async function doLogin() {
@@ -518,6 +546,7 @@ function showApp() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appContainer').style.display = 'block';
   loadContacts();
+  updateTextPermissions();
 }
 if (sessionStorage.getItem('else_auth') === 'true') { showApp(); }
 
@@ -540,11 +569,11 @@ async function changeOwnPassword() {
   const currentUser = sessionStorage.getItem('else_user');
   const current = document.getElementById('s_currentPass').value;
   const newP = document.getElementById('s_newPass').value;
-  const confirm = document.getElementById('s_confirmPass').value;
+  const confirm_ = document.getElementById('s_confirmPass').value;
   const msg = document.getElementById('passMsg');
-  if (!current || !newP || !confirm) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Please fill in all fields.'; return; }
+  if (!current || !newP || !confirm_) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Please fill in all fields.'; return; }
   if (newP.length < 4) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'New password must be at least 4 characters.'; return; }
-  if (newP !== confirm) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'New passwords do not match.'; return; }
+  if (newP !== confirm_) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'New passwords do not match.'; return; }
   const { data: check } = await db.from('app_users').select('username').eq('username', currentUser).eq('password', current).maybeSingle();
   if (!check) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Current password is incorrect.'; return; }
   const { error } = await db.from('app_users').update({ password: newP }).eq('username', currentUser);
@@ -615,48 +644,28 @@ const ROLES = [
       { key: 'custom_program', label: 'Custom Program' }
     ]
   },
-  { key: 'advisory', label: 'Else Advisory Board', tagClass: 'tag-advisory' },
-  { key: 'else_alum', label: 'Else Alum', tagClass: 'tag-else-alum',
-    children: [
-      { key: 'econ', label: 'Economics' },
-      { key: 'acct', label: 'Accounting' },
-      { key: 'bus_admin', label: 'Business Administration' },
-      { key: 'mba', label: 'MBA' },
-      { key: 'mbaa', label: 'MBAA' },
-      { key: 'macc', label: 'MACC' },
-      { key: 'macca', label: 'MACCA' },
-      { key: 'data_analytics', label: 'Data Analytics' },
-      { key: 'data_analytics_cert', label: 'Data Analytics Cert' },
-      { key: 'data_cert', label: 'Data Analytics Certificate' }
-    ]
-  },
-  { key: 'millsaps_alum', label: 'Non-Else Millsaps Alum', tagClass: 'tag-millsaps' },
-  { key: 'donor', label: 'Donor / Friend', tagClass: 'tag-donor' },
-  { key: 'faculty', label: 'Faculty / Staff', tagClass: 'tag-faculty' },
-  { key: 'vendor', label: 'Vendor / Partner', tagClass: 'tag-vendor' },
+  { key: 'advisory', label: 'Advisory Board', tagClass: 'tag-advisory' },
+  { key: 'donor', label: 'Donor / Sponsor', tagClass: 'tag-donor' },
   { key: 'community', label: 'Community Partner', tagClass: 'tag-community' },
-  { key: 'speaker', label: 'Guest Speaker / Panelist', tagClass: 'tag-speaker' }
+  { key: 'friend', label: 'Friend of School', tagClass: 'tag-friend' },
+  { key: 'alumni', label: 'Millsaps Alumni', tagClass: 'tag-alumni' },
+  { key: 'student', label: 'Current Student', tagClass: 'tag-student' }
 ];
-const TIER_LABELS = { '1':'T1 · Inner Circle','2':'T2 · Engaged','3':'T3 · Exec Ed Mktg','4':'T4 · Informed','5':'T5 · Minimal' };
-const TIER_LABELS_FULL = { '1':'Tier 1 — Inner Circle','2':'Tier 2 — Engaged Network','3':'Tier 3 — Exec Ed Marketing','4':'Tier 4 — Informed','5':'Tier 5 — Minimal / Do Not Contact' };
 
-function getAllKeysForParent(parentKey) {
-  const role = ROLES.find(r => r.key === parentKey);
-  if (!role) return [parentKey];
-  const keys = [parentKey];
-  if (role.children) role.children.forEach(ch => keys.push(parentKey + ':' + ch.key));
-  return keys;
-}
+const TIER_LABELS = { '1': 'T1', '2': 'T2', '3': 'T3', '4': 'T4', '5': 'T5' };
+const TIER_LABELS_FULL = { '1': 'Tier 1 — Inner Circle', '2': 'Tier 2 — Engaged', '3': 'Tier 3 — Exec Ed', '4': 'Tier 4 — Informed', '5': 'Tier 5 — Minimal' };
+
 function contactHasParentRole(c, parentKey) {
   const roles = c.roles || [];
-  return getAllKeysForParent(parentKey).some(k => roles.includes(k));
+  return roles.some(rk => rk === parentKey || rk.startsWith(parentKey + ':'));
 }
+
 function resolveRoleDisplay(roleKey) {
   if (roleKey.includes(':')) {
     const [parentKey, childKey] = roleKey.split(':');
     const parent = ROLES.find(r => r.key === parentKey);
-    if (!parent) return { label: roleKey, tagClass: 'tag-corporate' };
-    const child = (parent.children || []).find(ch => ch.key === childKey);
+    if (!parent) return { label: roleKey, tagClass: '' };
+    const child = parent.children ? parent.children.find(ch => ch.key === childKey) : null;
     return { label: (child ? child.label : childKey), parentLabel: parent.label, tagClass: parent.tagClass };
   }
   const r = ROLES.find(x => x.key === roleKey);
@@ -677,7 +686,7 @@ async function loadContacts() {
     const { data, error } = await db.from('contacts').select('*').order('name');
     if (data) {
       contacts = data;
-      window._allContacts = data; // Store for email feature
+      window._allContacts = data;
       renderAll();
     } else { console.error('Error loading contacts:', error); }
   } catch(e) { console.error('Failed to load contacts:', e); }
@@ -716,7 +725,7 @@ function getFiltered() {
 // ═══════════════════════════════════════════════════════════════
 // RENDERING
 // ═══════════════════════════════════════════════════════════════
-function renderAll() { renderStats(); renderDropdowns(); renderRoleFilters(); renderList(); renderRoleCheckboxes(); }
+function renderAll() { renderStats(); renderDropdowns(); renderRoleFilters(); renderList(); renderRoleCheckboxes(); updateTextPermissions(); }
 
 function renderStats() {
   const total = contacts.length;
@@ -747,7 +756,7 @@ function renderDropdowns() {
   teamSel.innerHTML += `<option value="none">Unassigned (${contacts.filter(c => !c.assigned_to).length})</option>`;
 
   const tierSel = document.getElementById('filterTier');
-  tierSel.innerHTML = '<option value="all">All tiers</option>';
+  tierSel.innerHTML = '<option value="all">All mailing tiers</option>';
   ['1','2','3','4','5'].forEach(t => { tierSel.innerHTML += `<option value="${t}">${TIER_LABELS_FULL[t]} (${contacts.filter(c => c.mailing_tier === t).length})</option>`; });
   tierSel.innerHTML += `<option value="none">No tier (${contacts.filter(c => !c.mailing_tier).length})</option>`;
 }
@@ -837,12 +846,12 @@ function renderList() {
       <div class="contact-tags">${tagHtml}${tierHtml ? ' ' + tierHtml : ''}</div>
       <div><span class="pipeline-badge ${pipelineClass(c.pipeline_status)}">${c.pipeline_status || 'Unassigned'}</span></div>
       <div class="contact-meta">${metaHtml}</div>
-      <div onclick="event.stopPropagation()" style="display:flex;gap:2px;">
+      <div onclick="event.stopPropagation()">
         ${hasEmail ? `<button class="email-icon-btn" onclick="emailSingleContact(${c.contact_id})" title="Email ${c.name}">✉</button>` : ''}
-        ${c.phone ? `<button class="sms-icon-btn" onclick="smsSingleContact(${c.contact_id})" title="Text ${c.name}">💬</button>` : ''}
       </div>
     </div>`;
   }).join('');
+  updateTextPermissions();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -880,7 +889,6 @@ function openModal(id) {
   editingId = id || null;
   document.getElementById('modalTitle').textContent = id ? 'Edit Contact' : 'Add Contact';
   document.getElementById('deleteBtn').style.display = id ? 'inline-flex' : 'none';
-  // Clear form
   ['f_name','f_org','f_title','f_email','f_phone','f_linkedin','f_address','f_notes'].forEach(f => document.getElementById(f).value = '');
   document.getElementById('f_pipeline').value = 'Unassigned';
   document.getElementById('f_assigned').value = '';
@@ -978,10 +986,7 @@ function exportCSV() {
   document.getElementById('exportMenu').classList.remove('open');
 }
 
-function exportExcel() {
-  // Simple CSV with .xlsx naming — for proper Excel, use SheetJS
-  exportCSV();
-}
+function exportExcel() { exportCSV(); }
 
 function exportMailchimp() {
   const filtered = getFiltered().filter(c => c.email);
@@ -1013,7 +1018,6 @@ document.getElementById('filterTier').addEventListener('change', renderList);
 document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === document.getElementById('modalOverlay')) closeModal(); });
 document.getElementById('settingsOverlay').addEventListener('click', e => { if (e.target === document.getElementById('settingsOverlay')) closeSettings(); });
 document.getElementById('emailOverlay').addEventListener('click', e => { if (e.target === document.getElementById('emailOverlay')) closeEmailModal(); });
-document.getElementById('smsOverlay').addEventListener('click', e => { if (e.target === document.getElementById('smsOverlay')) closeSmsModal(); });
 
 // ═══════════════════════════════════════════════════════════════
 // ✉ EMAIL FEATURE
@@ -1024,29 +1028,28 @@ let emailMethod = 'outlook';
 const EMAIL_TEMPLATES = {
   intro: {
     subject: 'Introduction — Else School of Management, Millsaps College',
-    body: `Dear {name},\n\nI hope this message finds you well. I'm reaching out from the Else School of Management at Millsaps College to introduce myself and explore potential opportunities for collaboration.\n\nThe Else School is committed to developing the next generation of business leaders in Mississippi and beyond, and we believe your experience at {org} would bring tremendous value to our community.\n\nI'd welcome the chance to connect at your convenience to discuss how we might work together.\n\nWarm regards,\n[Your Name]\nElse School of Management | Millsaps College`
+    body: `Dear {name},\n\nI hope this message finds you well. I'm reaching out from the Else School of Management at Millsaps College to introduce myself and explore potential opportunities for collaboration.\n\nThe Else School is committed to developing the next generation of business leaders in Mississippi and beyond, and we believe your experience at {org} would bring tremendous value to our community.\n\nI'd welcome the chance to connect at your convenience.\n\nWarm regards,\n[Your Name]\nElse School of Management | Millsaps College`
   },
   followup: {
     subject: 'Following Up — Else School of Management',
-    body: `Dear {name},\n\nI wanted to follow up on our previous conversation and see if there are any updates on your end. We remain very interested in continuing our discussion.\n\nPlease let me know if there's a convenient time to reconnect — I'm happy to work around your schedule.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
+    body: `Dear {name},\n\nI wanted to follow up on our previous conversation and see if there are any updates on your end.\n\nPlease let me know if there's a convenient time to reconnect. I'm happy to work around your schedule.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
   },
   meeting: {
     subject: 'Meeting Request — Else School of Management',
-    body: `Dear {name},\n\nI'd like to request a brief meeting to discuss a potential collaboration between {org} and the Else School of Management at Millsaps College.\n\nWould you have 30 minutes available in the coming weeks? I'm flexible on timing and happy to meet in person, by phone, or via Teams.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
+    body: `Dear {name},\n\nI would appreciate the opportunity to schedule a brief meeting to discuss potential collaboration between {org} and the Else School of Management.\n\nWould any of the following times work for a 30-minute call or meeting?\n\n• [Option 1]\n• [Option 2]\n• [Option 3]\n\nPlease let me know what works best for your schedule.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
   },
   advisory: {
-    subject: 'Else School Advisory Board — Update & Upcoming Meeting',
-    body: `Dear Advisory Board Members,\n\nThank you for your continued support of the Else School of Management. I'm writing to share a few updates and provide details for our next advisory board meeting.\n\n[Meeting details here]\n\nYour guidance and involvement make a real difference in shaping the future of business education at Millsaps. Please don't hesitate to reach out with any questions.\n\nWith appreciation,\n[Your Name]\nElse School of Management | Millsaps College`
+    subject: 'Advisory Board Update — Else School of Management',
+    body: `Dear Advisory Board Members,\n\nI hope you're doing well. I wanted to share a few updates from the Else School of Management:\n\n[Update 1]\n[Update 2]\n[Update 3]\n\nAs always, we deeply value your guidance and partnership. Please don't hesitate to reach out with any questions or ideas.\n\nWarm regards,\n[Your Name]\nElse School of Management | Millsaps College`
   },
   event: {
-    subject: "You're Invited — Else School of Management Event",
-    body: `Dear {name},\n\nWe are pleased to invite you to an upcoming event hosted by the Else School of Management at Millsaps College.\n\n[Event Name]\n[Date & Time]\n[Location / Virtual Link]\n\nPlease RSVP by [date] to confirm your attendance.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
+    subject: 'You're Invited — Else School of Management Event',
+    body: `Dear {name},\n\nOn behalf of the Else School of Management, I'm pleased to invite you to:\n\n[Event Name]\n[Date & Time]\n[Location]\n\nThis event will [brief description]. We would be honored to have you join us.\n\nPlease let me know if you're able to attend.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
   },
   custom: { subject: '', body: '' }
 };
 
-const EMAIL_MODAL_HTML = `
-  <div class="modal email-modal">
+const EMAIL_MODAL_HTML = `<div class="modal email-modal">
     <h2><span>✉ Compose Email</span><span class="email-count" id="emailRecipientCount">0 recipients</span></h2>
     <div class="recipient-list" id="emailRecipientList"><em style="color:var(--text-muted);">No recipients selected</em></div>
     <div class="email-method-toggle">
@@ -1054,15 +1057,14 @@ const EMAIL_MODAL_HTML = `
       <button class="email-method-option" onclick="setEmailMethod('mailto')" id="methodMailto">🔗 mailto: Link<small>Opens default mail client</small></button>
       <button class="email-method-option" onclick="setEmailMethod('copy')" id="methodCopy">📋 Copy Addresses<small>Copy to clipboard</small></button>
     </div>
-    <div>
-      <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:6px;display:block;">Quick Templates</label>
-      <div class="email-template-bar" id="emailTemplates">
-        <span class="template-chip" onclick="applyTemplate('intro',this)">Introduction</span>
-        <span class="template-chip" onclick="applyTemplate('followup',this)">Follow-up</span>
-        <span class="template-chip" onclick="applyTemplate('meeting',this)">Meeting Request</span>
-        <span class="template-chip" onclick="applyTemplate('advisory',this)">Advisory Board</span>
-        <span class="template-chip" onclick="applyTemplate('event',this)">Event Invite</span>
-        <span class="template-chip" onclick="applyTemplate('custom',this)">Custom</span>
+    <div><label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:6px;display:block;">Quick Templates</label>
+      <div class="email-template-bar">
+        <span class="template-chip" onclick="applyTemplate('intro')">Introduction</span>
+        <span class="template-chip" onclick="applyTemplate('followup')">Follow-up</span>
+        <span class="template-chip" onclick="applyTemplate('meeting')">Meeting Request</span>
+        <span class="template-chip" onclick="applyTemplate('advisory')">Advisory Board</span>
+        <span class="template-chip" onclick="applyTemplate('event')">Event Invite</span>
+        <span class="template-chip" onclick="applyTemplate('custom')">Custom</span>
       </div>
     </div>
     <div class="email-compose-field"><label>Subject</label><input type="text" id="emailSubject" placeholder="Email subject line..."></div>
@@ -1113,19 +1115,24 @@ function setEmailMethod(method) {
   const hint = document.getElementById('emailHint');
   if (method === 'outlook') { sendBtn.textContent = 'Open in Outlook →'; hint.textContent = 'Opens Outlook Web with your college account pre-filled.'; }
   else if (method === 'mailto') { sendBtn.textContent = 'Open Mail Client →'; hint.textContent = 'Opens your default email application with message pre-filled.'; }
-  else { sendBtn.textContent = '📋 Copy All Addresses'; hint.textContent = 'Copies all email addresses to clipboard.'; }
+  else { sendBtn.textContent = '📋 Copy All Addresses'; hint.textContent = 'Copies all email addresses to clipboard. Paste into Outlook manually.'; }
 }
 
-function applyTemplate(key, el) {
-  const tpl = EMAIL_TEMPLATES[key]; if (!tpl) return;
+function applyTemplate(key) {
+  const tpl = EMAIL_TEMPLATES[key];
+  if (!tpl) return;
   document.querySelectorAll('.template-chip').forEach(c => c.classList.remove('active'));
-  if (el) el.classList.add('active');
+  if (event && event.target) event.target.classList.add('active');
   document.getElementById('emailSubject').value = tpl.subject;
   let body = tpl.body;
   if (emailRecipients.length === 1) {
-    body = body.replace(/\{name\}/g, emailRecipients[0].name.split(' ')[0]);
-    body = body.replace(/\{org\}/g, emailRecipients[0].org || 'your organization');
-  } else { body = body.replace(/\{name\}/g, '').replace(/\{org\}/g, ''); }
+    const r = emailRecipients[0];
+    body = body.replace(/\{name\}/g, r.name.split(' ')[0]);
+    body = body.replace(/\{org\}/g, r.org || 'your organization');
+  } else {
+    body = body.replace(/\{name\}/g, '');
+    body = body.replace(/\{org\}/g, '');
+  }
   document.getElementById('emailBody').value = body;
 }
 
@@ -1137,12 +1144,15 @@ function sendEmail() {
   const emails = emailRecipients.map(r => r.email);
 
   if (emailMethod === 'copy') {
-    navigator.clipboard.writeText(emails.join('; ')).then(() => {
-      const btn = document.getElementById('emailSendBtn'); btn.textContent = '✓ Copied!';
+    const text = emails.join('; ');
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('emailSendBtn');
+      btn.textContent = '✓ Copied!';
       setTimeout(() => { btn.textContent = '📋 Copy All Addresses'; }, 2000);
-    }).catch(() => prompt('Copy these addresses:', emails.join('; ')));
+    }).catch(() => { prompt('Copy these addresses:', text); });
     return;
   }
+
   if (emailMethod === 'outlook') {
     const toField = useBcc && emails.length > 1 ? '' : emails.join(';');
     const bccField = useBcc && emails.length > 1 ? emails.join(';') : '';
@@ -1150,25 +1160,26 @@ function sendEmail() {
     if (toField) url += `to=${encodeURIComponent(toField)}&`;
     if (bccField) url += `bcc=${encodeURIComponent(bccField)}&`;
     url += `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(url, '_blank'); closeEmailModal(); return;
+    window.open(url, '_blank');
+    closeEmailModal();
+    return;
   }
+
   if (emailMethod === 'mailto') {
     let mailto = 'mailto:';
-    if (useBcc && emails.length > 1) mailto += `?bcc=${encodeURIComponent(emails.join(','))}`;
+    if (useBcc && emails.length > 1) { mailto += `?bcc=${encodeURIComponent(emails.join(','))}`; }
     else { mailto += encodeURIComponent(emails.join(',')); mailto += '?'; }
     mailto += `${mailto.includes('?') ? '&' : '?'}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailto; closeEmailModal();
   }
 }
 
-// Email a single contact from row button
 function emailSingleContact(contactId) {
   const c = contacts.find(x => x.contact_id === contactId);
   if (!c) return;
   openEmailModal([{ id: c.contact_id, name: c.name, email: c.email, org: c.organization }]);
 }
 
-// Email selected contacts (checkboxes)
 function emailSelectedContacts() {
   if (selectedContactIds.size === 0) { alert('No contacts selected. Use the checkboxes to select contacts first.'); return; }
   const selected = contacts.filter(c => selectedContactIds.has(c.contact_id));
@@ -1195,44 +1206,24 @@ function updateSelectionBar() {
   } else { bar.style.display = 'none'; }
 }
 
-// Group email selector
+// ═══════════════════════════════════════════════════════════════
+// GROUP EMAIL SELECTOR
+// ═══════════════════════════════════════════════════════════════
 function openGroupEmailSelector() {
   const statusCounts = {};
-  const tierCounts = {};
   contacts.forEach(c => {
     statusCounts[c.pipeline_status || 'Unassigned'] = (statusCounts[c.pipeline_status || 'Unassigned'] || 0) + 1;
-    if (c.mailing_tier) tierCounts[c.mailing_tier] = (tierCounts[c.mailing_tier] || 0) + 1;
   });
 
-  let html = `<div class="modal email-modal" style="width:640px;">
+  let html = `<div class="modal email-modal" style="width:600px;">
     <h2>✉ Group Email — Select Recipients</h2>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Select groups to email. Contacts matching ANY selected group will be included.</p>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Contacts matching ANY selected group will be included.</p>
     <div class="group-email-panel"><h3>By Role / Relationship</h3><div class="group-grid">`;
-
   ROLES.forEach(r => {
     const count = contacts.filter(c => contactHasParentRole(c, r.key)).length;
-    const hasSubs = r.children && r.children.length > 0;
     html += `<label class="group-option"><input type="checkbox" value="${r.key}" class="group-role-cb"><span>${r.label}</span><span class="group-count">${count}</span></label>`;
-    if (hasSubs) {
-      html += `<div class="group-sub-options">`;
-      r.children.forEach(ch => {
-        const subKey = r.key + ':' + ch.key;
-        const subCount = contacts.filter(c => (c.roles || []).includes(subKey)).length;
-        html += `<label class="group-sub-option"><input type="checkbox" value="${subKey}" class="group-role-cb"><span>${ch.label}</span><span class="group-count">${subCount}</span></label>`;
-      });
-      html += `</div>`;
-    }
   });
-
-  html += `</div></div>
-    <div class="group-email-panel" style="margin-top:10px;"><h3>By Mailing Tier</h3><div class="group-grid">`;
-  ['1','2','3','4','5'].forEach(t => {
-    const count = tierCounts[t] || 0;
-    html += `<label class="group-option"><input type="checkbox" value="${t}" class="group-tier-cb"><span>${TIER_LABELS_FULL[t]}</span><span class="group-count">${count}</span></label>`;
-  });
-
-  html += `</div></div>
-    <div class="group-email-panel" style="margin-top:10px;"><h3>By Pipeline Status</h3><div class="group-grid">`;
+  html += `</div></div><div class="group-email-panel" style="margin-top:10px;"><h3>By Pipeline Status</h3><div class="group-grid">`;
   Object.keys(statusCounts).sort().forEach(status => {
     html += `<label class="group-option"><input type="checkbox" value="${status}" class="group-status-cb"><span>${status}</span><span class="group-count">${statusCounts[status]}</span></label>`;
   });
@@ -1247,26 +1238,18 @@ function openGroupEmailSelector() {
 
   document.getElementById('emailOverlay').innerHTML = html;
   document.getElementById('emailOverlay').classList.add('open');
-  document.querySelectorAll('.group-role-cb, .group-status-cb, .group-tier-cb').forEach(cb => cb.addEventListener('change', updateGroupCount));
+  document.querySelectorAll('.group-role-cb, .group-status-cb').forEach(cb => cb.addEventListener('change', updateGroupCount));
 }
 
 function updateGroupCount() {
   const selectedRoles = [...document.querySelectorAll('.group-role-cb:checked')].map(cb => cb.value);
   const selectedStatuses = [...document.querySelectorAll('.group-status-cb:checked')].map(cb => cb.value);
-  const selectedTiers = [...document.querySelectorAll('.group-tier-cb:checked')].map(cb => cb.value);
   const matched = contacts.filter(c => {
-    if (selectedRoles.length === 0 && selectedStatuses.length === 0 && selectedTiers.length === 0) return false;
-    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => {
-      if (r.includes(':')) return (c.roles || []).includes(r);
-      return contactHasParentRole(c, r);
-    });
+    if (selectedRoles.length === 0 && selectedStatuses.length === 0) return false;
+    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
     const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
-    const matchTier = selectedTiers.length === 0 || selectedTiers.includes(c.mailing_tier);
-    const checks = [];
-    if (selectedRoles.length > 0) checks.push(matchRole);
-    if (selectedStatuses.length > 0) checks.push(matchStatus);
-    if (selectedTiers.length > 0) checks.push(matchTier);
-    return checks.some(Boolean);
+    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
+    return matchRole || matchStatus;
   });
   const withEmail = matched.filter(c => c.email && c.email.trim());
   const el = document.getElementById('groupSelectedCount');
@@ -1276,323 +1259,96 @@ function updateGroupCount() {
 function composeGroupEmail() {
   const selectedRoles = [...document.querySelectorAll('.group-role-cb:checked')].map(cb => cb.value);
   const selectedStatuses = [...document.querySelectorAll('.group-status-cb:checked')].map(cb => cb.value);
-  const selectedTiers = [...document.querySelectorAll('.group-tier-cb:checked')].map(cb => cb.value);
-  if (selectedRoles.length === 0 && selectedStatuses.length === 0 && selectedTiers.length === 0) { alert('Please select at least one group.'); return; }
+  if (selectedRoles.length === 0 && selectedStatuses.length === 0) { alert('Please select at least one group.'); return; }
   const matched = contacts.filter(c => {
-    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => {
-      if (r.includes(':')) return (c.roles || []).includes(r);
-      return contactHasParentRole(c, r);
-    });
+    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
     const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
-    const matchTier = selectedTiers.length === 0 || selectedTiers.includes(c.mailing_tier);
-    const checks = [];
-    if (selectedRoles.length > 0) checks.push(matchRole);
-    if (selectedStatuses.length > 0) checks.push(matchStatus);
-    if (selectedTiers.length > 0) checks.push(matchTier);
-    return checks.some(Boolean);
+    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
+    return matchRole || matchStatus;
   });
   openEmailModal(matched.map(c => ({ id: c.contact_id, name: c.name, email: c.email, org: c.organization })));
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 💬 SMS / TEXT MESSAGING FEATURE (Twilio via Supabase Edge Function)
+// 💬 GROUP TEXT / SMS (restricted to else & hfiser)
 // ═══════════════════════════════════════════════════════════════
-let smsRecipients = [];
-
-const SMS_TEMPLATES = {
-  quick_intro: {
-    body: `Hi {name}, this is [Your Name] from the Else School of Management at Millsaps College. I wanted to reach out and introduce myself. Would you have a few minutes to connect this week?`
-  },
-  followup: {
-    body: `Hi {name}, just following up on our recent conversation. Looking forward to connecting again soon. - [Your Name], Else School of Management`
-  },
-  event_reminder: {
-    body: `Hi {name}, this is a reminder about our upcoming Else School event: [Event Name] on [Date] at [Location]. We hope to see you there! - Else School of Management`
-  },
-  meeting_confirm: {
-    body: `Hi {name}, confirming our meeting on [Date] at [Time]. Please let me know if anything changes. Looking forward to it! - [Your Name], Else School`
-  },
-  custom: {
-    body: ``
-  }
-};
-
-function openSmsModal(recipients) {
-  smsRecipients = recipients.filter(r => r.phone && r.phone.trim());
-  const noPhone = recipients.filter(r => !r.phone || !r.phone.trim());
-
-  let recipientHtml = smsRecipients.map((r, i) => `
-    <span class="recipient-chip">
-      <strong>${r.name}</strong> ${r.phone}
-      <span class="remove-recipient" onclick="removeSmsRecipient(${i})" title="Remove">×</span>
-    </span>
-  `).join('');
-
-  if (noPhone.length > 0) {
-    recipientHtml += noPhone.map(r => `
-      <span class="recipient-chip no-email" title="No phone on file">
-        ${r.name} — no phone
-      </span>
-    `).join('');
+function openGroupTextSelector() {
+  // Permission check
+  const currentUser = (sessionStorage.getItem('else_user') || '').toLowerCase();
+  if (!TEXT_AUTHORIZED_USERS.includes(currentUser)) {
+    alert('Text messaging is restricted to authorized users only.');
+    return;
   }
 
-  if (smsRecipients.length === 0 && noPhone.length === 0) {
-    recipientHtml = '<em style="color:var(--text-muted);">No recipients selected</em>';
-  }
-
-  const countText = smsRecipients.length === 1 ? '1 recipient' : `${smsRecipients.length} recipients`;
-
-  const html = `
-    <div class="modal email-modal">
-      <h2>
-        <span>💬 Compose Text Message</span>
-        <span class="email-count" id="smsRecipientCount">${countText}</span>
-      </h2>
-      <div id="smsRecipientList" class="recipient-list">${recipientHtml}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">
-        <span class="template-pill" onclick="applySmsTemplate('quick_intro', this)">Quick Intro</span>
-        <span class="template-pill" onclick="applySmsTemplate('followup', this)">Follow-up</span>
-        <span class="template-pill" onclick="applySmsTemplate('event_reminder', this)">Event Reminder</span>
-        <span class="template-pill" onclick="applySmsTemplate('meeting_confirm', this)">Meeting Confirm</span>
-        <span class="template-pill" onclick="applySmsTemplate('custom', this)">Custom</span>
-      </div>
-      <div class="email-compose-field">
-        <label>Message</label>
-        <textarea id="smsBody" style="min-height:100px;" placeholder="Type your message..." maxlength="1600"></textarea>
-      </div>
-      <div style="text-align:right;font-size:11px;color:var(--text-muted);margin-top:2px;">
-        <span id="smsCharCount">0</span> / 1600 characters
-        · <span id="smsSegmentCount">0</span> segment(s)
-      </div>
-      <div id="smsStatusArea"></div>
-      <div class="send-actions">
-        <div class="hint">Messages sent via Twilio from your Else School number. Use {name} to personalize.</div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn" onclick="closeSmsModal()">Cancel</button>
-          <button class="btn btn-sms" id="smsSendBtn" onclick="sendSmsMessages()">💬 Send Text${smsRecipients.length > 1 ? 's' : ''}</button>
-        </div>
-      </div>
-    </div>`;
-
-  document.getElementById('smsOverlay').innerHTML = html;
-  document.getElementById('smsOverlay').classList.add('open');
-
-  // Character counter
-  document.getElementById('smsBody').addEventListener('input', updateSmsCharCount);
-
-  // Apply intro template for single, custom for group
-  if (smsRecipients.length === 1) {
-    applySmsTemplate('quick_intro');
-  }
-}
-
-function closeSmsModal() {
-  document.getElementById('smsOverlay').classList.remove('open');
-}
-
-function removeSmsRecipient(index) {
-  smsRecipients.splice(index, 1);
-  const container = document.getElementById('smsRecipientList');
-  if (container) {
-    container.innerHTML = smsRecipients.map((r, i) => `
-      <span class="recipient-chip">
-        <strong>${r.name}</strong> ${r.phone}
-        <span class="remove-recipient" onclick="removeSmsRecipient(${i})" title="Remove">×</span>
-      </span>
-    `).join('') || '<em style="color:var(--text-muted);">No recipients</em>';
-  }
-  const countEl = document.getElementById('smsRecipientCount');
-  if (countEl) countEl.textContent = smsRecipients.length === 1 ? '1 recipient' : `${smsRecipients.length} recipients`;
-}
-
-function applySmsTemplate(key, el) {
-  const tmpl = SMS_TEMPLATES[key];
-  if (!tmpl) return;
-  document.querySelectorAll('#smsOverlay .template-pill').forEach(p => p.classList.remove('active'));
-  if (el) el.classList.add('active');
-
-  let body = tmpl.body;
-  if (smsRecipients.length === 1) {
-    const r = smsRecipients[0];
-    body = body.replace(/\{name\}/g, r.name || '');
-  }
-  const bodyEl = document.getElementById('smsBody');
-  if (bodyEl) { bodyEl.value = body; updateSmsCharCount(); }
-}
-
-function updateSmsCharCount() {
-  const body = document.getElementById('smsBody');
-  if (!body) return;
-  const len = body.value.length;
-  const charEl = document.getElementById('smsCharCount');
-  const segEl = document.getElementById('smsSegmentCount');
-  if (charEl) charEl.textContent = len;
-  if (segEl) segEl.textContent = Math.max(1, Math.ceil(len / 160));
-}
-
-async function sendSmsMessages() {
-  if (smsRecipients.length === 0) { alert('No recipients with phone numbers.'); return; }
-  const body = document.getElementById('smsBody').value.trim();
-  if (!body) { alert('Please enter a message.'); return; }
-
-  const btn = document.getElementById('smsSendBtn');
-  const statusArea = document.getElementById('smsStatusArea');
-  btn.disabled = true;
-  btn.textContent = '⏳ Sending...';
-  statusArea.innerHTML = `<div class="sms-status sending">Sending ${smsRecipients.length} message${smsRecipients.length > 1 ? 's' : ''}...</div>`;
-
-  try {
-    const response = await fetch(SUPABASE_URL + '/functions/v1/send-sms', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-        'apikey': SUPABASE_ANON_KEY
-      },
-      body: JSON.stringify({
-        recipients: smsRecipients.map(r => ({ phone: r.phone, name: r.name })),
-        message: body
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      statusArea.innerHTML = `<div class="sms-status error">Error: ${data.error || 'Failed to send'}</div>`;
-      btn.disabled = false;
-      btn.textContent = '💬 Retry';
-      return;
-    }
-
-    let resultsHtml = '';
-    if (data.results && data.results.length > 0) {
-      resultsHtml = `<div class="sms-results">` +
-        data.results.map(r => `<div class="sms-result-row">
-          <span>${r.name || r.phone}</span>
-          <span class="${r.status === 'sent' ? 'sms-result-sent' : 'sms-result-failed'}">${r.status === 'sent' ? '✓ Sent' : '✗ ' + (r.error || 'Failed')}</span>
-        </div>`).join('') + `</div>`;
-    }
-
-    statusArea.innerHTML = `<div class="sms-status success">✓ ${data.sent} sent${data.failed > 0 ? `, ${data.failed} failed` : ''}</div>${resultsHtml}`;
-    btn.textContent = '✓ Done';
-    setTimeout(() => { btn.disabled = false; btn.textContent = '💬 Send Again'; }, 3000);
-
-  } catch (err) {
-    statusArea.innerHTML = `<div class="sms-status error">Network error: ${err.message}. Make sure the send-sms Edge Function is deployed.</div>`;
-    btn.disabled = false;
-    btn.textContent = '💬 Retry';
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// SMS: SINGLE CONTACT (from row button)
-// ═══════════════════════════════════════════════════════════════
-function smsSingleContact(contactId) {
-  const c = contacts.find(x => x.contact_id === contactId);
-  if (!c) return;
-  openSmsModal([{ id: c.contact_id, name: c.name, phone: c.phone, org: c.organization }]);
-}
-
-// ═══════════════════════════════════════════════════════════════
-// SMS: GROUP SELECTOR (mirrors email group selector)
-// ═══════════════════════════════════════════════════════════════
-function openGroupSmsSelector() {
   const statusCounts = {};
-  const tierCounts = {};
   contacts.forEach(c => {
     statusCounts[c.pipeline_status || 'Unassigned'] = (statusCounts[c.pipeline_status || 'Unassigned'] || 0) + 1;
-    if (c.mailing_tier) tierCounts[c.mailing_tier] = (tierCounts[c.mailing_tier] || 0) + 1;
   });
 
-  let html = `<div class="modal email-modal" style="width:640px;">
+  let html = `<div class="modal email-modal" style="width:600px;">
     <h2>💬 Group Text — Select Recipients</h2>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Select groups to text. Contacts matching ANY selected group will be included.</p>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Select groups to text. Only contacts with phone numbers will be included.</p>
     <div class="group-email-panel"><h3>By Role / Relationship</h3><div class="group-grid">`;
-
   ROLES.forEach(r => {
-    const count = contacts.filter(c => contactHasParentRole(c, r.key)).length;
-    const hasSubs = r.children && r.children.length > 0;
-    html += `<label class="group-option"><input type="checkbox" value="${r.key}" class="group-sms-role-cb"><span>${r.label}</span><span class="group-count">${count}</span></label>`;
-    if (hasSubs) {
-      html += `<div class="group-sub-options">`;
-      r.children.forEach(ch => {
-        const subKey = r.key + ':' + ch.key;
-        const subCount = contacts.filter(c => (c.roles || []).includes(subKey)).length;
-        html += `<label class="group-sub-option"><input type="checkbox" value="${subKey}" class="group-sms-role-cb"><span>${ch.label}</span><span class="group-count">${subCount}</span></label>`;
-      });
-      html += `</div>`;
-    }
+    const count = contacts.filter(c => contactHasParentRole(c, r.key) && c.phone).length;
+    html += `<label class="group-option"><input type="checkbox" value="${r.key}" class="group-text-role-cb"><span>${r.label}</span><span class="group-count">${count}</span></label>`;
   });
-
-  html += `</div></div>
-    <div class="group-email-panel" style="margin-top:10px;"><h3>By Mailing Tier</h3><div class="group-grid">`;
-  ['1','2','3','4','5'].forEach(t => {
-    const count = tierCounts[t] || 0;
-    html += `<label class="group-option"><input type="checkbox" value="${t}" class="group-sms-tier-cb"><span>${TIER_LABELS_FULL[t]}</span><span class="group-count">${count}</span></label>`;
-  });
-
-  html += `</div></div>
-    <div class="group-email-panel" style="margin-top:10px;"><h3>By Pipeline Status</h3><div class="group-grid">`;
+  html += `</div></div><div class="group-email-panel" style="margin-top:10px;"><h3>By Pipeline Status</h3><div class="group-grid">`;
   Object.keys(statusCounts).sort().forEach(status => {
-    html += `<label class="group-option"><input type="checkbox" value="${status}" class="group-sms-status-cb"><span>${status}</span><span class="group-count">${statusCounts[status]}</span></label>`;
+    const phoneCount = contacts.filter(c => (c.pipeline_status || 'Unassigned') === status && c.phone).length;
+    html += `<label class="group-option"><input type="checkbox" value="${status}" class="group-text-status-cb"><span>${status}</span><span class="group-count">${phoneCount}</span></label>`;
   });
-
   html += `</div></div>
+    <div class="group-email-panel" style="margin-top:10px;">
+      <h3>Compose Message</h3>
+      <textarea id="textMessageBody" style="width:100%;min-height:80px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);resize:vertical;" placeholder="Type your text message here..."></textarea>
+      <p style="font-size:10px;color:var(--text-muted);margin-top:4px;">Standard message and data rates apply. Recipients can reply STOP to opt out.</p>
+    </div>
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:12px;color:var(--text-muted);" id="groupSmsCount">0 contacts selected</span>
+      <span style="font-size:12px;color:var(--text-muted);" id="textGroupCount">0 contacts with phone</span>
       <div style="display:flex;gap:8px;">
-        <button class="btn" onclick="closeSmsModal()">Cancel</button>
-        <button class="btn btn-sms" onclick="composeGroupSms()">Compose Text →</button>
+        <button class="btn" onclick="closeEmailModal()">Cancel</button>
+        <button class="btn btn-text" onclick="composeGroupText()">Open SMS →</button>
       </div>
     </div></div>`;
 
-  document.getElementById('smsOverlay').innerHTML = html;
-  document.getElementById('smsOverlay').classList.add('open');
-  document.querySelectorAll('.group-sms-role-cb, .group-sms-status-cb, .group-sms-tier-cb').forEach(cb => cb.addEventListener('change', updateGroupSmsCount));
+  document.getElementById('emailOverlay').innerHTML = html;
+  document.getElementById('emailOverlay').classList.add('open');
+  document.querySelectorAll('.group-text-role-cb, .group-text-status-cb').forEach(cb => cb.addEventListener('change', updateTextGroupCount));
 }
 
-function updateGroupSmsCount() {
-  const selectedRoles = [...document.querySelectorAll('.group-sms-role-cb:checked')].map(cb => cb.value);
-  const selectedStatuses = [...document.querySelectorAll('.group-sms-status-cb:checked')].map(cb => cb.value);
-  const selectedTiers = [...document.querySelectorAll('.group-sms-tier-cb:checked')].map(cb => cb.value);
+function updateTextGroupCount() {
+  const selectedRoles = [...document.querySelectorAll('.group-text-role-cb:checked')].map(cb => cb.value);
+  const selectedStatuses = [...document.querySelectorAll('.group-text-status-cb:checked')].map(cb => cb.value);
   const matched = contacts.filter(c => {
-    if (selectedRoles.length === 0 && selectedStatuses.length === 0 && selectedTiers.length === 0) return false;
-    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => {
-      if (r.includes(':')) return (c.roles || []).includes(r);
-      return contactHasParentRole(c, r);
-    });
+    if (selectedRoles.length === 0 && selectedStatuses.length === 0) return false;
+    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
     const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
-    const matchTier = selectedTiers.length === 0 || selectedTiers.includes(c.mailing_tier);
-    const checks = [];
-    if (selectedRoles.length > 0) checks.push(matchRole);
-    if (selectedStatuses.length > 0) checks.push(matchStatus);
-    if (selectedTiers.length > 0) checks.push(matchTier);
-    return checks.some(Boolean);
+    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
+    return matchRole || matchStatus;
   });
   const withPhone = matched.filter(c => c.phone && c.phone.trim());
-  const el = document.getElementById('groupSmsCount');
+  const el = document.getElementById('textGroupCount');
   if (el) el.textContent = `${withPhone.length} with phone · ${matched.length - withPhone.length} without`;
 }
 
-function composeGroupSms() {
-  const selectedRoles = [...document.querySelectorAll('.group-sms-role-cb:checked')].map(cb => cb.value);
-  const selectedStatuses = [...document.querySelectorAll('.group-sms-status-cb:checked')].map(cb => cb.value);
-  const selectedTiers = [...document.querySelectorAll('.group-sms-tier-cb:checked')].map(cb => cb.value);
-  if (selectedRoles.length === 0 && selectedStatuses.length === 0 && selectedTiers.length === 0) { alert('Please select at least one group.'); return; }
+function composeGroupText() {
+  const selectedRoles = [...document.querySelectorAll('.group-text-role-cb:checked')].map(cb => cb.value);
+  const selectedStatuses = [...document.querySelectorAll('.group-text-status-cb:checked')].map(cb => cb.value);
+  if (selectedRoles.length === 0 && selectedStatuses.length === 0) { alert('Please select at least one group.'); return; }
   const matched = contacts.filter(c => {
-    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => {
-      if (r.includes(':')) return (c.roles || []).includes(r);
-      return contactHasParentRole(c, r);
-    });
+    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
     const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
-    const matchTier = selectedTiers.length === 0 || selectedTiers.includes(c.mailing_tier);
-    const checks = [];
-    if (selectedRoles.length > 0) checks.push(matchRole);
-    if (selectedStatuses.length > 0) checks.push(matchStatus);
-    if (selectedTiers.length > 0) checks.push(matchTier);
-    return checks.some(Boolean);
+    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
+    return matchRole || matchStatus;
   });
-  openSmsModal(matched.map(c => ({ id: c.contact_id, name: c.name, phone: c.phone, org: c.organization })));
+  const withPhone = matched.filter(c => c.phone && c.phone.trim());
+  if (withPhone.length === 0) { alert('No contacts in the selected groups have phone numbers.'); return; }
+  const body = (document.getElementById('textMessageBody') || {}).value || '';
+  const phones = withPhone.map(c => c.phone.replace(/\D/g, '')).join(',');
+  // Open SMS via sms: protocol
+  window.open(`sms:${phones}${body ? '?body=' + encodeURIComponent(body) : ''}`, '_self');
+  closeEmailModal();
 }
 </script>
 </body>
