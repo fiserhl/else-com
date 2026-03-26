@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Else School</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sans: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+  --serif: 'Playfair Display', Georgia, serif;
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --border: #d8d5cf;
+  --border-light: #ebe9e4;
+  --text: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-muted: #8a8a8a;
+  --purple: #3b1f6e;
+  --accent: #4a2882;
+  --accent-bg: #ede8f5;
+  --blue: #1a5fb4;
+  --blue-bg: #dde8f8;
+  --green: #1b7a3d;
+  --green-bg: #d8f0e0;
+  --orange: #b45309;
+  --orange-bg: #fef0d0;
+  --red: #c0392b;
+  --red-bg: #fde8e8;
+  --teal: #0e7490;
+  --teal-bg: #d0f0f8;
+  --gray: #6b6b6b;
+  --gray-light: #b0b0b0;
+  --radius: 6px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+/* ─── Toolbar ─── */
+.toolbar { background: var(--surface); border-bottom: 1px solid var(--border-light); padding: 16px 32px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-sm); }
+.toolbar .brand { font-family: var(--serif); font-size: 18px; font-weight: 500; color: var(--purple); white-space: nowrap; }
+.toolbar .brand small { font-family: var(--sans); font-size: 10px; font-weight: 400; color: var(--gray); display: block; letter-spacing: 0.5px; text-transform: uppercase; }
+.search-box { flex: 1; min-width: 200px; max-width: 400px; position: relative; }
+.search-box input { width: 100%; padding: 7px 12px 7px 32px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); outline: none; background: var(--bg); transition: border 0.2s; }
+.search-box input:focus { border-color: var(--accent); }
+.search-box::before { content: '⌕'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--gray-light); font-size: 14px; }
+.filter-bar { display: flex; gap: 8px; align-items: center; }
+.filter-bar select { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; font-family: var(--sans); background: var(--surface); color: var(--text-secondary); cursor: pointer; outline: none; }
+.btn { padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; background: var(--surface); color: var(--text-secondary); transition: all 0.15s; white-space: nowrap; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: var(--purple); }
+.btn-danger { background: #fff; color: var(--red); border-color: var(--red); }
+.btn-danger:hover { background: var(--red); color: #fff; }
+.btn-email { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+.btn-email:hover { background: var(--accent); color: #fff; }
+.toolbar-right { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+
+/* ─── Export dropdown ─── */
+.export-dropdown { position: relative; }
+.export-menu { display: none; position: absolute; top: calc(100% + 4px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); z-index: 50; min-width: 200px; }
+.export-menu.open { display: block; }
+.export-option { display: block; width: 100%; text-align: left; padding: 8px 14px; font-size: 12px; font-family: var(--sans); background: none; border: none; cursor: pointer; color: var(--text-secondary); }
+.export-option:hover { background: var(--accent-bg); color: var(--accent); }
+.export-option small { color: var(--text-muted); }
+
+/* ─── Role filter chips ─── */
+.filter-group { padding: 0 32px; display: none; flex-wrap: wrap; gap: 6px; padding-top: 10px; padding-bottom: 10px; background: var(--surface); border-bottom: 1px solid var(--border-light); }
+.filter-group.open { display: flex; }
+.filter-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; cursor: pointer; background: var(--bg); border: 1px solid var(--border); color: var(--text-secondary); transition: all 0.15s; user-select: none; }
+.filter-chip:hover { border-color: var(--accent); }
+.filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-chip .chip-count { font-size: 9px; opacity: 0.7; }
+.filter-chip-wrap { display: inline-flex; align-items: center; gap: 2px; }
+.expand-btn { background: none; border: none; font-size: 10px; cursor: pointer; color: var(--text-muted); padding: 2px 4px; }
+.sub-chips { display: none; padding: 0 32px 8px; flex-wrap: wrap; gap: 4px; background: var(--surface); }
+.sub-chips.open { display: flex; }
+.filter-chip.sub { font-size: 10px; padding: 2px 8px; background: var(--surface); border-style: dashed; }
+.filter-chip.sub.active { background: var(--accent-bg); color: var(--accent); border-style: solid; }
+.filter-toggle-btn { font-size: 11px; }
+.filter-toggle-btn.has-active { color: var(--accent); border-color: var(--accent); }
+
+/* ─── Contact rows ─── */
+.contact-list { padding: 0 32px 32px; }
+.contact-row { display: grid; grid-template-columns: 30px 200px 160px 1fr 130px 120px 30px; gap: 12px; align-items: center; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius); margin-bottom: 4px; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; }
+.contact-row:hover { box-shadow: var(--shadow-sm); border-color: var(--border); }
+.contact-name { font-weight: 600; font-size: 13px; color: var(--text); }
+.contact-org { font-size: 11px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+.contact-title-cell { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contact-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.tag { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 2px; letter-spacing: 0.3px; text-transform: uppercase; white-space: nowrap; }
+.tag-corporate { background: var(--blue-bg); color: var(--blue); }
+.tag-prospect { background: var(--orange-bg); color: var(--orange); }
+.tag-exec-alum { background: var(--green-bg); color: var(--green); }
+.tag-advisory { background: var(--accent-bg); color: var(--accent); }
+.tag-else-alum { background: #f0e8d8; color: #7a6530; }
+.tag-millsaps { background: #eae8e0; color: #5a5a50; }
+.tag-donor { background: var(--teal-bg); color: var(--teal); }
+.tag-faculty { background: #e5e5ee; color: #4a4a6a; }
+.tag-vendor { background: #eaeae0; color: #5a5a40; }
+.tag-community { background: #e0eaea; color: #3a5a5a; }
+.tag-speaker { background: var(--red-bg); color: var(--red); }
+
+.pipeline-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 3px; white-space: nowrap; display: inline-block; }
+.pipeline-prospective { background: var(--orange-bg); color: var(--orange); }
+.pipeline-in-development { background: var(--blue-bg); color: var(--blue); }
+.pipeline-active { background: var(--green-bg); color: var(--green); }
+.pipeline-closed-won { background: #d4edda; color: #155724; }
+.pipeline-closed-lost { background: #f8d7da; color: #721c24; }
+.pipeline-low-roi { background: #fff3cd; color: #856404; }
+.pipeline-dormant { background: #e2e3e5; color: #383d41; }
+.pipeline-unassigned { background: var(--border-light); color: var(--text-muted); }
+
+.mailing-tier { font-size: 11px; color: var(--text-muted); }
+.tier-1 { color: var(--accent); font-weight: 600; }
+.tier-2 { color: var(--green); font-weight: 500; }
+.tier-3 { color: var(--blue); font-weight: 500; }
+.tier-4 { color: var(--text-secondary); }
+.tier-5 { color: var(--text-muted); }
+.contact-meta { font-size: 10px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+.contact-meta .assigned { color: var(--text-secondary); font-weight: 500; }
+.contact-meta .overdue { color: var(--red); font-weight: 700; }
+
+/* ─── Modal ─── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(33,20,95,0.35); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+.modal { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 640px; max-width: 95vw; max-height: 90vh; overflow-y: auto; padding: 28px 32px; }
+.modal h2 { font-family: var(--serif); font-size: 20px; font-weight: 500; color: var(--accent); margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-grid .full-width { grid-column: 1 / -1; }
+.form-group { display: flex; flex-direction: column; gap: 3px; }
+.form-group label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); }
+.form-group input, .form-group select, .form-group textarea { padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); outline: none; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+.modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-light); }
+.left-actions { display: flex; gap: 8px; }
+
+/* ─── Role checkboxes in modal ─── */
+.role-section { margin-bottom: 8px; }
+.role-section-header { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; padding: 4px 0; }
+.role-section-header input[type="checkbox"] { accent-color: var(--accent); }
+.role-sub-toggle { font-size: 10px; color: var(--text-muted); cursor: pointer; margin-left: auto; background: none; border: none; font-family: var(--sans); }
+.role-sub-list { padding-left: 24px; display: none; }
+.role-sub-list.open { display: block; }
+.role-sub-list label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); padding: 2px 0; cursor: pointer; }
+.role-sub-list label input[type="checkbox"] { accent-color: var(--accent); }
+
+/* ─── Email modal ─── */
+.email-modal { width: 640px; }
+.email-modal h2 { font-size: 18px; }
+.email-count { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+.email-method-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.email-method-tab { padding: 5px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 11px; font-weight: 500; cursor: pointer; background: var(--bg); color: var(--text-muted); transition: all 0.15s; }
+.email-method-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.recipient-list { max-height: 100px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; padding: 8px; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.recipient-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; font-size: 11px; color: var(--text-secondary); }
+.recipient-chip strong { color: var(--text); font-weight: 600; }
+.recipient-chip.no-email { background: var(--red-bg); border-color: transparent; color: var(--red); font-style: italic; }
+.remove-recipient { cursor: pointer; color: var(--red); font-weight: 700; font-size: 14px; line-height: 1; }
+.template-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+.template-pill { padding: 3px 10px; border: 1px solid var(--border); border-radius: 12px; font-size: 10px; font-weight: 500; cursor: pointer; background: var(--bg); color: var(--text-muted); transition: all 0.15s; }
+.template-pill:hover { border-color: var(--accent); color: var(--accent); }
+.template-pill.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+.email-field { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); outline: none; margin-bottom: 8px; }
+.email-field:focus { border-color: var(--accent); }
+.email-body { width: 100%; min-height: 160px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); outline: none; resize: vertical; line-height: 1.6; }
+.email-body:focus { border-color: var(--accent); }
+.email-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-light); }
+.bcc-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
+.bcc-toggle input[type="checkbox"] { accent-color: var(--accent); }
+.email-icon-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: background 0.15s; }
+.email-icon-btn:hover { background: var(--accent-bg); }
+
+/* ─── Group email selector ─── */
+.group-email-panel { background: var(--bg); border-radius: var(--radius); padding: 12px; }
+.group-email-panel h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); margin-bottom: 8px; }
+.group-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.group-option { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); padding: 4px 8px; border-radius: var(--radius); cursor: pointer; transition: background 0.1s; }
+.group-option:hover { background: var(--surface); }
+.group-option input[type="checkbox"] { accent-color: var(--accent); }
+.group-option .group-count { margin-left: auto; font-size: 10px; color: var(--text-muted); background: var(--surface); padding: 1px 6px; border-radius: 3px; }
+.group-sub-options { padding-left: 24px; grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+.group-sub-option { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); padding: 2px 8px; cursor: pointer; }
+.group-sub-option:hover { color: var(--text-secondary); }
+.group-sub-option input[type="checkbox"] { accent-color: var(--accent); }
+.group-sub-option .group-count { margin-left: auto; font-size: 9px; color: var(--gray-light); }
+
+.row-checkbox { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+.select-all-bar {
+  display: none; align-items: center; gap: 12px; padding: 6px 32px;
+  background: var(--accent-bg); border-bottom: 1px solid var(--border);
+  font-size: 12px; color: var(--accent); font-weight: 500;
+}
+.select-all-bar .btn { font-size: 11px; padding: 4px 10px; }
+
+@media (max-width: 900px) {
+  .contact-row { grid-template-columns: 1fr; gap: 6px; }
+  .modal-grid { grid-template-columns: 1fr; }
+}
+.footer { text-align: center; padding: 24px 32px; font-size: 11px; color: var(--gray-light); letter-spacing: 0.3px; }
+.footer strong { color: var(--gray); font-weight: 600; }
+
+.count-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ═══════════ LOGIN SCREEN ═══════════ -->
+<div id="loginScreen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);">
+  <div style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:48px 40px;width:380px;max-width:90vw;text-align:center;">
+    <div style="width:56px;height:56px;background:var(--purple);border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;">
+      <span style="color:#fff;font-size:24px;font-family:var(--serif);font-weight:600;">E</span>
+    </div>
+    <h2 style="font-family:var(--serif);font-size:22px;font-weight:500;color:var(--purple);margin-bottom:4px;">Else School of Management</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:28px;">Contact Database — Millsaps College</p>
+    <div style="text-align:left;margin-bottom:12px;">
+      <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);display:block;margin-bottom:4px;">Username</label>
+      <input type="text" id="loginUser" placeholder="Enter username" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);outline:none;" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div style="text-align:left;margin-bottom:20px;">
+      <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);display:block;margin-bottom:4px;">Password</label>
+      <input type="password" id="loginPass" placeholder="Enter password" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);outline:none;" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div id="loginError" style="display:none;background:var(--red-bg);color:var(--red);font-size:12px;padding:8px 12px;border-radius:var(--radius);margin-bottom:14px;">Invalid username or password.</div>
+    <button onclick="doLogin()" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;">Sign In</button>
+    <p style="font-size:10px;color:var(--gray-light);margin-top:16px;">Millsaps College · Jackson, Mississippi</p>
+  </div>
+</div>
+
+<!-- ═══════════ MAIN APP ═══════════ -->
+<div id="appContainer" style="display:none;">
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="brand">Else School<small>Corporate &amp; Contact Database</small></div>
+    <div class="search-box"><input type="text" id="searchInput" placeholder="Search contacts..."></div>
+    <div class="filter-bar">
+      <select id="filterStatus">
+        <option value="all">All Statuses</option>
+        <option value="Prospective">Prospective</option><option value="In-Development">In-Development</option>
+        <option value="Active Pipeline">Active Pipeline</option><option value="Closed Won">Closed Won</option>
+        <option value="Closed Lost">Closed Lost</option><option value="Low ROI">Low ROI</option>
+        <option value="Dormant">Dormant</option><option value="Unassigned">Unassigned</option>
+      </select>
+      <select id="filterTeam">
+        <option value="all">All Team</option>
+        <option value="none">Unassigned</option>
+        <option value="Fiser">Fiser, Harvey</option><option value="Pickering">Pickering, Steve</option>
+        <option value="McCaa">McCaa, Meg</option><option value="Freeman">Freeman, Naomi</option>
+        <option value="Fender">Fender, Peyton</option>
+      </select>
+      <select id="filterTier">
+        <option value="all">All Tiers</option>
+        <option value="none">No Tier</option>
+        <option value="1">T1 · Inner Circle</option><option value="2">T2 · Engaged</option>
+        <option value="3">T3 · Exec Ed Mktg</option><option value="4">T4 · Informed</option>
+        <option value="5">T5 · Minimal</option>
+      </select>
+      <button class="btn filter-toggle-btn" id="filterToggleBtn" onclick="document.getElementById('roleFilters').classList.toggle('open')">☷ Roles</button>
+    </div>
+    <div class="toolbar-right">
+      <button class="btn btn-email" onclick="openGroupEmailSelector()">✉ Group Email</button>
+      <div class="export-dropdown">
+        <button class="btn" id="exportBtn">↓ Export</button>
+        <div class="export-menu" id="exportMenu">
+          <button class="export-option" onclick="exportCSV()">📄 CSV <small>— universal</small></button>
+          <button class="export-option" onclick="exportExcel()">📊 Excel (.xlsx) <small>— formatted</small></button>
+          <button class="export-option" onclick="exportMailchimp()">📬 Mailchimp <small>— ready to import</small></button>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()">+ Add Contact</button>
+      <button class="btn" onclick="openSettings()" title="Settings">⚙</button>
+      <button class="btn" onclick="doLogout()" title="Sign out">↗ Sign Out</button>
+    </div>
+  </div>
+
+  <div class="filter-group" id="roleFilters"></div>
+  <div id="subChipsContainer"></div>
+
+  <!-- Selection bar for bulk email -->
+  <div class="select-all-bar" id="selectionBar">
+    <input type="checkbox" onchange="toggleSelectAll(this)" style="accent-color:var(--accent);">
+    <span class="sel-count">0 selected</span>
+    <button class="btn btn-email" onclick="emailSelectedContacts()">✉ Email Selected</button>
+    <button class="btn" onclick="selectedContactIds.clear(); document.querySelectorAll('.row-checkbox').forEach(c=>c.checked=false); updateSelectionBar();">Clear</button>
+  </div>
+
+  <div style="padding: 8px 32px; display:flex; align-items:center; justify-content:space-between;">
+    <span class="count-label" id="countLabel"></span>
+  </div>
+
+  <div class="contact-list" id="contactList"><div style="text-align:center;padding:60px;color:var(--text-muted);">Loading pipeline data...</div></div>
+
+  <div class="footer"><strong>Else School of Management</strong> — Corporate Outreach &amp; Contact Database — Millsaps College, Jackson MS</div>
+
+  <!-- ═══════════ ADD/EDIT CONTACT MODAL ═══════════ -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h2 id="modalTitle">Add Contact</h2>
+      <div class="modal-grid">
+        <div class="form-group"><label>Name *</label><input type="text" id="f_name" placeholder="Full name"></div>
+        <div class="form-group"><label>Organization</label><input type="text" id="f_org" placeholder="Company / Org"></div>
+        <div class="form-group"><label>Title</label><input type="text" id="f_title" placeholder="Job title"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="f_email" placeholder="email@example.com"></div>
+        <div class="form-group"><label>Phone</label><input type="text" id="f_phone" placeholder="(601) 555-0000"></div>
+        <div class="form-group"><label>LinkedIn</label><input type="text" id="f_linkedin" placeholder="linkedin.com/in/..."></div>
+        <div class="form-group"><label>Pipeline Status</label>
+          <select id="f_pipeline">
+            <option value="Prospective">Prospective</option><option value="In-Development">In-Development</option>
+            <option value="Active Pipeline">Active Pipeline</option>
+            <option value="Closed Won">Closed Won</option><option value="Closed Lost">Closed Lost</option>
+            <option value="Low ROI">Low ROI</option><option value="Dormant">Dormant</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Assigned To</label>
+          <select id="f_assigned">
+            <option value="">Unassigned</option>
+            <option value="Fiser, Harvey">Fiser, Harvey</option><option value="Pickering, Steve">Pickering, Steve</option>
+            <option value="McCaa, Meg">McCaa, Meg</option><option value="Freeman, Naomi">Freeman, Naomi</option>
+            <option value="Fender, Peyton">Fender, Peyton</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Mailing Tier</label>
+          <select id="f_tier">
+            <option value="">No tier assigned</option>
+            <option value="1">Tier 1 — Inner Circle</option><option value="2">Tier 2 — Engaged Network</option>
+            <option value="3">Tier 3 — Exec Ed Marketing</option><option value="4">Tier 4 — Informed</option>
+            <option value="5">Tier 5 — Minimal / Do Not Contact</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Last Contact Date</label><input type="date" id="f_lastContact"></div>
+        <div class="form-group"><label>Follow-up Date</label><input type="date" id="f_followUp"></div>
+        <div class="form-group"><label>Address / City, State, Zip</label><input type="text" id="f_address" placeholder="City, State ZIP"></div>
+        <div class="form-group full-width">
+          <label>Roles &amp; Relationships</label>
+          <div style="border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--bg);max-height:260px;overflow-y:auto;" id="roleCheckboxes"></div>
+        </div>
+        <div class="form-group full-width">
+          <label>Notes</label>
+          <textarea id="f_notes" rows="2" style="resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;" placeholder="Any additional notes..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <div class="left-actions"><button class="btn btn-danger" id="deleteBtn" onclick="deleteContact()" style="display:none">Delete</button></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveContact()">Save Contact</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ SETTINGS MODAL ═══════════ -->
+  <div class="modal-overlay" id="settingsOverlay">
+    <div class="modal" style="width:500px;">
+      <div style="border-bottom:1px solid var(--border-light);padding-bottom:16px;margin-bottom:20px;">
+        <h2 style="font-family:var(--serif);font-size:22px;font-weight:500;color:var(--accent);margin:0;">Account Settings</h2>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">Signed in as: <strong id="settingsCurrentUser" style="color:var(--text);"></strong></p>
+      </div>
+      <div style="margin-bottom:24px;">
+        <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:12px;">Change Your Password</h3>
+        <div style="display:grid;gap:10px;">
+          <div class="form-group"><label>Current Password</label><input type="password" id="s_currentPass" placeholder="Enter current password"></div>
+          <div class="form-group"><label>New Password</label><input type="password" id="s_newPass" placeholder="Enter new password"></div>
+          <div class="form-group"><label>Confirm New Password</label><input type="password" id="s_confirmPass" placeholder="Confirm new password"></div>
+          <div><button class="btn btn-primary" onclick="changePassword()">Update Password</button></div>
+          <div id="passMsg" style="display:none;font-size:12px;padding:6px 10px;border-radius:var(--radius);"></div>
+        </div>
+      </div>
+      <div id="adminSection" style="display:none;border-top:1px solid var(--border-light);padding-top:20px;">
+        <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:12px;">User Management <span style="font-size:10px;font-weight:400;color:var(--text-muted);">(Admin only)</span></h3>
+        <div id="userListContainer" style="margin-bottom:16px;"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <input type="text" id="s_newUser" placeholder="New username" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:var(--sans);">
+          <input type="password" id="s_newUserPass" placeholder="Password" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:var(--sans);">
+          <button class="btn btn-primary" onclick="addUser()" style="font-size:11px;">Add User</button>
+        </div>
+      </div>
+      <div style="margin-top:20px;text-align:right;"><button class="btn" onclick="closeSettings()">Close</button></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ EMAIL OVERLAY (dynamic content) ═══════════ -->
+  <div class="modal-overlay" id="emailOverlay"></div>
+
+</div><!-- /appContainer -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// SUPABASE CLIENT
+// ═══════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://akegekomjwggrvpphxog.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrZWdla29tandnZ3J2cHBoeG9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NTA3MjYsImV4cCI6MjA4OTAyNjcyNn0.yo3lXeRzQTLAZYfYY8QM0vuHYw5AzJwIdZjE2n8bpnw';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ═══════════════════════════════════════════════════════════════
+// LOGIN & USER MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+async function doLogin() {
+  const user = document.getElementById('loginUser').value.trim().toLowerCase();
+  const pass = document.getElementById('loginPass').value;
+  document.getElementById('loginError').style.display = 'none';
+  try {
+    const { data, error } = await db.from('app_users').select('username, role').eq('username', user).eq('password', pass).maybeSingle();
+    if (data) {
+      sessionStorage.setItem('else_auth', 'true');
+      sessionStorage.setItem('else_user', user);
+      sessionStorage.setItem('else_role', data.role || 'user');
+      showApp();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+      document.getElementById('loginPass').value = '';
+    }
+  } catch(e) {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('loginPass').value = '';
+  }
+}
+function doLogout() {
+  sessionStorage.removeItem('else_auth');
+  sessionStorage.removeItem('else_user');
+  sessionStorage.removeItem('else_role');
+  document.getElementById('appContainer').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+function showApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appContainer').style.display = 'block';
+  loadContacts();
+}
+if (sessionStorage.getItem('else_auth') === 'true') { showApp(); }
+
+// ═══════════ SETTINGS / PASSWORD MANAGEMENT ═══════════
+function openSettings() {
+  const currentUser = sessionStorage.getItem('else_user') || '';
+  document.getElementById('settingsCurrentUser').textContent = currentUser;
+  document.getElementById('s_currentPass').value = '';
+  document.getElementById('s_newPass').value = '';
+  document.getElementById('s_confirmPass').value = '';
+  document.getElementById('passMsg').style.display = 'none';
+  const isAdmin = currentUser === 'else';
+  document.getElementById('adminSection').style.display = isAdmin ? 'block' : 'none';
+  if (isAdmin) renderUserList();
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
+
+async function changePassword() {
+  const currentUser = sessionStorage.getItem('else_user');
+  const cur = document.getElementById('s_currentPass').value;
+  const np = document.getElementById('s_newPass').value;
+  const cp = document.getElementById('s_confirmPass').value;
+  const msg = document.getElementById('passMsg');
+  if (!cur || !np || !cp) { msg.textContent = 'All fields required.'; msg.style.background = 'var(--red-bg)'; msg.style.color = 'var(--red)'; msg.style.display = 'block'; return; }
+  if (np !== cp) { msg.textContent = 'New passwords do not match.'; msg.style.background = 'var(--red-bg)'; msg.style.color = 'var(--red)'; msg.style.display = 'block'; return; }
+  if (np.length < 4) { msg.textContent = 'Password must be at least 4 characters.'; msg.style.background = 'var(--red-bg)'; msg.style.color = 'var(--red)'; msg.style.display = 'block'; return; }
+  const { data } = await db.from('app_users').select('username').eq('username', currentUser).eq('password', cur).maybeSingle();
+  if (!data) { msg.textContent = 'Current password is incorrect.'; msg.style.background = 'var(--red-bg)'; msg.style.color = 'var(--red)'; msg.style.display = 'block'; return; }
+  const { error } = await db.from('app_users').update({ password: np }).eq('username', currentUser);
+  if (!error) { msg.textContent = 'Password updated successfully!'; msg.style.background = 'var(--green-bg)'; msg.style.color = 'var(--green)'; msg.style.display = 'block'; } else { msg.textContent = 'Error updating password.'; msg.style.background = 'var(--red-bg)'; msg.style.color = 'var(--red)'; msg.style.display = 'block'; }
+}
+
+async function renderUserList() {
+  const { data } = await db.from('app_users').select('username, role').order('username');
+  if (!data) return;
+  const currentUser = sessionStorage.getItem('else_user');
+  document.getElementById('userListContainer').innerHTML = data.map(u => {
+    const isYou = u.username === currentUser;
+    const isElse = u.username === 'else';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg);border-radius:var(--radius);margin-bottom:4px;">
+      <div style="font-size:12px;font-weight:500;color:var(--text);">${u.username} ${isYou ? '<span style="color:var(--accent);font-size:10px;">(you)</span>' : ''}${isElse ? ' <span style="color:var(--text-muted);font-size:10px;">admin</span>' : ''}</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="resetUserPassword('${u.username}')">Reset PW</button>
+        ${!isElse ? `<button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" onclick="removeUser('${u.username}')">Remove</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+async function resetUserPassword(username) {
+  const newPass = prompt(`Enter new password for "${username}":`);
+  if (!newPass || newPass.length < 4) { alert('Password must be at least 4 characters.'); return; }
+  const { error } = await db.from('app_users').update({ password: newPass }).eq('username', username);
+  if (!error) alert(`Password for "${username}" has been reset.`); else alert('Error updating password.');
+}
+async function removeUser(username) {
+  if (username === 'else') return;
+  if (!confirm(`Remove user "${username}"?`)) return;
+  const { error } = await db.from('app_users').delete().eq('username', username);
+  if (!error) renderUserList(); else alert('Error removing user.');
+}
+async function addUser() {
+  const username = document.getElementById('s_newUser').value.trim().toLowerCase();
+  const password = document.getElementById('s_newUserPass').value;
+  if (!username || !password) { alert('Please enter both a username and password.'); return; }
+  if (password.length < 4) { alert('Password must be at least 4 characters.'); return; }
+  const { data: existing } = await db.from('app_users').select('username').eq('username', username).maybeSingle();
+  if (existing) { alert(`User "${username}" already exists.`); return; }
+  const { error } = await db.from('app_users').insert({ username, password, role: 'user' });
+  if (error) { alert('Error adding user.'); return; }
+  document.getElementById('s_newUser').value = ''; document.getElementById('s_newUserPass').value = '';
+  renderUserList();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ROLE DEFINITIONS
+// ═══════════════════════════════════════════════════════════════
+const ROLES = [
+  { key: 'corporate', label: 'Corporate / Exec Ed Contact', tagClass: 'tag-corporate' },
+  { key: 'exec_prospect', label: 'Exec Ed Prospect', tagClass: 'tag-prospect',
+    children: [
+      { key: 'open_enrollment', label: 'Open Enrollment' }, { key: 'bap', label: 'BAP' },
+      { key: 'aalp', label: 'AALP' }, { key: 'workshop', label: 'Workshop' },
+      { key: 'custom_program', label: 'Custom Program' }
+    ]
+  },
+  { key: 'exec_alum', label: 'Exec Ed Alumni', tagClass: 'tag-exec-alum',
+    children: [
+      { key: 'open_enrollment', label: 'Open Enrollment' }, { key: 'bap', label: 'BAP' },
+      { key: 'aalp', label: 'AALP' }, { key: 'workshop', label: 'Workshop' },
+      { key: 'custom_program', label: 'Custom Program' }
+    ]
+  },
+  { key: 'advisory', label: 'Else Advisory Board', tagClass: 'tag-advisory' },
+  { key: 'else_alum', label: 'Else Alum', tagClass: 'tag-else-alum',
+    children: [
+      { key: 'mba', label: 'MBA' }, { key: 'mbaa', label: 'MBAA' },
+      { key: 'macc', label: 'MACC' }, { key: 'macca', label: 'MACCA' },
+      { key: 'data_cert', label: 'Data Analytics Certificate' }, { key: 'econ', label: 'Economics' },
+      { key: 'acct', label: 'Accounting' }, { key: 'bus_admin', label: 'Business Administration' }
+    ]
+  },
+  { key: 'millsaps_alum', label: 'Non-Else Millsaps Alum', tagClass: 'tag-millsaps' },
+  { key: 'donor', label: 'Donor / Friend', tagClass: 'tag-donor' },
+  { key: 'faculty', label: 'Faculty / Staff', tagClass: 'tag-faculty' },
+  { key: 'vendor', label: 'Vendor / Partner', tagClass: 'tag-vendor' },
+  { key: 'community', label: 'Community Partner', tagClass: 'tag-community' },
+  { key: 'speaker', label: 'Guest Speaker / Panelist', tagClass: 'tag-speaker' }
+];
+const TIER_LABELS = { '1':'T1 · Inner Circle','2':'T2 · Engaged','3':'T3 · Exec Ed Mktg','4':'T4 · Informed','5':'T5 · Minimal' };
+const TIER_LABELS_FULL = { '1':'Tier 1 — Inner Circle','2':'Tier 2 — Engaged Network','3':'Tier 3 — Exec Ed Marketing','4':'Tier 4 — Informed','5':'Tier 5 — Minimal / Do Not Contact' };
+
+function getAllKeysForParent(parentKey) {
+  const role = ROLES.find(r => r.key === parentKey);
+  if (!role) return [parentKey];
+  const keys = [parentKey];
+  if (role.children) role.children.forEach(ch => keys.push(parentKey + ':' + ch.key));
+  return keys;
+}
+function contactHasParentRole(c, parentKey) {
+  const roles = c.roles || [];
+  return getAllKeysForParent(parentKey).some(k => roles.includes(k));
+}
+function resolveRoleDisplay(roleKey) {
+  if (roleKey.includes(':')) {
+    const [parentKey, childKey] = roleKey.split(':');
+    const parent = ROLES.find(r => r.key === parentKey);
+    if (!parent) return { label: roleKey, tagClass: 'tag-corporate' };
+    const child = (parent.children || []).find(ch => ch.key === childKey);
+    return { label: (child ? child.label : childKey), parentLabel: parent.label, tagClass: parent.tagClass };
+  }
+  const r = ROLES.find(x => x.key === roleKey);
+  return r ? { label: r.label, tagClass: r.tagClass } : { label: roleKey, tagClass: '' };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════════════════
+let contacts = [];
+let editingId = null;
+let activeRoleFilters = [];
+let expandedFilterParents = new Set();
+let selectedContactIds = new Set();
+
+async function loadContacts() {
+  try {
+    const { data, error } = await db.from('contacts').select('*').order('name');
+    if (data) {
+      contacts = data;
+      window._allContacts = data;
+      renderAll();
+    } else { console.error('Error loading contacts:', error); }
+  } catch(e) { console.error('Failed to load contacts:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FILTERING
+// ═══════════════════════════════════════════════════════════════
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const status = document.getElementById('filterStatus').value;
+  const team = document.getElementById('filterTeam').value;
+  const tier = document.getElementById('filterTier').value;
+  return contacts.filter(c => {
+    if (q) {
+      const haystack = [c.name, c.organization, c.title, c.email, c.notes].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    if (status !== 'all' && c.pipeline_status !== status) return false;
+    if (team === 'none') { if (c.assigned_to) return false; }
+    else if (team !== 'all') { if (!c.assigned_to || !c.assigned_to.includes(team)) return false; }
+    if (tier === 'none') { if (c.mailing_tier) return false; }
+    else if (tier !== 'all' && c.mailing_tier !== tier) return false;
+    if (activeRoleFilters.length > 0) {
+      const roles = c.roles || [];
+      const match = activeRoleFilters.some(fk => {
+        if (fk.includes(':')) return roles.includes(fk);
+        return contactHasParentRole(c, fk);
+      });
+      if (!match) return false;
+    }
+    return true;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════════════════════════════
+function renderAll() { renderRoleFilters(); renderList(); }
+
+function renderRoleFilters() {
+  const container = document.getElementById('roleFilters');
+  const subContainer = document.getElementById('subChipsContainer');
+  const isOpen = container.classList.contains('open');
+  container.innerHTML = '';
+  subContainer.innerHTML = '';
+  ROLES.forEach(r => {
+    const count = contacts.filter(c => contactHasParentRole(c, r.key)).length;
+    const hasSubs = r.children && r.children.length > 0;
+    const isExpanded = expandedFilterParents.has(r.key);
+    let chipHtml = `<span class="filter-chip-wrap">`;
+    chipHtml += `<span class="filter-chip ${activeRoleFilters.includes(r.key) ? 'active' : ''}" onclick="toggleRoleFilter('${r.key}')">${r.label}<span class="chip-count">${count}</span></span>`;
+    if (hasSubs) chipHtml += `<button class="expand-btn" onclick="toggleExpandFilter('${r.key}')">${isExpanded ? '▾' : '▸'}</button>`;
+    chipHtml += `</span> `;
+    container.innerHTML += chipHtml;
+    if (hasSubs) {
+      let subHtml = `<div class="sub-chips ${isExpanded ? 'open' : ''}" id="subChips_${r.key}">`;
+      r.children.forEach(ch => {
+        const subKey = r.key + ':' + ch.key;
+        const subCount = contacts.filter(c => (c.roles || []).includes(subKey)).length;
+        const subActive = activeRoleFilters.includes(subKey);
+        subHtml += `<span class="filter-chip sub ${subActive ? 'active' : ''}" onclick="toggleRoleFilter('${subKey}')">${ch.label}<span class="chip-count">${subCount}</span></span>`;
+      });
+      subHtml += '</div>';
+      subContainer.innerHTML += subHtml;
+    }
+  });
+  if (isOpen) container.classList.add('open');
+  const btn = document.getElementById('filterToggleBtn');
+  btn.textContent = activeRoleFilters.length > 0 ? `☷ Roles (${activeRoleFilters.length})` : '☷ Roles';
+  btn.classList.toggle('has-active', activeRoleFilters.length > 0);
+}
+
+function toggleRoleFilter(key) {
+  const idx = activeRoleFilters.indexOf(key);
+  if (idx >= 0) activeRoleFilters.splice(idx, 1); else activeRoleFilters.push(key);
+  renderRoleFilters(); renderList();
+}
+function toggleExpandFilter(parentKey) {
+  if (expandedFilterParents.has(parentKey)) expandedFilterParents.delete(parentKey); else expandedFilterParents.add(parentKey);
+  renderRoleFilters();
+}
+
+function pipelineClass(status) {
+  const map = { 'Prospective':'pipeline-prospective','In-Development':'pipeline-in-development','Active Pipeline':'pipeline-active','Closed Won':'pipeline-closed-won','Closed Lost':'pipeline-closed-lost','Low ROI':'pipeline-low-roi','Dormant':'pipeline-dormant','Unassigned':'pipeline-unassigned' };
+  return map[status] || 'pipeline-unassigned';
+}
+
+function renderList() {
+  const filtered = getFiltered();
+  document.getElementById('countLabel').textContent = `${filtered.length} contact${filtered.length !== 1 ? 's' : ''} shown`;
+  const container = document.getElementById('contactList');
+  if (filtered.length === 0) { container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">No contacts match your filters.</div>'; return; }
+
+  container.innerHTML = filtered.sort((a, b) => a.name.localeCompare(b.name)).map(c => {
+    const roleKeys = c.roles || [];
+    const tagHtml = roleKeys.map(rk => {
+      const d = resolveRoleDisplay(rk);
+      return `<span class="tag ${d.tagClass}" title="${d.parentLabel ? d.parentLabel + ' → ' + d.label : d.label}">${d.label}</span>`;
+    }).join('');
+    const tierHtml = c.mailing_tier ? `<span class="mailing-tier tier-${c.mailing_tier}">${TIER_LABELS[c.mailing_tier]}</span>` : '';
+    const today = new Date();
+    let metaHtml = '';
+    if (c.assigned_to) metaHtml += `<div class="assigned">→ ${c.assigned_to}</div>`;
+    if (c.last_contact_date) metaHtml += `<div>Last: ${c.last_contact_date}</div>`;
+    if (c.follow_up_date) {
+      const isOverdue = new Date(c.follow_up_date) < today;
+      metaHtml += `<div class="${isOverdue ? 'overdue' : ''}">Follow: ${c.follow_up_date}${isOverdue ? ' ⚠' : ''}</div>`;
+    }
+    const checked = selectedContactIds.has(c.contact_id) ? 'checked' : '';
+    const hasEmail = c.email && c.email.trim();
+    return `<div class="contact-row" onclick="openModal(${c.contact_id})">
+      <div onclick="event.stopPropagation()"><input type="checkbox" class="row-checkbox" data-id="${c.contact_id}" ${checked} onchange="toggleContactSelection(${c.contact_id}, this)"></div>
+      <div><div class="contact-name">${c.name}</div><div class="contact-org">${c.organization || ''}</div></div>
+      <div class="contact-title-cell">${c.title || ''}</div>
+      <div class="contact-tags">${tagHtml}${tierHtml ? ' ' + tierHtml : ''}</div>
+      <div><span class="pipeline-badge ${pipelineClass(c.pipeline_status)}">${c.pipeline_status || 'Unassigned'}</span></div>
+      <div class="contact-meta">${metaHtml}</div>
+      <div onclick="event.stopPropagation()">
+        ${hasEmail ? `<button class="email-icon-btn" onclick="emailSingleContact(${c.contact_id})" title="Email ${c.name}">✉</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONTACT MODAL — Add / Edit / Delete
+// ═══════════════════════════════════════════════════════════════
+function renderRoleCheckboxes() {
+  const container = document.getElementById('roleCheckboxes');
+  container.innerHTML = ROLES.map(r => {
+    const hasSubs = r.children && r.children.length > 0;
+    let html = `<div class="role-section">
+      <label class="role-section-header">
+        <input type="checkbox" value="${r.key}" class="role-cb" onchange="handleParentRoleChange(this)">
+        ${r.label}
+        ${hasSubs ? `<button type="button" class="role-sub-toggle" onclick="event.preventDefault();this.closest('.role-section').querySelector('.role-sub-list').classList.toggle('open');this.textContent=this.textContent==='▸'?'▾':'▸';">▸</button>` : ''}
+      </label>`;
+    if (hasSubs) {
+      html += `<div class="role-sub-list">`;
+      r.children.forEach(ch => {
+        html += `<label><input type="checkbox" value="${r.key}:${ch.key}" class="role-cb"> ${ch.label}</label>`;
+      });
+      html += `</div>`;
+    }
+    html += `</div>`;
+    return html;
+  }).join('');
+}
+
+function handleParentRoleChange(parentCb) {
+  const section = parentCb.closest('.role-section');
+  const subList = section.querySelector('.role-sub-list');
+  if (subList) {
+    subList.querySelectorAll('.role-cb').forEach(cb => { cb.checked = false; });
+    if (parentCb.checked) subList.classList.add('open');
+  }
+}
+
+function openModal(contactId) {
+  editingId = contactId || null;
+  renderRoleCheckboxes();
+  document.getElementById('modalTitle').textContent = editingId ? 'Edit Contact' : 'Add Contact';
+  document.getElementById('deleteBtn').style.display = editingId ? 'inline-block' : 'none';
+  if (editingId) {
+    const c = contacts.find(x => x.contact_id === editingId);
+    if (!c) return;
+    document.getElementById('f_name').value = c.name || '';
+    document.getElementById('f_org').value = c.organization || '';
+    document.getElementById('f_title').value = c.title || '';
+    document.getElementById('f_email').value = c.email || '';
+    document.getElementById('f_phone').value = c.phone || '';
+    document.getElementById('f_linkedin').value = c.linkedin_url || '';
+    document.getElementById('f_pipeline').value = c.pipeline_status || 'Prospective';
+    document.getElementById('f_assigned').value = c.assigned_to || '';
+    document.getElementById('f_tier').value = c.mailing_tier || '';
+    document.getElementById('f_lastContact').value = c.last_contact_date || '';
+    document.getElementById('f_followUp').value = c.follow_up_date || '';
+    document.getElementById('f_address').value = c.city_state_zip || '';
+    document.getElementById('f_notes').value = c.notes || '';
+    const roles = c.roles || [];
+    document.querySelectorAll('#roleCheckboxes .role-cb').forEach(cb => {
+      cb.checked = roles.includes(cb.value);
+      if (cb.checked && cb.value.includes(':')) {
+        const subList = cb.closest('.role-sub-list');
+        if (subList) subList.classList.add('open');
+      }
+    });
+  } else {
+    ['f_name','f_org','f_title','f_email','f_phone','f_linkedin','f_address','f_notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f_pipeline').value = 'Prospective';
+    document.getElementById('f_assigned').value = '';
+    document.getElementById('f_tier').value = '';
+    document.getElementById('f_lastContact').value = '';
+    document.getElementById('f_followUp').value = '';
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); editingId = null; }
+
+async function saveContact() {
+  const name = document.getElementById('f_name').value.trim();
+  if (!name) { alert('Name is required.'); return; }
+  const roles = [...document.querySelectorAll('#roleCheckboxes .role-cb:checked')].map(cb => cb.value);
+  const record = {
+    name,
+    organization: document.getElementById('f_org').value.trim() || null,
+    title: document.getElementById('f_title').value.trim() || null,
+    email: document.getElementById('f_email').value.trim() || null,
+    phone: document.getElementById('f_phone').value.trim() || null,
+    linkedin_url: document.getElementById('f_linkedin').value.trim() || null,
+    pipeline_status: document.getElementById('f_pipeline').value,
+    assigned_to: document.getElementById('f_assigned').value || null,
+    mailing_tier: document.getElementById('f_tier').value || null,
+    last_contact_date: document.getElementById('f_lastContact').value || null,
+    follow_up_date: document.getElementById('f_followUp').value || null,
+    city_state_zip: document.getElementById('f_address').value.trim() || null,
+    notes: document.getElementById('f_notes').value.trim() || null,
+    roles
+  };
+  try {
+    if (editingId) {
+      record.updated_at = new Date().toISOString();
+      await db.from('contacts').update(record).eq('contact_id', editingId);
+    } else {
+      await db.from('contacts').insert(record);
+    }
+    closeModal();
+    loadContacts();
+  } catch(e) { alert('Error saving contact. Please try again.'); console.error(e); }
+}
+
+async function deleteContact() {
+  if (!editingId) return;
+  if (!confirm('Are you sure you want to delete this contact? This cannot be undone.')) return;
+  try {
+    await db.from('contacts').delete().eq('contact_id', editingId);
+    closeModal();
+    loadContacts();
+  } catch(e) { alert('Error deleting contact.'); console.error(e); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('exportBtn').addEventListener('click', () => {
+  document.getElementById('exportMenu').classList.toggle('open');
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.export-dropdown')) document.getElementById('exportMenu').classList.remove('open');
+});
+
+function exportCSV() {
+  const filtered = getFiltered();
+  const headers = ['Name','Organization','Title','Email','Phone','Pipeline','Assigned','Mailing Tier','Roles','Notes'];
+  const rows = filtered.map(c => [
+    c.name, c.organization || '', c.title || '', c.email || '', c.phone || '',
+    c.pipeline_status || '', c.assigned_to || '', c.mailing_tier || '',
+    (c.roles || []).join('; '), c.notes || ''
+  ]);
+  let csv = [headers, ...rows].map(r => r.map(v => `"${(v+'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  downloadFile(csv, 'else-contacts.csv', 'text/csv');
+  document.getElementById('exportMenu').classList.remove('open');
+}
+
+function exportExcel() {
+  exportCSV();
+}
+
+function exportMailchimp() {
+  const filtered = getFiltered().filter(c => c.email);
+  const headers = ['Email Address','First Name','Last Name','TAGS'];
+  const rows = filtered.map(c => {
+    const parts = (c.name || '').split(' ');
+    return [c.email, parts[0] || '', parts.slice(1).join(' ') || '', (c.roles || []).join(',')];
+  });
+  let csv = [headers, ...rows].map(r => r.map(v => `"${(v+'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  downloadFile(csv, 'else-mailchimp-import.csv', 'text/csv');
+  document.getElementById('exportMenu').classList.remove('open');
+}
+
+function downloadFile(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('searchInput').addEventListener('input', renderList);
+document.getElementById('filterStatus').addEventListener('change', renderList);
+document.getElementById('filterTeam').addEventListener('change', renderList);
+document.getElementById('filterTier').addEventListener('change', renderList);
+document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === document.getElementById('modalOverlay')) closeModal(); });
+document.getElementById('settingsOverlay').addEventListener('click', e => { if (e.target === document.getElementById('settingsOverlay')) closeSettings(); });
+document.getElementById('emailOverlay').addEventListener('click', e => { if (e.target === document.getElementById('emailOverlay')) closeEmailModal(); });
+
+// ═══════════════════════════════════════════════════════════════
+// ✉ EMAIL FEATURE
+// ═══════════════════════════════════════════════════════════════
+let emailRecipients = [];
+let emailMethod = 'outlook';
+
+const EMAIL_TEMPLATES = {
+  intro: {
+    subject: 'Introduction — Else School of Management, Millsaps College',
+    body: `Dear {name},\n\nI hope this message finds you well. I'm reaching out from the Else School of Management at Millsaps College to introduce myself and explore potential opportunities for collaboration.\n\nThe Else School is committed to developing the next generation of business leaders in Mississippi and beyond, and we believe your experience at {org} would bring tremendous value to our community.\n\nI'd welcome the chance to connect at your convenience to discuss how we might work together.\n\nWarm regards,\n[Your Name]\nElse School of Management | Millsaps College`
+  },
+  followup: {
+    subject: 'Following Up — Else School of Management',
+    body: `Dear {name},\n\nI wanted to follow up on our previous conversation and see if there are any updates on your end.\n\nWe remain very interested in continuing our discussion.\n\nPlease let me know if there's a convenient time to reconnect — I'm happy to work around your schedule.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
+  },
+  meeting: {
+    subject: 'Meeting Request — Else School of Management',
+    body: `Dear {name},\n\nI'd like to request a brief meeting to discuss a potential collaboration between {org} and the Else School of Management at Millsaps College.\n\nWould you have 30 minutes available in the coming weeks? I'm flexible on timing and happy to meet in person, by phone, or via Teams.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
+  },
+  advisory: {
+    subject: 'Else School Advisory Board — Update & Upcoming Meeting',
+    body: `Dear Advisory Board Members,\n\nThank you for your continued support of the Else School of Management. I'm writing to share a few updates and provide details for our next advisory board meeting.\n\n[Meeting details here]\n\nYour guidance and involvement make a real difference in shaping the future of business education at Millsaps.\n\nWith appreciation,\n[Your Name]\nElse School of Management | Millsaps College`
+  },
+  event: {
+    subject: 'You\'re Invited — Else School of Management Event',
+    body: `Dear {name},\n\nWe are pleased to invite you to an upcoming event hosted by the Else School of Management at Millsaps College.\n\n[Event Name]\n[Date & Time]\n[Location / Virtual Link]\n\nThis event brings together business leaders, alumni, and students for [purpose]. We would be honored to have you join us.\n\nPlease RSVP by [date] to confirm your attendance.\n\nWe look forward to seeing you there.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
+  },
+  custom: {
+    subject: '',
+    body: ''
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// EMAIL UI FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+function buildEmailModalHTML() {
+  return `
+    <div class="modal email-modal">
+      <h2>
+        <span>✉ Compose Email</span>
+        <span class="email-count" id="emailRecipientCount"></span>
+      </h2>
+      <div class="email-method-tabs">
+        <div class="email-method-tab active" onclick="setEmailMethod('outlook')">Outlook Web</div>
+        <div class="email-method-tab" onclick="setEmailMethod('mailto')">Default Client</div>
+        <div class="email-method-tab" onclick="setEmailMethod('copy')">Copy Addresses</div>
+      </div>
+      <div id="emailRecipientList" class="recipient-list"></div>
+      <div class="template-pills">
+        <span class="template-pill" onclick="applyTemplate('intro')">Introduction</span>
+        <span class="template-pill" onclick="applyTemplate('followup')">Follow-up</span>
+        <span class="template-pill" onclick="applyTemplate('meeting')">Meeting Request</span>
+        <span class="template-pill" onclick="applyTemplate('advisory')">Advisory Board</span>
+        <span class="template-pill" onclick="applyTemplate('event')">Event Invite</span>
+        <span class="template-pill" onclick="applyTemplate('custom')">Custom</span>
+      </div>
+      <input type="text" class="email-field" id="emailSubject" placeholder="Subject line...">
+      <textarea class="email-body" id="emailBody" placeholder="Compose your message..."></textarea>
+      <div class="email-actions">
+        <label class="bcc-toggle"><input type="checkbox" id="emailBcc" checked> BCC recipients (hide addresses from each other)</label>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" onclick="closeEmailModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="sendEmail()">Send →</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function openEmailModal(recipients) {
+  emailRecipients = recipients.filter(r => r.email && r.email.trim());
+  const noEmail = recipients.filter(r => !r.email || !r.email.trim());
+
+  const overlay = document.getElementById('emailOverlay');
+  overlay.innerHTML = buildEmailModalHTML();
+
+  renderRecipientList(noEmail);
+  updateRecipientCount();
+
+  document.getElementById('emailSubject').value = '';
+  document.getElementById('emailBody').value = '';
+  document.getElementById('emailBcc').checked = emailRecipients.length > 1;
+
+  setEmailMethod('outlook');
+
+  if (emailRecipients.length === 1) {
+    applyTemplate('intro');
+  } else {
+    applyTemplate('advisory');
+  }
+
+  overlay.classList.add('open');
+}
+
+function closeEmailModal() {
+  document.getElementById('emailOverlay').classList.remove('open');
+}
+
+function renderRecipientList(noEmailContacts) {
+  const container = document.getElementById('emailRecipientList');
+  if (!container) return;
+
+  if (emailRecipients.length === 0 && (!noEmailContacts || noEmailContacts.length === 0)) {
+    container.innerHTML = '<em style="color:var(--text-muted);">No recipients selected</em>';
+    return;
+  }
+
+  let html = emailRecipients.map((r, i) => `
+    <span class="recipient-chip">
+      <strong>${r.name}</strong> &lt;${r.email}&gt;
+      <span class="remove-recipient" onclick="removeRecipient(${i})" title="Remove">×</span>
+    </span>
+  `).join('');
+
+  if (noEmailContacts && noEmailContacts.length > 0) {
+    html += noEmailContacts.map(r => `
+      <span class="recipient-chip no-email" title="No email on file">
+        ${r.name} — no email
+      </span>
+    `).join('');
+  }
+
+  container.innerHTML = html;
+}
+
+function removeRecipient(index) {
+  emailRecipients.splice(index, 1);
+  renderRecipientList([]);
+  updateRecipientCount();
+}
+
+function updateRecipientCount() {
+  const count = emailRecipients.length;
+  const el = document.getElementById('emailRecipientCount');
+  if (el) el.textContent = count === 1 ? '1 recipient' : `${count} recipients`;
+}
+
+function setEmailMethod(method) {
+  emailMethod = method;
+  document.querySelectorAll('.email-method-tab').forEach(t => t.classList.remove('active'));
+  const tabs = document.querySelectorAll('.email-method-tab');
+  if (method === 'outlook' && tabs[0]) tabs[0].classList.add('active');
+  if (method === 'mailto' && tabs[1]) tabs[1].classList.add('active');
+  if (method === 'copy' && tabs[2]) tabs[2].classList.add('active');
+}
+
+function applyTemplate(key) {
+  const tmpl = EMAIL_TEMPLATES[key];
+  if (!tmpl) return;
+  document.querySelectorAll('.template-pill').forEach(p => p.classList.remove('active'));
+  event && event.target && event.target.classList.add('active');
+
+  let subject = tmpl.subject;
+  let body = tmpl.body;
+
+  if (emailRecipients.length === 1) {
+    const r = emailRecipients[0];
+    subject = subject.replace(/\{name\}/g, r.name || '').replace(/\{org\}/g, r.org || '');
+    body = body.replace(/\{name\}/g, r.name || '').replace(/\{org\}/g, r.org || '');
+  }
+
+  const subjectEl = document.getElementById('emailSubject');
+  const bodyEl = document.getElementById('emailBody');
+  if (subjectEl) subjectEl.value = subject;
+  if (bodyEl) bodyEl.value = body;
+}
+
+function sendEmail() {
+  if (emailRecipients.length === 0) { alert('No recipients with email addresses.'); return; }
+
+  const subject = document.getElementById('emailSubject').value;
+  const body = document.getElementById('emailBody').value;
+  const useBcc = document.getElementById('emailBcc').checked;
+  const emails = emailRecipients.map(r => r.email);
+
+  if (emailMethod === 'copy') {
+    const text = emails.join('; ');
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.querySelector('.btn-primary[onclick="sendEmail()"]');
+      if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = 'Send →'; }, 2000); }
+    }).catch(() => { prompt('Copy these addresses:', text); });
+    return;
+  }
+
+  if (emailMethod === 'outlook') {
+    const toField = useBcc && emails.length > 1 ? '' : emails.join(';');
+    const bccField = useBcc && emails.length > 1 ? emails.join(';') : '';
+    let url = 'https://outlook.office.com/mail/deeplink/compose?';
+    if (toField) url += `to=${encodeURIComponent(toField)}&`;
+    if (bccField) url += `bcc=${encodeURIComponent(bccField)}&`;
+    url += `subject=${encodeURIComponent(subject)}`;
+    url += `&body=${encodeURIComponent(body)}`;
+    window.open(url, '_blank');
+    closeEmailModal();
+    return;
+  }
+
+  if (emailMethod === 'mailto') {
+    let mailto = 'mailto:';
+    if (useBcc && emails.length > 1) {
+      mailto += `?bcc=${encodeURIComponent(emails.join(','))}`;
+    } else {
+      mailto += encodeURIComponent(emails.join(','));
+      mailto += '?';
+    }
+    mailto += `${mailto.includes('?') ? '&' : '?'}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+    closeEmailModal();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EMAIL: SINGLE CONTACT (from row button)
+// ═══════════════════════════════════════════════════════════════
+function emailSingleContact(contactId) {
+  const c = contacts.find(x => x.contact_id === contactId);
+  if (!c) return;
+  openEmailModal([{ id: c.contact_id, name: c.name, email: c.email, org: c.organization }]);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EMAIL: SELECTED CONTACTS (checkboxes)
+// ═══════════════════════════════════════════════════════════════
+function emailSelectedContacts() {
+  if (selectedContactIds.size === 0) { alert('No contacts selected. Use the checkboxes to select contacts first.'); return; }
+  const selected = contacts.filter(c => selectedContactIds.has(c.contact_id));
+  openEmailModal(selected.map(c => ({ id: c.contact_id, name: c.name, email: c.email, org: c.organization })));
+}
+
+function toggleContactSelection(id, checkbox) {
+  if (checkbox.checked) selectedContactIds.add(id); else selectedContactIds.delete(id);
+  updateSelectionBar();
+}
+function toggleSelectAll(masterCheckbox) {
+  document.querySelectorAll('.row-checkbox').forEach(cb => {
+    cb.checked = masterCheckbox.checked;
+    const id = parseInt(cb.dataset.id);
+    if (masterCheckbox.checked) selectedContactIds.add(id); else selectedContactIds.delete(id);
+  });
+  updateSelectionBar();
+}
+function updateSelectionBar() {
+  const bar = document.getElementById('selectionBar');
+  if (selectedContactIds.size > 0) {
+    bar.style.display = 'flex';
+    bar.querySelector('.sel-count').textContent = `${selectedContactIds.size} selected`;
+  } else { bar.style.display = 'none'; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ✉ GROUP EMAIL SELECTOR — with subcategories + tiers
+// ═══════════════════════════════════════════════════════════════
+function openGroupEmailSelector() {
+  const statusCounts = {};
+  const tierCounts = {};
+
+  contacts.forEach(c => {
+    statusCounts[c.pipeline_status || 'Unassigned'] = (statusCounts[c.pipeline_status || 'Unassigned'] || 0) + 1;
+    if (c.mailing_tier) {
+      tierCounts[c.mailing_tier] = (tierCounts[c.mailing_tier] || 0) + 1;
+    }
+  });
+
+  let html = `<div class="modal email-modal" style="width:640px;">
+    <h2>✉ Group Email — Select Recipients</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Select groups to email. Contacts matching ANY selected group will be included.</p>
+
+    <div class="group-email-panel">
+      <h3>By Role / Relationship</h3>
+      <div class="group-grid">`;
+
+  // ── Render each role with subcategories ──
+  ROLES.forEach(r => {
+    const count = contacts.filter(c => contactHasParentRole(c, r.key)).length;
+    const hasSubs = r.children && r.children.length > 0;
+
+    html += `<label class="group-option">
+      <input type="checkbox" value="${r.key}" class="group-role-cb">
+      <span>${r.label}</span>
+      <span class="group-count">${count}</span>
+    </label>`;
+
+    // Render subcategories indented beneath the parent
+    if (hasSubs) {
+      html += `<div class="group-sub-options">`;
+      r.children.forEach(ch => {
+        const subKey = r.key + ':' + ch.key;
+        const subCount = contacts.filter(c => (c.roles || []).includes(subKey)).length;
+        html += `<label class="group-sub-option">
+          <input type="checkbox" value="${subKey}" class="group-role-cb">
+          <span>${ch.label}</span>
+          <span class="group-count">${subCount}</span>
+        </label>`;
+      });
+      html += `</div>`;
+    }
+  });
+
+  html += `</div></div>
+
+    <div class="group-email-panel" style="margin-top:10px;">
+      <h3>By Mailing Tier</h3>
+      <div class="group-grid">`;
+
+  // ── Render tier options ──
+  ['1','2','3','4','5'].forEach(t => {
+    const count = tierCounts[t] || 0;
+    html += `<label class="group-option">
+      <input type="checkbox" value="${t}" class="group-tier-cb">
+      <span>${TIER_LABELS_FULL[t]}</span>
+      <span class="group-count">${count}</span>
+    </label>`;
+  });
+
+  html += `</div></div>
+
+    <div class="group-email-panel" style="margin-top:10px;">
+      <h3>By Pipeline Status</h3>
+      <div class="group-grid">`;
+
+  Object.keys(statusCounts).sort().forEach(status => {
+    html += `<label class="group-option">
+      <input type="checkbox" value="${status}" class="group-status-cb">
+      <span>${status}</span>
+      <span class="group-count">${statusCounts[status]}</span>
+    </label>`;
+  });
+
+  html += `</div></div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:12px;color:var(--text-muted);" id="groupSelectedCount">0 contacts selected</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="closeEmailModal()">Cancel</button>
+        <button class="btn btn-email" onclick="composeGroupEmail()">Compose Email →</button>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('emailOverlay').innerHTML = html;
+  document.getElementById('emailOverlay').classList.add('open');
+  document.querySelectorAll('.group-role-cb, .group-status-cb, .group-tier-cb').forEach(cb => cb.addEventListener('change', updateGroupCount));
+}
+
+function updateGroupCount() {
+  const selectedRoles = [...document.querySelectorAll('.group-role-cb:checked')].map(cb => cb.value);
+  const selectedStatuses = [...document.querySelectorAll('.group-status-cb:checked')].map(cb => cb.value);
+  const selectedTiers = [...document.querySelectorAll('.group-tier-cb:checked')].map(cb => cb.value);
+
+  const matched = contacts.filter(c => {
+    if (selectedRoles.length === 0 && selectedStatuses.length === 0 && selectedTiers.length === 0) return false;
+
+    // Check role match — handles both parent keys and sub-keys (parent:child)
+    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => {
+      if (r.includes(':')) {
+        // Specific subcategory selected
+        return (c.roles || []).includes(r);
+      }
+      // Parent role selected — match if contact has parent or any child
+      return contactHasParentRole(c, r);
+    });
+
+    const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
+    const matchTier = selectedTiers.length === 0 || selectedTiers.includes(c.mailing_tier);
+
+    // ANY selected filter group matches (OR between groups)
+    const checks = [];
+    if (selectedRoles.length > 0) checks.push(matchRole);
+    if (selectedStatuses.length > 0) checks.push(matchStatus);
+    if (selectedTiers.length > 0) checks.push(matchTier);
+
+    return checks.some(Boolean);
+  });
+
+  const withEmail = matched.filter(c => c.email && c.email.trim());
+  const el = document.getElementById('groupSelectedCount');
+  if (el) el.textContent = `${withEmail.length} with email · ${matched.length - withEmail.length} without`;
+}
+
+function composeGroupEmail() {
+  const selectedRoles = [...document.querySelectorAll('.group-role-cb:checked')].map(cb => cb.value);
+  const selectedStatuses = [...document.querySelectorAll('.group-status-cb:checked')].map(cb => cb.value);
+  const selectedTiers = [...document.querySelectorAll('.group-tier-cb:checked')].map(cb => cb.value);
+
+  if (selectedRoles.length === 0 && selectedStatuses.length === 0 && selectedTiers.length === 0) {
+    alert('Please select at least one group.');
+    return;
+  }
+
+  const matched = contacts.filter(c => {
+    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => {
+      if (r.includes(':')) return (c.roles || []).includes(r);
+      return contactHasParentRole(c, r);
+    });
+    const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
+    const matchTier = selectedTiers.length === 0 || selectedTiers.includes(c.mailing_tier);
+
+    const checks = [];
+    if (selectedRoles.length > 0) checks.push(matchRole);
+    if (selectedStatuses.length > 0) checks.push(matchStatus);
+    if (selectedTiers.length > 0) checks.push(matchTier);
+
+    return checks.some(Boolean);
+  });
+
+  openEmailModal(matched.map(c => ({ id: c.contact_id, name: c.name, email: c.email, org: c.organization })));
+}
+</script>
+</body>
+</html>
