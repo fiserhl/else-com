@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Else School — Contact Database</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Millsaps Official Brand */
+  --purple: #21145f;
+  --purple-light: #3a2d7a;
+  --purple-soft: #e8e5f3;
+  --purple-wash: #f4f3f9;
+  --gray: #75787b;
+  --gray-light: #b0b2b5;
+  --bg: #f8f8fa;
+  --surface: #ffffff;
+  --surface-alt: #fafafc;
+  --border: #e5e5ea;
+  --border-light: #eeeef2;
+  --text: #2c2a29;
+  --text-secondary: #5a585a;
+  --text-muted: #8a888c;
+  --accent: #21145f;
+  --accent-light: #3a2d7a;
+  --accent-bg: #e8e5f3;
+  --green: #1a7a4c;
+  --green-bg: #e6f4ed;
+  --blue: #1d5a9e;
+  --blue-bg: #e5eef8;
+  --orange: #b85c14;
+  --orange-bg: #fef3e8;
+  --red: #b82030;
+  --red-bg: #fce8ea;
+  --teal: #1a6b5a;
+  --teal-bg: #e5f3f0;
+  --shadow-sm: 0 1px 4px rgba(33,20,95,0.06);
+  --shadow-md: 0 4px 16px rgba(33,20,95,0.08);
+  --shadow-lg: 0 8px 32px rgba(33,20,95,0.12);
+  --radius: 6px;
+  --radius-lg: 10px;
+  --serif: 'EB Garamond', Georgia, serif;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; font-size: 13px; }
+
+.header { background: var(--purple); padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+.header-left { display: flex; align-items: center; gap: 14px; }
+.header h1 { font-family: var(--serif); font-size: 21px; font-weight: 500; color: #fff; letter-spacing: 0.2px; }
+.header h1 span { opacity: 0.7; font-style: italic; font-size: 16px; font-weight: 400; }
+.header-badge { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--purple); background: rgba(255,255,255,0.92); padding: 3px 10px; border-radius: 3px; }
+
+.tabs { display: flex; gap: 0; background: var(--accent-light); padding: 0 32px; }
+.tab { padding: 8px 20px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.55); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; font-family: var(--sans); letter-spacing: 0.3px; }
+.tab:hover { color: rgba(255,255,255,0.8); }
+.tab.active { color: #fff; border-bottom-color: #fff; background: rgba(255,255,255,0.08); }
+
+.stats-row { display: flex; gap: 1px; background: var(--border); margin: 0; }
+.stat-card { background: var(--surface); padding: 14px 24px; flex: 1; text-align: center; }
+.stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 2px; }
+.stat-value { font-family: var(--serif); font-size: 28px; font-weight: 500; color: var(--accent); }
+.stat-card.warn .stat-value { color: var(--red); }
+
+.toolbar { padding: 14px 32px; display: flex; align-items: center; gap: 10px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.search-box { flex: 1; min-width: 200px; max-width: 340px; position: relative; }
+.search-box input { width: 100%; padding: 7px 12px 7px 32px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); background: var(--bg); color: var(--text); outline: none; transition: all 0.2s; }
+.search-box input:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px rgba(33,20,95,0.08); }
+.search-box::before { content: '⌕'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 16px; }
+
+select { padding: 7px 26px 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; font-family: var(--sans); background: var(--bg); color: var(--text); cursor: pointer; outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2375787b' d='M2.5 3.5l2.5 3 2.5-3'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; transition: all 0.2s; }
+select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,0.08); }
+
+.toolbar-right { display: flex; gap: 8px; margin-left: auto; }
+.btn { padding: 7px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.btn:hover { background: var(--surface-alt); }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-light); }
+.btn-export { background: var(--green); color: #fff; border-color: var(--green); }
+.btn-export:hover { opacity: 0.9; }
+.btn-danger { background: none; color: var(--red); border-color: var(--red); }
+.btn-danger:hover { background: var(--red-bg); }
+.count-label { font-size: 12px; color: var(--text-muted); padding: 8px 0; font-weight: 500; }
+
+/* ─── Collapsible Filter Panel ─── */
+.filter-group { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; background: var(--surface); border-bottom: 0 solid var(--border); padding: 0; }
+.filter-group.open { max-height: 500px; border-bottom-width: 1px; padding: 14px 32px 16px; }
+.filter-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray); width: 100%; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.filter-group-label .clear-link { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--accent); cursor: pointer; font-size: 11px; }
+.filter-group-label .clear-link:hover { text-decoration: underline; }
+.btn-filter { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-bg); }
+.btn-filter:hover { background: #d8d4e8; }
+.btn-filter.has-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-chip { padding: 4px 11px; border-radius: 4px; font-size: 11px; font-weight: 500; border: 1px solid var(--border); background: var(--bg); color: var(--text-secondary); cursor: pointer; transition: all 0.12s; user-select: none; }
+.filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+.filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-chip .chip-count { font-size: 9px; opacity: 0.6; margin-left: 3px; }
+.filter-chip.sub { font-size: 10px; padding: 3px 9px; border-style: dashed; margin-left: 14px; }
+.filter-chip.sub.active { border-style: solid; }
+.sub-chips { display: none; gap: 4px; flex-wrap: wrap; padding: 4px 0 2px 4px; }
+.sub-chips.open { display: flex; }
+.expand-btn { font-size: 9px; padding: 3px 6px; border-radius: 3px; border: 1px solid var(--border); background: var(--surface); color: var(--gray); cursor: pointer; font-family: var(--sans); line-height: 1; }
+.expand-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ─── Contact List ─── */
+.contact-list { padding: 0 32px 32px; }
+.contact-row { display: grid; grid-template-columns: 28px 200px 1fr 180px 120px 110px 60px; align-items: center; gap: 14px; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius); margin-bottom: 3px; cursor: pointer; transition: all 0.12s; }
+.contact-row:hover { border-color: var(--border); box-shadow: var(--shadow-sm); }
+.contact-name { font-weight: 600; font-size: 13px; color: var(--text); }
+.contact-org { font-size: 11px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+.contact-title-cell { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contact-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.tag { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 2px; letter-spacing: 0.3px; text-transform: uppercase; white-space: nowrap; }
+.tag-corporate { background: var(--blue-bg); color: var(--blue); }
+.tag-prospect { background: var(--orange-bg); color: var(--orange); }
+.tag-exec-alum { background: var(--green-bg); color: var(--green); }
+.tag-advisory { background: var(--accent-bg); color: var(--accent); }
+.tag-else-alum { background: #f0e8d8; color: #7a6530; }
+.tag-millsaps { background: #eae8e0; color: #5a5a50; }
+.tag-donor { background: var(--teal-bg); color: var(--teal); }
+.tag-faculty { background: #e5e5ee; color: #4a4a6a; }
+.tag-vendor { background: #eaeae0; color: #5a5a40; }
+.tag-community { background: #e0eaea; color: #3a5a5a; }
+.tag-speaker { background: var(--red-bg); color: var(--red); }
+
+.pipeline-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 3px; white-space: nowrap; display: inline-block; }
+.pipeline-prospective { background: var(--orange-bg); color: var(--orange); }
+.pipeline-in-development { background: var(--blue-bg); color: var(--blue); }
+.pipeline-active { background: var(--green-bg); color: var(--green); }
+.pipeline-closed-won { background: #d4edda; color: #155724; }
+.pipeline-closed-lost { background: #f8d7da; color: #721c24; }
+.pipeline-low-roi { background: #fff3cd; color: #856404; }
+.pipeline-dormant { background: #e2e3e5; color: #383d41; }
+.pipeline-unassigned { background: var(--border-light); color: var(--text-muted); }
+
+.mailing-tier { font-size: 11px; color: var(--text-muted); }
+.tier-1 { color: var(--accent); font-weight: 600; }
+.tier-2 { color: var(--green); font-weight: 500; }
+.tier-3 { color: var(--blue); font-weight: 500; }
+.tier-4 { color: var(--text-secondary); }
+.tier-5 { color: var(--text-muted); }
+.contact-meta { font-size: 10px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+.contact-meta .assigned { color: var(--text-secondary); font-weight: 500; }
+.contact-meta .overdue { color: var(--red); font-weight: 700; }
+
+/* ─── Modal ─── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(33,20,95,0.35); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s; backdrop-filter: blur(2px); }
+.modal-overlay.open { opacity: 1; visibility: visible; }
+.modal { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 720px; max-width: 95vw; max-height: 90vh; overflow-y: auto; padding: 28px; }
+.modal h2 { font-family: var(--serif); font-size: 22px; font-weight: 500; margin-bottom: 20px; color: var(--accent); }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.modal-grid .full-width { grid-column: 1 / -1; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); }
+.form-group input, .form-group select, .form-group textarea { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: var(--sans); color: var(--text); outline: none; transition: all 0.15s; }
+.form-group input:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,0.06); }
+
+/* Hierarchical checkbox layout */
+.role-section { margin-bottom: 6px; }
+.role-section:last-child { margin-bottom: 0; }
+.role-section-header { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--text); cursor: pointer; padding: 5px 6px; border-radius: 4px; transition: background 0.1s; }
+.role-section-header:hover { background: var(--surface-alt); }
+.role-section-header input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; flex-shrink: 0; }
+.role-section-header .toggle-arrow { font-size: 8px; color: var(--gray-light); margin-left: auto; transition: transform 0.2s; padding: 2px 4px; }
+.role-section-header .toggle-arrow.expanded { transform: rotate(90deg); }
+.sub-options { padding-left: 28px; display: none; }
+.sub-options.open { display: block; }
+.sub-option { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer; padding: 3px 6px; border-radius: 3px; transition: background 0.1s; }
+.sub-option:hover { background: var(--surface-alt); }
+.sub-option input[type="checkbox"] { accent-color: var(--accent-light); width: 13px; height: 13px; flex-shrink: 0; }
+.modal-actions { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-light); }
+.modal-actions .left-actions { display: flex; gap: 8px; }
+
+/* Export */
+.export-dropdown { position: relative; }
+.export-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); z-index: 50; min-width: 200px; display: none; }
+.export-menu.open { display: block; }
+.export-option { padding: 10px 14px; font-size: 13px; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 8px; border: none; background: none; width: 100%; font-family: inherit; text-align: left; }
+.export-option:hover { background: var(--surface-alt); }
+.export-option:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.export-option:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+.export-option small { color: var(--text-muted); font-size: 11px; }
+
+/* ─── EMAIL FEATURE STYLES ─── */
+.btn-email { background: var(--blue); color: #fff; border-color: var(--blue); }
+.btn-email:hover { background: #1a4f8a; }
+.email-icon-btn {
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  padding: 3px 7px; cursor: pointer; font-size: 13px; color: var(--blue);
+  transition: all 0.15s; display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--sans); font-size: 10px; font-weight: 600;
+}
+.email-icon-btn:hover { background: var(--blue-bg); border-color: var(--blue); }
+.email-modal { width: 680px; }
+.email-modal h2 { display: flex; align-items: center; gap: 10px; }
+.email-modal h2 .email-count {
+  font-family: var(--sans); font-size: 12px; font-weight: 600;
+  background: var(--blue-bg); color: var(--blue); padding: 2px 10px; border-radius: 12px;
+}
+.recipient-list {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 14px; margin-bottom: 14px; max-height: 120px; overflow-y: auto;
+  font-size: 12px; line-height: 1.8;
+}
+.recipient-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--surface); border: 1px solid var(--border-light);
+  border-radius: 4px; padding: 2px 8px 2px 6px; margin: 2px 3px;
+  font-size: 11px; color: var(--text-secondary); white-space: nowrap;
+}
+.recipient-chip .remove-recipient { cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; margin-left: 2px; }
+.recipient-chip .remove-recipient:hover { color: var(--red); }
+.recipient-chip.no-email { border-color: var(--orange); color: var(--orange); border-style: dashed; opacity: 0.7; }
+.email-template-bar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.template-chip {
+  padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 500;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text-secondary);
+  cursor: pointer; transition: all 0.12s; user-select: none;
+}
+.template-chip:hover { border-color: var(--accent); color: var(--accent); }
+.template-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.email-compose-field { margin-bottom: 12px; }
+.email-compose-field label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--gray); display: block; margin-bottom: 4px;
+}
+.email-compose-field input, .email-compose-field textarea {
+  width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius); font-size: 13px; font-family: var(--sans);
+  color: var(--text); outline: none; transition: all 0.15s;
+}
+.email-compose-field input:focus, .email-compose-field textarea:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,0.06);
+}
+.email-compose-field textarea { resize: vertical; min-height: 140px; line-height: 1.6; }
+.email-method-toggle { display: flex; gap: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }
+.email-method-option {
+  flex: 1; padding: 8px 14px; font-size: 12px; font-weight: 500;
+  text-align: center; cursor: pointer; border: none;
+  background: var(--bg); color: var(--text-secondary);
+  font-family: var(--sans); transition: all 0.15s;
+  border-right: 1px solid var(--border);
+}
+.email-method-option:last-child { border-right: none; }
+.email-method-option:hover { background: var(--surface-alt); }
+.email-method-option.active { background: var(--accent); color: #fff; }
+.email-method-option small { display: block; font-size: 10px; font-weight: 400; margin-top: 2px; opacity: 0.7; }
+.send-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); }
+.send-actions .hint { font-size: 11px; color: var(--text-muted); max-width: 300px; }
+.group-email-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
+.group-email-panel h3 { font-family: var(--serif); font-size: 16px; font-weight: 500; color: var(--accent); margin-bottom: 12px; }
+.group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; }
+.group-option { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border-light); border-radius: var(--radius); cursor: pointer; transition: all 0.12s; font-size: 12px; }
+.group-option:hover { border-color: var(--accent); background: var(--purple-wash); }
+.group-option.selected { border-color: var(--accent); background: var(--accent-bg); }
+.group-option input[type="checkbox"] { accent-color: var(--accent); }
+.group-option .group-count { margin-left: auto; font-size: 10px; color: var(--text-muted); background: var(--bg); padding: 1px 6px; border-radius: 3px; }
+.row-checkbox { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+.select-all-bar {
+  display: none; align-items: center; gap: 12px; padding: 6px 32px;
+  background: var(--accent-bg); border-bottom: 1px solid var(--border);
+  font-size: 12px; color: var(--accent); font-weight: 500;
+}
+.select-all-bar .btn { font-size: 11px; padding: 4px 10px; }
+
+@media (max-width: 900px) {
+  .contact-row { grid-template-columns: 1fr; gap: 6px; }
+  .modal-grid { grid-template-columns: 1fr; }
+}
+.footer { text-align: center; padding: 24px 32px; font-size: 11px; color: var(--gray-light); letter-spacing: 0.3px; }
+.footer strong { color: var(--gray); font-weight: 600; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ═══════════ LOGIN SCREEN ═══════════ -->
+<div id="loginScreen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);">
+  <div style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:48px 40px;width:380px;max-width:90vw;text-align:center;">
+    <div style="width:56px;height:56px;background:var(--purple);border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;">
+      <span style="color:#fff;font-size:24px;font-family:var(--serif);font-weight:600;">E</span>
+    </div>
+    <h2 style="font-family:var(--serif);font-size:22px;font-weight:500;color:var(--purple);margin-bottom:4px;">Else School of Management</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:28px;">Contact Database — Millsaps College</p>
+    <div style="text-align:left;margin-bottom:12px;">
+      <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);display:block;margin-bottom:4px;">Username</label>
+      <input type="text" id="loginUser" placeholder="Enter username" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);outline:none;" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div style="text-align:left;margin-bottom:20px;">
+      <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);display:block;margin-bottom:4px;">Password</label>
+      <input type="password" id="loginPass" placeholder="Enter password" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);outline:none;" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button onclick="doLogin()" style="width:100%;padding:10px;background:var(--purple);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;letter-spacing:0.3px;">Sign In</button>
+    <p id="loginError" style="color:var(--red);font-size:12px;margin-top:12px;display:none;">Invalid username or password</p>
+  </div>
+</div>
+
+<!-- ═══════════ MAIN APP ═══════════ -->
+<div id="appContainer" style="display:none;">
+  <div class="header">
+    <div class="header-left">
+      <h1>Else School of Management <span>— Contact Database</span></h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="header-badge">Millsaps College</span>
+      <button onclick="openSettings()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:16px;padding:4px;" title="Settings">⚙</button>
+      <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;cursor:pointer;font-size:11px;font-family:var(--sans);padding:4px 10px;border-radius:4px;font-weight:500;">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="contacts">Contacts</button>
+    <button class="tab" data-tab="tasks">Tasks</button>
+    <button class="tab" data-tab="campaigns">Campaigns</button>
+    <button class="tab" data-tab="mailings">Mailings</button>
+    <button class="tab" data-tab="compliance">Compliance</button>
+    <button class="tab" data-tab="audit">Audit Log</button>
+  </div>
+
+  <div class="stats-row" id="statsRow"></div>
+
+  <div class="toolbar">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search by name, org, title, email...">
+    </div>
+    <select id="filterStatus"><option value="all">All statuses</option></select>
+    <select id="filterTeam"><option value="all">Assigned to…</option></select>
+    <select id="filterTier"><option value="all">All mailing tiers</option></select>
+    <button class="btn btn-filter" id="filterToggleBtn" onclick="toggleFilterPanel()">☷ Roles</button>
+    <div class="toolbar-right">
+      <button class="btn btn-email" onclick="openGroupEmailSelector()">✉ Group Email</button>
+      <div class="export-dropdown">
+        <button class="btn btn-export" id="exportBtn">↓ Export</button>
+        <div class="export-menu" id="exportMenu">
+          <button class="export-option" onclick="exportCSV()">📄 CSV <small>— universal</small></button>
+          <button class="export-option" onclick="exportExcel()">📊 Excel (.xlsx) <small>— formatted</small></button>
+          <button class="export-option" onclick="exportMailchimp()">📬 Mailchimp <small>— ready to import</small></button>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()">+ Add Contact</button>
+    </div>
+  </div>
+
+  <div class="filter-group" id="roleFilters"></div>
+  <div id="subChipsContainer"></div>
+
+  <!-- Selection bar for bulk email -->
+  <div class="select-all-bar" id="selectionBar">
+    <input type="checkbox" onchange="toggleSelectAll(this)" style="accent-color:var(--accent);">
+    <span class="sel-count">0 selected</span>
+    <button class="btn btn-email" onclick="emailSelectedContacts()">✉ Email Selected</button>
+    <button class="btn" onclick="selectedContactIds.clear(); document.querySelectorAll('.row-checkbox').forEach(c=>c.checked=false); updateSelectionBar();">Clear</button>
+  </div>
+
+  <div style="padding: 8px 32px; display:flex; align-items:center; justify-content:space-between;">
+    <span class="count-label" id="countLabel"></span>
+  </div>
+
+  <div class="contact-list" id="contactList"></div>
+
+  <div class="footer"><strong>Else School of Management</strong> — Corporate Outreach &amp; Contact Database — Millsaps College, Jackson MS</div>
+
+  <!-- ═══════════ SETTINGS MODAL ═══════════ -->
+  <div class="modal-overlay" id="settingsOverlay">
+    <div class="modal" style="width:500px;">
+      <div style="border-bottom:1px solid var(--border-light);padding-bottom:16px;margin-bottom:20px;">
+        <h2 style="font-family:var(--serif);font-size:22px;font-weight:500;color:var(--accent);margin:0;">Account Settings</h2>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">Signed in as: <strong id="settingsCurrentUser" style="color:var(--text);"></strong></p>
+      </div>
+      <div style="margin-bottom:24px;">
+        <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:12px;">Change Your Password</h3>
+        <div style="display:grid;gap:10px;">
+          <div class="form-group"><label>Current Password</label><input type="password" id="s_currentPass" placeholder="Enter current password"></div>
+          <div class="form-group"><label>New Password</label><input type="password" id="s_newPass" placeholder="Enter new password"></div>
+          <div class="form-group"><label>Confirm New Password</label><input type="password" id="s_confirmPass" placeholder="Confirm new password"></div>
+          <div><button class="btn btn-primary" onclick="changeOwnPassword()" style="width:100%;">Update Password</button><p id="passMsg" style="font-size:12px;margin-top:8px;display:none;"></p></div>
+        </div>
+      </div>
+      <div id="adminSection" style="display:none;border-top:1px solid var(--border-light);padding-top:20px;">
+        <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:12px;">Manage Users <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:11px;">(Admin only)</span></h3>
+        <div id="userList" style="margin-bottom:14px;"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+          <div class="form-group"><label>New Username</label><input type="text" id="s_newUser" placeholder="username"></div>
+          <div class="form-group"><label>Password</label><input type="text" id="s_newUserPass" placeholder="password"></div>
+          <button class="btn btn-primary" onclick="addUser()" style="margin-bottom:1px;">+ Add</button>
+        </div>
+      </div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-light);text-align:right;">
+        <button class="btn" onclick="closeSettings()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ EMAIL COMPOSE MODAL ═══════════ -->
+  <div class="modal-overlay" id="emailOverlay"></div>
+
+</div><!-- end appContainer -->
+
+<!-- ═══════════ CONTACT MODAL ═══════════ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">Add Contact</h2>
+    <div class="modal-grid">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="f_name" placeholder="First Last"></div>
+      <div class="form-group"><label>Organization</label><input type="text" id="f_org" placeholder="Company or institution"></div>
+      <div class="form-group"><label>Title</label><input type="text" id="f_title" placeholder="Job title"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="f_email" placeholder="email@example.com"></div>
+      <div class="form-group"><label>Phone</label><input type="text" id="f_phone" placeholder="Phone number"></div>
+      <div class="form-group"><label>LinkedIn URL</label><input type="url" id="f_linkedin" placeholder="https://linkedin.com/in/..."></div>
+      <div class="form-group"><label>Pipeline Status</label>
+        <select id="f_pipeline">
+          <option value="Unassigned">Unassigned</option><option value="Prospective">Prospective</option>
+          <option value="In-Development">In-Development</option><option value="Active Pipeline">Active Pipeline</option>
+          <option value="Closed Won">Closed Won</option><option value="Closed Lost">Closed Lost</option>
+          <option value="Low ROI">Low ROI</option><option value="Dormant">Dormant</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Assigned To</label>
+        <select id="f_assigned">
+          <option value="">Unassigned</option>
+          <option value="Fiser, Harvey">Fiser, Harvey</option><option value="Pickering, Steve">Pickering, Steve</option>
+          <option value="McCaa, Meg">McCaa, Meg</option><option value="Freeman, Naomi">Freeman, Naomi</option>
+          <option value="Fender, Peyton">Fender, Peyton</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Mailing Tier</label>
+        <select id="f_tier">
+          <option value="">No tier assigned</option>
+          <option value="1">Tier 1 — Inner Circle</option><option value="2">Tier 2 — Engaged Network</option>
+          <option value="3">Tier 3 — Exec Ed Marketing</option><option value="4">Tier 4 — Informed</option>
+          <option value="5">Tier 5 — Minimal / Do Not Contact</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Last Contact Date</label><input type="date" id="f_lastContact"></div>
+      <div class="form-group"><label>Follow-up Date</label><input type="date" id="f_followUp"></div>
+      <div class="form-group"><label>Address / City, State, Zip</label><input type="text" id="f_address" placeholder="City, State ZIP"></div>
+      <div class="form-group full-width">
+        <label>Roles &amp; Relationships</label>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--bg);max-height:260px;overflow-y:auto;" id="roleCheckboxes"></div>
+      </div>
+      <div class="form-group full-width">
+        <label>Notes</label>
+        <textarea id="f_notes" rows="2" style="resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;" placeholder="Any additional notes..."></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <div class="left-actions"><button class="btn btn-danger" id="deleteBtn" onclick="deleteContact()" style="display:none">Delete</button></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveContact()">Save Contact</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// SUPABASE CLIENT
+// ═══════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://akegekomjwggrvpphxog.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrZWdla29tandnZ3J2cHBoeG9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NTA3MjYsImV4cCI6MjA4OTAyNjcyNn0.yo3lXeRzQTLAZYfYY8QM0vuHYw5AzJwIdZjE2n8bpnw';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ═══════════════════════════════════════════════════════════════
+// LOGIN & USER MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+async function doLogin() {
+  const user = document.getElementById('loginUser').value.trim().toLowerCase();
+  const pass = document.getElementById('loginPass').value;
+  document.getElementById('loginError').style.display = 'none';
+  try {
+    const { data, error } = await db.from('app_users').select('username, role').eq('username', user).eq('password', pass).maybeSingle();
+    if (data) {
+      sessionStorage.setItem('else_auth', 'true');
+      sessionStorage.setItem('else_user', user);
+      sessionStorage.setItem('else_role', data.role || 'user');
+      showApp();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+      document.getElementById('loginPass').value = '';
+    }
+  } catch(e) {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('loginPass').value = '';
+  }
+}
+function doLogout() {
+  sessionStorage.removeItem('else_auth');
+  sessionStorage.removeItem('else_user');
+  sessionStorage.removeItem('else_role');
+  document.getElementById('appContainer').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+function showApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appContainer').style.display = 'block';
+  loadContacts();
+}
+if (sessionStorage.getItem('else_auth') === 'true') { showApp(); }
+
+// ═══════════ SETTINGS / PASSWORD MANAGEMENT ═══════════
+function openSettings() {
+  const currentUser = sessionStorage.getItem('else_user') || '';
+  document.getElementById('settingsCurrentUser').textContent = currentUser;
+  document.getElementById('s_currentPass').value = '';
+  document.getElementById('s_newPass').value = '';
+  document.getElementById('s_confirmPass').value = '';
+  document.getElementById('passMsg').style.display = 'none';
+  const isAdmin = currentUser === 'else';
+  document.getElementById('adminSection').style.display = isAdmin ? 'block' : 'none';
+  if (isAdmin) renderUserList();
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
+
+async function changeOwnPassword() {
+  const currentUser = sessionStorage.getItem('else_user');
+  const current = document.getElementById('s_currentPass').value;
+  const newP = document.getElementById('s_newPass').value;
+  const confirm = document.getElementById('s_confirmPass').value;
+  const msg = document.getElementById('passMsg');
+  if (!current || !newP || !confirm) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Please fill in all fields.'; return; }
+  if (newP.length < 4) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'New password must be at least 4 characters.'; return; }
+  if (newP !== confirm) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'New passwords do not match.'; return; }
+  const { data: check } = await db.from('app_users').select('username').eq('username', currentUser).eq('password', current).maybeSingle();
+  if (!check) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Current password is incorrect.'; return; }
+  const { error } = await db.from('app_users').update({ password: newP }).eq('username', currentUser);
+  if (error) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Error updating password.'; return; }
+  msg.style.display = 'block'; msg.style.color = 'var(--green)'; msg.textContent = '✓ Password updated successfully.';
+  document.getElementById('s_currentPass').value = ''; document.getElementById('s_newPass').value = ''; document.getElementById('s_confirmPass').value = '';
+}
+
+async function renderUserList() {
+  const currentUser = sessionStorage.getItem('else_user');
+  const container = document.getElementById('userList');
+  container.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Loading...</p>';
+  const { data: users, error } = await db.from('app_users').select('username, role').order('username');
+  if (error || !users) { container.innerHTML = '<p style="color:var(--red);font-size:12px;">Error loading users.</p>'; return; }
+  container.innerHTML = users.map(u => {
+    const isYou = u.username === currentUser;
+    const isElse = u.username === 'else';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg);border-radius:4px;margin-bottom:4px;font-size:13px;">
+      <div><strong>${u.username}</strong>${isYou ? ' <span style="color:var(--accent);font-size:10px;">(you)</span>' : ''}${isElse ? ' <span style="color:var(--text-muted);font-size:10px;">admin</span>' : ''}</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="resetUserPassword('${u.username}')">Reset PW</button>
+        ${!isElse ? `<button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" onclick="removeUser('${u.username}')">Remove</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+async function resetUserPassword(username) {
+  const newPass = prompt(`Enter new password for "${username}":`);
+  if (!newPass || newPass.length < 4) { alert('Password must be at least 4 characters.'); return; }
+  const { error } = await db.from('app_users').update({ password: newPass }).eq('username', username);
+  if (!error) alert(`Password for "${username}" has been reset.`); else alert('Error updating password.');
+}
+async function removeUser(username) {
+  if (username === 'else') return;
+  if (!confirm(`Remove user "${username}"?`)) return;
+  const { error } = await db.from('app_users').delete().eq('username', username);
+  if (!error) renderUserList(); else alert('Error removing user.');
+}
+async function addUser() {
+  const username = document.getElementById('s_newUser').value.trim().toLowerCase();
+  const password = document.getElementById('s_newUserPass').value;
+  if (!username || !password) { alert('Please enter both a username and password.'); return; }
+  if (password.length < 4) { alert('Password must be at least 4 characters.'); return; }
+  const { data: existing } = await db.from('app_users').select('username').eq('username', username).maybeSingle();
+  if (existing) { alert(`User "${username}" already exists.`); return; }
+  const { error } = await db.from('app_users').insert({ username, password, role: 'user' });
+  if (error) { alert('Error adding user.'); return; }
+  document.getElementById('s_newUser').value = ''; document.getElementById('s_newUserPass').value = '';
+  renderUserList();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ROLE DEFINITIONS
+// ═══════════════════════════════════════════════════════════════
+const ROLES = [
+  { key: 'corporate', label: 'Corporate / Exec Ed Contact', tagClass: 'tag-corporate' },
+  { key: 'exec_prospect', label: 'Exec Ed Prospect', tagClass: 'tag-prospect',
+    children: [
+      { key: 'open_enrollment', label: 'Open Enrollment' }, { key: 'bap', label: 'BAP' },
+      { key: 'aalp', label: 'AALP' }, { key: 'workshop', label: 'Workshop' },
+      { key: 'custom_program', label: 'Custom Program' }
+    ]
+  },
+  { key: 'exec_alum', label: 'Exec Ed Alumni', tagClass: 'tag-exec-alum',
+    children: [
+      { key: 'open_enrollment', label: 'Open Enrollment' }, { key: 'bap', label: 'BAP' },
+      { key: 'aalp', label: 'AALP' }, { key: 'workshop', label: 'Workshop' },
+      { key: 'custom_program', label: 'Custom Program' }
+    ]
+  },
+  { key: 'advisory', label: 'Else Advisory Board', tagClass: 'tag-advisory' },
+  { key: 'else_alum', label: 'Else Alum', tagClass: 'tag-else-alum',
+    children: [
+      { key: 'mba', label: 'MBA' }, { key: 'mbaa', label: 'MBAA' },
+      { key: 'macc', label: 'MACC' }, { key: 'macca', label: 'MACCA' },
+      { key: 'data_cert', label: 'Data Analytics Certificate' }, { key: 'econ', label: 'Economics' },
+      { key: 'acct', label: 'Accounting' }, { key: 'bus_admin', label: 'Business Administration' }
+    ]
+  },
+  { key: 'millsaps_alum', label: 'Non-Else Millsaps Alum', tagClass: 'tag-millsaps' },
+  { key: 'donor', label: 'Donor / Friend', tagClass: 'tag-donor' },
+  { key: 'faculty', label: 'Faculty / Staff', tagClass: 'tag-faculty' },
+  { key: 'vendor', label: 'Vendor / Partner', tagClass: 'tag-vendor' },
+  { key: 'community', label: 'Community Partner', tagClass: 'tag-community' },
+  { key: 'speaker', label: 'Guest Speaker / Panelist', tagClass: 'tag-speaker' }
+];
+const TIER_LABELS = { '1':'T1 · Inner Circle','2':'T2 · Engaged','3':'T3 · Exec Ed Mktg','4':'T4 · Informed','5':'T5 · Minimal' };
+const TIER_LABELS_FULL = { '1':'Tier 1 — Inner Circle','2':'Tier 2 — Engaged Network','3':'Tier 3 — Exec Ed Marketing','4':'Tier 4 — Informed','5':'Tier 5 — Minimal / Do Not Contact' };
+
+function getAllKeysForParent(parentKey) {
+  const role = ROLES.find(r => r.key === parentKey);
+  if (!role) return [parentKey];
+  const keys = [parentKey];
+  if (role.children) role.children.forEach(ch => keys.push(parentKey + ':' + ch.key));
+  return keys;
+}
+function contactHasParentRole(c, parentKey) {
+  const roles = c.roles || [];
+  return getAllKeysForParent(parentKey).some(k => roles.includes(k));
+}
+function resolveRoleDisplay(roleKey) {
+  if (roleKey.includes(':')) {
+    const [parentKey, childKey] = roleKey.split(':');
+    const parent = ROLES.find(r => r.key === parentKey);
+    if (!parent) return { label: roleKey, tagClass: 'tag-corporate' };
+    const child = (parent.children || []).find(ch => ch.key === childKey);
+    return { label: (child ? child.label : childKey), parentLabel: parent.label, tagClass: parent.tagClass };
+  }
+  const r = ROLES.find(x => x.key === roleKey);
+  return r ? { label: r.label, tagClass: r.tagClass } : { label: roleKey, tagClass: '' };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════════════════
+let contacts = [];
+let editingId = null;
+let activeRoleFilters = [];
+let expandedFilterParents = new Set();
+let selectedContactIds = new Set();
+
+async function loadContacts() {
+  try {
+    const { data, error } = await db.from('contacts').select('*').order('name');
+    if (data) {
+      contacts = data;
+      window._allContacts = data; // Store for email feature
+      renderAll();
+    } else { console.error('Error loading contacts:', error); }
+  } catch(e) { console.error('Failed to load contacts:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FILTERING
+// ═══════════════════════════════════════════════════════════════
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const status = document.getElementById('filterStatus').value;
+  const team = document.getElementById('filterTeam').value;
+  const tier = document.getElementById('filterTier').value;
+  return contacts.filter(c => {
+    if (q) {
+      const haystack = [c.name, c.organization, c.title, c.email, c.notes].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    if (status !== 'all' && c.pipeline_status !== status) return false;
+    if (team === 'none') { if (c.assigned_to) return false; }
+    else if (team !== 'all') { if (!c.assigned_to || !c.assigned_to.includes(team)) return false; }
+    if (tier === 'none') { if (c.mailing_tier) return false; }
+    else if (tier !== 'all' && c.mailing_tier !== tier) return false;
+    if (activeRoleFilters.length > 0) {
+      const roles = c.roles || [];
+      const match = activeRoleFilters.some(fk => {
+        if (fk.includes(':')) return roles.includes(fk);
+        return contactHasParentRole(c, fk);
+      });
+      if (!match) return false;
+    }
+    return true;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════════════════════════════
+function renderAll() { renderStats(); renderDropdowns(); renderRoleFilters(); renderList(); renderRoleCheckboxes(); }
+
+function renderStats() {
+  const total = contacts.length;
+  const active = contacts.filter(c => c.pipeline_status === 'Active Pipeline').length;
+  const inDev = contacts.filter(c => c.pipeline_status === 'In-Development').length;
+  const today = new Date();
+  const overdue = contacts.filter(c => c.follow_up_date && new Date(c.follow_up_date) < today).length;
+  const tagged = contacts.filter(c => (c.roles || []).length > 0).length;
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${total}</div></div>
+    <div class="stat-card"><div class="stat-label">Active Pipeline</div><div class="stat-value">${active}</div></div>
+    <div class="stat-card"><div class="stat-label">In Development</div><div class="stat-value">${inDev}</div></div>
+    <div class="stat-card ${overdue > 0 ? 'warn' : ''}"><div class="stat-label">Overdue</div><div class="stat-value">${overdue}</div></div>
+    <div class="stat-card"><div class="stat-label">Tagged</div><div class="stat-value">${tagged}</div></div>`;
+}
+
+function renderDropdowns() {
+  const statuses = ['Prospective','In-Development','Active Pipeline','Closed Won','Closed Lost','Low ROI','Dormant','Unassigned'];
+  const statusSel = document.getElementById('filterStatus');
+  statusSel.innerHTML = '<option value="all">All statuses</option>';
+  statuses.forEach(s => { statusSel.innerHTML += `<option value="${s}">${s} (${contacts.filter(c => c.pipeline_status === s).length})</option>`; });
+
+  const teamSel = document.getElementById('filterTeam');
+  teamSel.innerHTML = '<option value="all">Assigned to…</option>';
+  ['Fiser, Harvey','Pickering, Steve','McCaa, Meg','Freeman, Naomi','Fender, Peyton'].forEach(tm => {
+    teamSel.innerHTML += `<option value="${tm}">${tm.split(',')[0]} (${contacts.filter(c => c.assigned_to && c.assigned_to.includes(tm)).length})</option>`;
+  });
+  teamSel.innerHTML += `<option value="none">Unassigned (${contacts.filter(c => !c.assigned_to).length})</option>`;
+
+  const tierSel = document.getElementById('filterTier');
+  tierSel.innerHTML = '<option value="all">All tiers</option>';
+  ['1','2','3','4','5'].forEach(t => { tierSel.innerHTML += `<option value="${t}">${TIER_LABELS_FULL[t]} (${contacts.filter(c => c.mailing_tier === t).length})</option>`; });
+  tierSel.innerHTML += `<option value="none">No tier (${contacts.filter(c => !c.mailing_tier).length})</option>`;
+}
+
+function toggleFilterPanel() { document.getElementById('roleFilters').classList.toggle('open'); }
+function clearAllRoleFilters() {
+  activeRoleFilters = []; renderRoleFilters(); renderList();
+  document.getElementById('filterToggleBtn').textContent = '☷ Roles';
+  document.getElementById('filterToggleBtn').classList.remove('has-active');
+}
+
+function renderRoleFilters() {
+  const container = document.getElementById('roleFilters');
+  const isOpen = container.classList.contains('open');
+  const subContainer = document.getElementById('subChipsContainer');
+  container.innerHTML = '<span class="filter-group-label">Roles &amp; Relationships <span class="clear-link" onclick="clearAllRoleFilters()">Clear all</span></span>';
+  subContainer.innerHTML = '';
+  ROLES.forEach(r => {
+    const count = contacts.filter(c => contactHasParentRole(c, r.key)).length;
+    const isActive = activeRoleFilters.includes(r.key);
+    const hasSubs = r.children && r.children.length > 0;
+    const isExpanded = expandedFilterParents.has(r.key);
+    let chipHtml = `<span style="display:inline-flex;gap:3px;align-items:center;margin-bottom:4px;"><span class="filter-chip ${isActive ? 'active' : ''}" onclick="toggleRoleFilter('${r.key}')">${r.label}<span class="chip-count">${count}</span></span>`;
+    if (hasSubs) chipHtml += `<button class="expand-btn" onclick="toggleExpandFilter('${r.key}')">${isExpanded ? '▾' : '▸'}</button>`;
+    chipHtml += `</span> `;
+    container.innerHTML += chipHtml;
+    if (hasSubs) {
+      let subHtml = `<div class="sub-chips ${isExpanded ? 'open' : ''}" id="subChips_${r.key}">`;
+      r.children.forEach(ch => {
+        const subKey = r.key + ':' + ch.key;
+        const subCount = contacts.filter(c => (c.roles || []).includes(subKey)).length;
+        const subActive = activeRoleFilters.includes(subKey);
+        subHtml += `<span class="filter-chip sub ${subActive ? 'active' : ''}" onclick="toggleRoleFilter('${subKey}')">${ch.label}<span class="chip-count">${subCount}</span></span>`;
+      });
+      subHtml += '</div>';
+      subContainer.innerHTML += subHtml;
+    }
+  });
+  if (isOpen) container.classList.add('open');
+  const btn = document.getElementById('filterToggleBtn');
+  btn.textContent = activeRoleFilters.length > 0 ? `☷ Roles (${activeRoleFilters.length})` : '☷ Roles';
+  btn.classList.toggle('has-active', activeRoleFilters.length > 0);
+}
+
+function toggleRoleFilter(key) {
+  const idx = activeRoleFilters.indexOf(key);
+  if (idx >= 0) activeRoleFilters.splice(idx, 1); else activeRoleFilters.push(key);
+  renderRoleFilters(); renderList();
+}
+function toggleExpandFilter(parentKey) {
+  if (expandedFilterParents.has(parentKey)) expandedFilterParents.delete(parentKey); else expandedFilterParents.add(parentKey);
+  renderRoleFilters();
+}
+
+function pipelineClass(status) {
+  const map = { 'Prospective':'pipeline-prospective','In-Development':'pipeline-in-development','Active Pipeline':'pipeline-active','Closed Won':'pipeline-closed-won','Closed Lost':'pipeline-closed-lost','Low ROI':'pipeline-low-roi','Dormant':'pipeline-dormant','Unassigned':'pipeline-unassigned' };
+  return map[status] || 'pipeline-unassigned';
+}
+
+function renderList() {
+  const filtered = getFiltered();
+  document.getElementById('countLabel').textContent = `${filtered.length} contact${filtered.length !== 1 ? 's' : ''} shown`;
+  const container = document.getElementById('contactList');
+  if (filtered.length === 0) { container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">No contacts match your filters.</div>'; return; }
+
+  container.innerHTML = filtered.sort((a, b) => a.name.localeCompare(b.name)).map(c => {
+    const roleKeys = c.roles || [];
+    const tagHtml = roleKeys.map(rk => {
+      const d = resolveRoleDisplay(rk);
+      return `<span class="tag ${d.tagClass}" title="${d.parentLabel ? d.parentLabel + ' → ' + d.label : d.label}">${d.label}</span>`;
+    }).join('');
+    const tierHtml = c.mailing_tier ? `<span class="mailing-tier tier-${c.mailing_tier}">${TIER_LABELS[c.mailing_tier]}</span>` : '';
+    const today = new Date();
+    let metaHtml = '';
+    if (c.assigned_to) metaHtml += `<div class="assigned">→ ${c.assigned_to}</div>`;
+    if (c.last_contact_date) metaHtml += `<div>Last: ${c.last_contact_date}</div>`;
+    if (c.follow_up_date) {
+      const isOverdue = new Date(c.follow_up_date) < today;
+      metaHtml += `<div class="${isOverdue ? 'overdue' : ''}">Follow: ${c.follow_up_date}${isOverdue ? ' ⚠' : ''}</div>`;
+    }
+    const checked = selectedContactIds.has(c.contact_id) ? 'checked' : '';
+    const hasEmail = c.email && c.email.trim();
+    return `<div class="contact-row" onclick="openModal(${c.contact_id})">
+      <div onclick="event.stopPropagation()"><input type="checkbox" class="row-checkbox" data-id="${c.contact_id}" ${checked} onchange="toggleContactSelection(${c.contact_id}, this)"></div>
+      <div><div class="contact-name">${c.name}</div><div class="contact-org">${c.organization || ''}</div></div>
+      <div class="contact-title-cell">${c.title || ''}</div>
+      <div class="contact-tags">${tagHtml}${tierHtml ? ' ' + tierHtml : ''}</div>
+      <div><span class="pipeline-badge ${pipelineClass(c.pipeline_status)}">${c.pipeline_status || 'Unassigned'}</span></div>
+      <div class="contact-meta">${metaHtml}</div>
+      <div onclick="event.stopPropagation()">
+        ${hasEmail ? `<button class="email-icon-btn" onclick="emailSingleContact(${c.contact_id})" title="Email ${c.name}">✉</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONTACT MODAL — Add / Edit / Delete
+// ═══════════════════════════════════════════════════════════════
+function renderRoleCheckboxes() {
+  const container = document.getElementById('roleCheckboxes');
+  container.innerHTML = ROLES.map(r => {
+    const hasSubs = r.children && r.children.length > 0;
+    let html = `<div class="role-section">
+      <label class="role-section-header">
+        <input type="checkbox" value="${r.key}" class="role-cb" onchange="handleParentRoleChange(this)">
+        ${r.label}
+        ${hasSubs ? `<span class="toggle-arrow" onclick="event.preventDefault();this.classList.toggle('expanded');this.closest('.role-section').querySelector('.sub-options').classList.toggle('open')">▸</span>` : ''}
+      </label>`;
+    if (hasSubs) {
+      html += `<div class="sub-options">`;
+      r.children.forEach(ch => {
+        html += `<label class="sub-option"><input type="checkbox" value="${r.key}:${ch.key}" class="role-cb">${ch.label}</label>`;
+      });
+      html += `</div>`;
+    }
+    html += `</div>`;
+    return html;
+  }).join('');
+}
+
+function handleParentRoleChange(cb) {
+  const section = cb.closest('.role-section');
+  const subs = section.querySelectorAll('.sub-options input[type="checkbox"]');
+  if (!cb.checked) subs.forEach(s => s.checked = false);
+}
+
+function openModal(id) {
+  editingId = id || null;
+  document.getElementById('modalTitle').textContent = id ? 'Edit Contact' : 'Add Contact';
+  document.getElementById('deleteBtn').style.display = id ? 'inline-flex' : 'none';
+  // Clear form
+  ['f_name','f_org','f_title','f_email','f_phone','f_linkedin','f_address','f_notes'].forEach(f => document.getElementById(f).value = '');
+  document.getElementById('f_pipeline').value = 'Unassigned';
+  document.getElementById('f_assigned').value = '';
+  document.getElementById('f_tier').value = '';
+  document.getElementById('f_lastContact').value = '';
+  document.getElementById('f_followUp').value = '';
+  document.querySelectorAll('.role-cb').forEach(cb => cb.checked = false);
+
+  if (id) {
+    const c = contacts.find(x => x.contact_id === id);
+    if (c) {
+      document.getElementById('f_name').value = c.name || '';
+      document.getElementById('f_org').value = c.organization || '';
+      document.getElementById('f_title').value = c.title || '';
+      document.getElementById('f_email').value = c.email || '';
+      document.getElementById('f_phone').value = c.phone || '';
+      document.getElementById('f_linkedin').value = c.linkedin_url || '';
+      document.getElementById('f_pipeline').value = c.pipeline_status || 'Unassigned';
+      document.getElementById('f_assigned').value = c.assigned_to || '';
+      document.getElementById('f_tier').value = c.mailing_tier || '';
+      document.getElementById('f_lastContact').value = c.last_contact_date || '';
+      document.getElementById('f_followUp').value = c.follow_up_date || '';
+      document.getElementById('f_address').value = c.city_state_zip || c.address || '';
+      document.getElementById('f_notes').value = c.notes || '';
+      const roles = c.roles || [];
+      document.querySelectorAll('.role-cb').forEach(cb => { cb.checked = roles.includes(cb.value); });
+    }
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); editingId = null; }
+
+async function saveContact() {
+  const name = document.getElementById('f_name').value.trim();
+  if (!name) { alert('Please enter a name.'); return; }
+  const roles = [...document.querySelectorAll('.role-cb:checked')].map(cb => cb.value);
+  const record = {
+    name,
+    organization: document.getElementById('f_org').value.trim() || null,
+    title: document.getElementById('f_title').value.trim() || null,
+    email: document.getElementById('f_email').value.trim() || null,
+    phone: document.getElementById('f_phone').value.trim() || null,
+    linkedin_url: document.getElementById('f_linkedin').value.trim() || null,
+    pipeline_status: document.getElementById('f_pipeline').value,
+    assigned_to: document.getElementById('f_assigned').value || null,
+    mailing_tier: document.getElementById('f_tier').value || null,
+    last_contact_date: document.getElementById('f_lastContact').value || null,
+    follow_up_date: document.getElementById('f_followUp').value || null,
+    city_state_zip: document.getElementById('f_address').value.trim() || null,
+    notes: document.getElementById('f_notes').value.trim() || null,
+    roles
+  };
+  try {
+    if (editingId) {
+      record.updated_at = new Date().toISOString();
+      await db.from('contacts').update(record).eq('contact_id', editingId);
+    } else {
+      await db.from('contacts').insert(record);
+    }
+    closeModal();
+    loadContacts();
+  } catch(e) { alert('Error saving contact. Please try again.'); console.error(e); }
+}
+
+async function deleteContact() {
+  if (!editingId) return;
+  if (!confirm('Are you sure you want to delete this contact? This cannot be undone.')) return;
+  try {
+    await db.from('contacts').delete().eq('contact_id', editingId);
+    closeModal();
+    loadContacts();
+  } catch(e) { alert('Error deleting contact.'); console.error(e); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('exportBtn').addEventListener('click', () => {
+  document.getElementById('exportMenu').classList.toggle('open');
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.export-dropdown')) document.getElementById('exportMenu').classList.remove('open');
+});
+
+function exportCSV() {
+  const filtered = getFiltered();
+  const headers = ['Name','Organization','Title','Email','Phone','Pipeline','Assigned','Mailing Tier','Roles','Notes'];
+  const rows = filtered.map(c => [
+    c.name, c.organization || '', c.title || '', c.email || '', c.phone || '',
+    c.pipeline_status || '', c.assigned_to || '', c.mailing_tier || '',
+    (c.roles || []).join('; '), c.notes || ''
+  ]);
+  let csv = [headers, ...rows].map(r => r.map(v => `"${(v+'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  downloadFile(csv, 'else-contacts.csv', 'text/csv');
+  document.getElementById('exportMenu').classList.remove('open');
+}
+
+function exportExcel() {
+  // Simple CSV with .xlsx naming — for proper Excel, use SheetJS
+  exportCSV();
+}
+
+function exportMailchimp() {
+  const filtered = getFiltered().filter(c => c.email);
+  const headers = ['Email Address','First Name','Last Name','TAGS'];
+  const rows = filtered.map(c => {
+    const parts = (c.name || '').split(' ');
+    return [c.email, parts[0] || '', parts.slice(1).join(' ') || '', (c.roles || []).join(',')];
+  });
+  let csv = [headers, ...rows].map(r => r.map(v => `"${(v+'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  downloadFile(csv, 'else-mailchimp-import.csv', 'text/csv');
+  document.getElementById('exportMenu').classList.remove('open');
+}
+
+function downloadFile(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('searchInput').addEventListener('input', renderList);
+document.getElementById('filterStatus').addEventListener('change', renderList);
+document.getElementById('filterTeam').addEventListener('change', renderList);
+document.getElementById('filterTier').addEventListener('change', renderList);
+document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === document.getElementById('modalOverlay')) closeModal(); });
+document.getElementById('settingsOverlay').addEventListener('click', e => { if (e.target === document.getElementById('settingsOverlay')) closeSettings(); });
+document.getElementById('emailOverlay').addEventListener('click', e => { if (e.target === document.getElementById('emailOverlay')) closeEmailModal(); });
+
+// ═══════════════════════════════════════════════════════════════
+// ✉ EMAIL FEATURE
+// ═══════════════════════════════════════════════════════════════
+let emailRecipients = [];
+let emailMethod = 'outlook';
+
+const EMAIL_TEMPLATES = {
+  intro: {
+    subject: 'Introduction — Else School of Management, Millsaps College',
+    body: `Dear {name},\n\nI hope this message finds you well. I'm reaching out from the Else School of Management at Millsaps College to introduce myself and explore potential opportunities for collaboration.\n\nThe Else School is committed to developing the next generation of business leaders in Mississippi and beyond, and we believe your experience at {org} would bring tremendous value to our community.\n\nI'd welcome the chance to connect at your convenience to discuss how we might work together.\n\nWarm regards,\n[Your Name]\nElse School of Management | Millsaps College`
+  },
+  followup: {
+    subject: 'Following Up — Else School of Management',
+    body: `Dear {name},\n\nI wanted to follow up on our previous conversation and see if there are any updates on your end. We remain very interested in continuing our discussion.\n\nPlease let me know if there's a convenient time to reconnect — I'm happy to work around your schedule.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
+  },
+  meeting: {
+    subject: 'Meeting Request — Else School of Management',
+    body: `Dear {name},\n\nI'd like to request a brief meeting to discuss a potential collaboration between {org} and the Else School of Management at Millsaps College.\n\nWould you have 30 minutes available in the coming weeks? I'm flexible on timing and happy to meet in person, by phone, or via Teams.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
+  },
+  advisory: {
+    subject: 'Else School Advisory Board — Update & Upcoming Meeting',
+    body: `Dear Advisory Board Members,\n\nThank you for your continued support of the Else School of Management. I'm writing to share a few updates and provide details for our next advisory board meeting.\n\n[Meeting details here]\n\nYour guidance and involvement make a real difference in shaping the future of business education at Millsaps. Please don't hesitate to reach out with any questions.\n\nWith appreciation,\n[Your Name]\nElse School of Management | Millsaps College`
+  },
+  event: {
+    subject: "You're Invited — Else School of Management Event",
+    body: `Dear {name},\n\nWe are pleased to invite you to an upcoming event hosted by the Else School of Management at Millsaps College.\n\n[Event Name]\n[Date & Time]\n[Location / Virtual Link]\n\nPlease RSVP by [date] to confirm your attendance.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
+  },
+  custom: { subject: '', body: '' }
+};
+
+const EMAIL_MODAL_HTML = `
+  <div class="modal email-modal">
+    <h2><span>✉ Compose Email</span><span class="email-count" id="emailRecipientCount">0 recipients</span></h2>
+    <div class="recipient-list" id="emailRecipientList"><em style="color:var(--text-muted);">No recipients selected</em></div>
+    <div class="email-method-toggle">
+      <button class="email-method-option active" onclick="setEmailMethod('outlook')" id="methodOutlook">📧 Open in Outlook<small>Pre-fills your college email</small></button>
+      <button class="email-method-option" onclick="setEmailMethod('mailto')" id="methodMailto">🔗 mailto: Link<small>Opens default mail client</small></button>
+      <button class="email-method-option" onclick="setEmailMethod('copy')" id="methodCopy">📋 Copy Addresses<small>Copy to clipboard</small></button>
+    </div>
+    <div>
+      <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:6px;display:block;">Quick Templates</label>
+      <div class="email-template-bar" id="emailTemplates">
+        <span class="template-chip" onclick="applyTemplate('intro',this)">Introduction</span>
+        <span class="template-chip" onclick="applyTemplate('followup',this)">Follow-up</span>
+        <span class="template-chip" onclick="applyTemplate('meeting',this)">Meeting Request</span>
+        <span class="template-chip" onclick="applyTemplate('advisory',this)">Advisory Board</span>
+        <span class="template-chip" onclick="applyTemplate('event',this)">Event Invite</span>
+        <span class="template-chip" onclick="applyTemplate('custom',this)">Custom</span>
+      </div>
+    </div>
+    <div class="email-compose-field"><label>Subject</label><input type="text" id="emailSubject" placeholder="Email subject line..."></div>
+    <div class="email-compose-field"><label>Message Body</label><textarea id="emailBody" placeholder="Write your message here...\n\nUse {name} to personalize with contact's name.\nUse {org} to insert their organization."></textarea></div>
+    <div style="margin-bottom:8px;"><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer;"><input type="checkbox" id="emailBcc" checked style="accent-color:var(--accent);">Send as BCC (hide recipient addresses from each other)</label></div>
+    <div class="send-actions">
+      <span class="hint" id="emailHint">Recipients will be BCC'd to protect privacy. Email opens in your Outlook.</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="closeEmailModal()">Cancel</button>
+        <button class="btn btn-email" onclick="sendEmail()" id="emailSendBtn">Open in Outlook →</button>
+      </div>
+    </div>
+  </div>`;
+
+function restoreEmailModalHTML() { document.getElementById('emailOverlay').innerHTML = EMAIL_MODAL_HTML; }
+
+function openEmailModal(recipients) {
+  restoreEmailModalHTML();
+  const noEmail = recipients.filter(r => !r.email || !r.email.trim());
+  emailRecipients = recipients.filter(r => r.email && r.email.trim());
+  renderRecipientList(noEmail);
+  updateRecipientCount();
+  setEmailMethod('outlook');
+  if (emailRecipients.length === 1) applyTemplate('intro'); else applyTemplate('advisory');
+  document.getElementById('emailOverlay').classList.add('open');
+}
+
+function closeEmailModal() { document.getElementById('emailOverlay').classList.remove('open'); }
+
+function renderRecipientList(noEmailContacts) {
+  const container = document.getElementById('emailRecipientList');
+  if (emailRecipients.length === 0 && (!noEmailContacts || noEmailContacts.length === 0)) {
+    container.innerHTML = '<em style="color:var(--text-muted);">No recipients selected</em>'; return;
+  }
+  let html = emailRecipients.map((r, i) => `<span class="recipient-chip"><strong>${r.name}</strong> &lt;${r.email}&gt;<span class="remove-recipient" onclick="removeRecipient(${i})" title="Remove">×</span></span>`).join('');
+  if (noEmailContacts) html += noEmailContacts.map(r => `<span class="recipient-chip no-email">${r.name} — no email</span>`).join('');
+  container.innerHTML = html;
+}
+
+function removeRecipient(index) { emailRecipients.splice(index, 1); renderRecipientList([]); updateRecipientCount(); }
+function updateRecipientCount() { document.getElementById('emailRecipientCount').textContent = emailRecipients.length === 1 ? '1 recipient' : `${emailRecipients.length} recipients`; }
+
+function setEmailMethod(method) {
+  emailMethod = method;
+  document.querySelectorAll('.email-method-option').forEach(btn => btn.classList.remove('active'));
+  document.getElementById({outlook:'methodOutlook',mailto:'methodMailto',copy:'methodCopy'}[method]).classList.add('active');
+  const sendBtn = document.getElementById('emailSendBtn');
+  const hint = document.getElementById('emailHint');
+  if (method === 'outlook') { sendBtn.textContent = 'Open in Outlook →'; hint.textContent = 'Opens Outlook Web with your college account pre-filled.'; }
+  else if (method === 'mailto') { sendBtn.textContent = 'Open Mail Client →'; hint.textContent = 'Opens your default email application with message pre-filled.'; }
+  else { sendBtn.textContent = '📋 Copy All Addresses'; hint.textContent = 'Copies all email addresses to clipboard.'; }
+}
+
+function applyTemplate(key, el) {
+  const tpl = EMAIL_TEMPLATES[key]; if (!tpl) return;
+  document.querySelectorAll('.template-chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('emailSubject').value = tpl.subject;
+  let body = tpl.body;
+  if (emailRecipients.length === 1) {
+    body = body.replace(/\{name\}/g, emailRecipients[0].name.split(' ')[0]);
+    body = body.replace(/\{org\}/g, emailRecipients[0].org || 'your organization');
+  } else { body = body.replace(/\{name\}/g, '').replace(/\{org\}/g, ''); }
+  document.getElementById('emailBody').value = body;
+}
+
+function sendEmail() {
+  if (emailRecipients.length === 0) { alert('No recipients with email addresses selected.'); return; }
+  const subject = document.getElementById('emailSubject').value;
+  const body = document.getElementById('emailBody').value;
+  const useBcc = document.getElementById('emailBcc').checked;
+  const emails = emailRecipients.map(r => r.email);
+
+  if (emailMethod === 'copy') {
+    navigator.clipboard.writeText(emails.join('; ')).then(() => {
+      const btn = document.getElementById('emailSendBtn'); btn.textContent = '✓ Copied!';
+      setTimeout(() => { btn.textContent = '📋 Copy All Addresses'; }, 2000);
+    }).catch(() => prompt('Copy these addresses:', emails.join('; ')));
+    return;
+  }
+  if (emailMethod === 'outlook') {
+    const toField = useBcc && emails.length > 1 ? '' : emails.join(';');
+    const bccField = useBcc && emails.length > 1 ? emails.join(';') : '';
+    let url = 'https://outlook.office.com/mail/deeplink/compose?';
+    if (toField) url += `to=${encodeURIComponent(toField)}&`;
+    if (bccField) url += `bcc=${encodeURIComponent(bccField)}&`;
+    url += `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(url, '_blank'); closeEmailModal(); return;
+  }
+  if (emailMethod === 'mailto') {
+    let mailto = 'mailto:';
+    if (useBcc && emails.length > 1) mailto += `?bcc=${encodeURIComponent(emails.join(','))}`;
+    else { mailto += encodeURIComponent(emails.join(',')); mailto += '?'; }
+    mailto += `${mailto.includes('?') ? '&' : '?'}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto; closeEmailModal();
+  }
+}
+
+// Email a single contact from row button
+function emailSingleContact(contactId) {
+  const c = contacts.find(x => x.contact_id === contactId);
+  if (!c) return;
+  openEmailModal([{ id: c.contact_id, name: c.name, email: c.email, org: c.organization }]);
+}
+
+// Email selected contacts (checkboxes)
+function emailSelectedContacts() {
+  if (selectedContactIds.size === 0) { alert('No contacts selected. Use the checkboxes to select contacts first.'); return; }
+  const selected = contacts.filter(c => selectedContactIds.has(c.contact_id));
+  openEmailModal(selected.map(c => ({ id: c.contact_id, name: c.name, email: c.email, org: c.organization })));
+}
+
+function toggleContactSelection(id, checkbox) {
+  if (checkbox.checked) selectedContactIds.add(id); else selectedContactIds.delete(id);
+  updateSelectionBar();
+}
+function toggleSelectAll(masterCheckbox) {
+  document.querySelectorAll('.row-checkbox').forEach(cb => {
+    cb.checked = masterCheckbox.checked;
+    const id = parseInt(cb.dataset.id);
+    if (masterCheckbox.checked) selectedContactIds.add(id); else selectedContactIds.delete(id);
+  });
+  updateSelectionBar();
+}
+function updateSelectionBar() {
+  const bar = document.getElementById('selectionBar');
+  if (selectedContactIds.size > 0) {
+    bar.style.display = 'flex';
+    bar.querySelector('.sel-count').textContent = `${selectedContactIds.size} selected`;
+  } else { bar.style.display = 'none'; }
+}
+
+// Group email selector
+function openGroupEmailSelector() {
+  const roleCounts = {};
+  const statusCounts = {};
+  contacts.forEach(c => {
+    (c.roles || []).forEach(r => { const parent = r.split(':')[0]; roleCounts[parent] = (roleCounts[parent] || 0) + 1; });
+    statusCounts[c.pipeline_status || 'Unassigned'] = (statusCounts[c.pipeline_status || 'Unassigned'] || 0) + 1;
+  });
+
+  let html = `<div class="modal email-modal" style="width:600px;">
+    <h2>✉ Group Email — Select Recipients</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Select groups to email. Contacts matching ANY selected group will be included.</p>
+    <div class="group-email-panel"><h3>By Role / Relationship</h3><div class="group-grid">`;
+  ROLES.forEach(r => {
+    const count = contacts.filter(c => contactHasParentRole(c, r.key)).length;
+    html += `<label class="group-option"><input type="checkbox" value="${r.key}" class="group-role-cb"><span>${r.label}</span><span class="group-count">${count}</span></label>`;
+  });
+  html += `</div></div><div class="group-email-panel" style="margin-top:10px;"><h3>By Pipeline Status</h3><div class="group-grid">`;
+  Object.keys(statusCounts).sort().forEach(status => {
+    html += `<label class="group-option"><input type="checkbox" value="${status}" class="group-status-cb"><span>${status}</span><span class="group-count">${statusCounts[status]}</span></label>`;
+  });
+  html += `</div></div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:12px;color:var(--text-muted);" id="groupSelectedCount">0 contacts selected</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="closeEmailModal()">Cancel</button>
+        <button class="btn btn-email" onclick="composeGroupEmail()">Compose Email →</button>
+      </div>
+    </div></div>`;
+
+  document.getElementById('emailOverlay').innerHTML = html;
+  document.getElementById('emailOverlay').classList.add('open');
+  document.querySelectorAll('.group-role-cb, .group-status-cb').forEach(cb => cb.addEventListener('change', updateGroupCount));
+}
+
+function updateGroupCount() {
+  const selectedRoles = [...document.querySelectorAll('.group-role-cb:checked')].map(cb => cb.value);
+  const selectedStatuses = [...document.querySelectorAll('.group-status-cb:checked')].map(cb => cb.value);
+  const matched = contacts.filter(c => {
+    if (selectedRoles.length === 0 && selectedStatuses.length === 0) return false;
+    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
+    const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
+    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
+    return matchRole || matchStatus;
+  });
+  const withEmail = matched.filter(c => c.email && c.email.trim());
+  const el = document.getElementById('groupSelectedCount');
+  if (el) el.textContent = `${withEmail.length} with email · ${matched.length - withEmail.length} without`;
+}
+
+function composeGroupEmail() {
+  const selectedRoles = [...document.querySelectorAll('.group-role-cb:checked')].map(cb => cb.value);
+  const selectedStatuses = [...document.querySelectorAll('.group-status-cb:checked')].map(cb => cb.value);
+  if (selectedRoles.length === 0 && selectedStatuses.length === 0) { alert('Please select at least one group.'); return; }
+  const matched = contacts.filter(c => {
+    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
+    const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
+    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
+    return matchRole || matchStatus;
+  });
+  openEmailModal(matched.map(c => ({ id: c.contact_id, name: c.name, email: c.email, org: c.organization })));
+}
+</script>
+</body>
+</html>
