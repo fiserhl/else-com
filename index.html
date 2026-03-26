@@ -422,7 +422,17 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
   <div class="modal">
     <h2 id="modalTitle">Add Contact</h2>
     <div class="modal-grid">
-      <div class="form-group"><label>Full Name *</label><input type="text" id="f_name" placeholder="First Last"></div>
+      <div class="form-group"><label>First Name *</label><input type="text" id="f_first_name" placeholder="First name"></div>
+      <div class="form-group"><label>Last Name *</label><input type="text" id="f_last_name" placeholder="Last name"></div>
+      <div class="form-group"><label>Preferred Name</label><input type="text" id="f_preferred_name" placeholder="Nickname (optional)"></div>
+      <div class="form-group"><label>Correspondence Name</label>
+        <select id="f_correspondence_name_mode">
+          <option value="first_name">First Name</option>
+          <option value="preferred_name">Preferred Name</option>
+          <option value="full_name">Full Name</option>
+        </select>
+      </div>
+      <div class="form-group full-width" style="display:none;"><label>Display Name (auto)</label><input type="text" id="f_name" readonly></div>
       <div class="form-group"><label>Organization</label><input type="text" id="f_org" placeholder="Company or institution"></div>
       <div class="form-group"><label>Title</label><input type="text" id="f_title" placeholder="Job title"></div>
       <div class="form-group"><label>Email</label><input type="email" id="f_email" placeholder="email@example.com"></div>
@@ -629,27 +639,22 @@ async function addUser() {
 // ROLE DEFINITIONS
 // ═══════════════════════════════════════════════════════════════
 const ROLES = [
-  { key: 'corporate', label: 'Corporate / Exec Ed Contact', tagClass: 'tag-corporate' },
-  { key: 'exec_prospect', label: 'Exec Ed Prospect', tagClass: 'tag-prospect',
-    children: [
-      { key: 'open_enrollment', label: 'Open Enrollment' }, { key: 'bap', label: 'BAP' },
-      { key: 'aalp', label: 'AALP' }, { key: 'workshop', label: 'Workshop' },
-      { key: 'custom_program', label: 'Custom Program' }
-    ]
-  },
-  { key: 'exec_alum', label: 'Exec Ed Alumni', tagClass: 'tag-exec-alum',
-    children: [
-      { key: 'open_enrollment', label: 'Open Enrollment' }, { key: 'bap', label: 'BAP' },
-      { key: 'aalp', label: 'AALP' }, { key: 'workshop', label: 'Workshop' },
-      { key: 'custom_program', label: 'Custom Program' }
-    ]
-  },
   { key: 'advisory', label: 'Advisory Board', tagClass: 'tag-advisory' },
-  { key: 'donor', label: 'Donor / Sponsor', tagClass: 'tag-donor' },
+  { key: 'corporate', label: 'Corporate Partner', tagClass: 'tag-corporate' },
+  { key: 'else_alum', label: 'Else Alumni', tagClass: 'tag-alumni',
+    children: [
+      { key: 'mba', label: 'MBA' }, { key: 'mbaa', label: 'MBAA' },
+      { key: 'macc', label: 'MACC' }, { key: 'macca', label: 'MACCA' },
+      { key: 'data_analytics', label: 'Data Analytics' },
+      { key: 'data_analytics_cert', label: 'Data Analytics Cert' },
+      { key: 'econ', label: 'Economics' }, { key: 'acct', label: 'Accounting' },
+      { key: 'bus_admin', label: 'Business Administration' }
+    ]
+  },
+  { key: 'exec_prospect', label: 'Exec Ed Prospect', tagClass: 'tag-prospect' },
   { key: 'community', label: 'Community Partner', tagClass: 'tag-community' },
-  { key: 'friend', label: 'Friend of School', tagClass: 'tag-friend' },
-  { key: 'alumni', label: 'Millsaps Alumni', tagClass: 'tag-alumni' },
-  { key: 'student', label: 'Current Student', tagClass: 'tag-student' }
+  { key: 'donor', label: 'Donor / Friend', tagClass: 'tag-donor' },
+  { key: 'faculty', label: 'Faculty / Staff', tagClass: 'tag-advisory' }
 ];
 
 const TIER_LABELS = { '1': 'T1', '2': 'T2', '3': 'T3', '4': 'T4', '5': 'T5' };
@@ -657,19 +662,28 @@ const TIER_LABELS_FULL = { '1': 'Tier 1 — Inner Circle', '2': 'Tier 2 — Enga
 
 function contactHasParentRole(c, parentKey) {
   const roles = c.roles || [];
-  return roles.some(rk => rk === parentKey || rk.startsWith(parentKey + ':'));
+  // Check if the contact has this parent role key directly
+  if (roles.includes(parentKey)) return true;
+  // Also check if any child key of this parent is present
+  const parentDef = ROLES.find(r => r.key === parentKey);
+  if (parentDef && parentDef.children) {
+    return parentDef.children.some(ch => roles.includes(ch.key));
+  }
+  return false;
 }
 
 function resolveRoleDisplay(roleKey) {
-  if (roleKey.includes(':')) {
-    const [parentKey, childKey] = roleKey.split(':');
-    const parent = ROLES.find(r => r.key === parentKey);
-    if (!parent) return { label: roleKey, tagClass: '' };
-    const child = parent.children ? parent.children.find(ch => ch.key === childKey) : null;
-    return { label: (child ? child.label : childKey), parentLabel: parent.label, tagClass: parent.tagClass };
+  // Check if it's a parent role
+  const parentMatch = ROLES.find(r => r.key === roleKey);
+  if (parentMatch) return { label: parentMatch.label, tagClass: parentMatch.tagClass };
+  // Check if it's a child role of any parent
+  for (const parent of ROLES) {
+    if (parent.children) {
+      const childMatch = parent.children.find(ch => ch.key === roleKey);
+      if (childMatch) return { label: childMatch.label, parentLabel: parent.label, tagClass: parent.tagClass };
+    }
   }
-  const r = ROLES.find(x => x.key === roleKey);
-  return r ? { label: r.label, tagClass: r.tagClass } : { label: roleKey, tagClass: '' };
+  return { label: roleKey, tagClass: '' };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -683,7 +697,7 @@ let selectedContactIds = new Set();
 
 async function loadContacts() {
   try {
-    const { data, error } = await db.from('contacts').select('*').order('name');
+    const { data, error } = await db.from('contacts').select('*, first_name, last_name, preferred_name, correspondence_name_mode').order('name');
     if (data) {
       contacts = data;
       window._allContacts = data;
@@ -713,8 +727,11 @@ function getFiltered() {
     if (activeRoleFilters.length > 0) {
       const roles = c.roles || [];
       const match = activeRoleFilters.some(fk => {
-        if (fk.includes(':')) return roles.includes(fk);
-        return contactHasParentRole(c, fk);
+        // Check if fk is a parent role key
+        const parentDef = ROLES.find(r => r.key === fk);
+        if (parentDef) return contactHasParentRole(c, fk);
+        // Otherwise it's a child key — direct match
+        return roles.includes(fk);
       });
       if (!match) return false;
     }
@@ -786,7 +803,7 @@ function renderRoleFilters() {
     if (hasSubs) {
       let subHtml = `<div class="sub-chips ${isExpanded ? 'open' : ''}" id="subChips_${r.key}">`;
       r.children.forEach(ch => {
-        const subKey = r.key + ':' + ch.key;
+        const subKey = ch.key;
         const subCount = contacts.filter(c => (c.roles || []).includes(subKey)).length;
         const subActive = activeRoleFilters.includes(subKey);
         subHtml += `<span class="filter-chip sub ${subActive ? 'active' : ''}" onclick="toggleRoleFilter('${subKey}')">${ch.label}<span class="chip-count">${subCount}</span></span>`;
@@ -870,7 +887,7 @@ function renderRoleCheckboxes() {
     if (hasSubs) {
       html += `<div class="sub-options">`;
       r.children.forEach(ch => {
-        html += `<label class="sub-option"><input type="checkbox" value="${r.key}:${ch.key}" class="role-cb">${ch.label}</label>`;
+        html += `<label class="sub-option"><input type="checkbox" value="${ch.key}" class="role-cb">${ch.label}</label>`;
       });
       html += `</div>`;
     }
@@ -881,15 +898,24 @@ function renderRoleCheckboxes() {
 
 function handleParentRoleChange(cb) {
   const section = cb.closest('.role-section');
-  const subs = section.querySelectorAll('.sub-options input[type="checkbox"]');
-  if (!cb.checked) subs.forEach(s => s.checked = false);
+  const subOpts = section.querySelector('.sub-options');
+  if (!cb.checked && subOpts) {
+    subOpts.querySelectorAll('input[type="checkbox"]').forEach(s => s.checked = false);
+  }
+  // Auto-expand sub-options when parent is checked
+  if (cb.checked && subOpts) {
+    subOpts.classList.add('open');
+    const arrow = section.querySelector('.toggle-arrow');
+    if (arrow) arrow.classList.add('expanded');
+  }
 }
 
 function openModal(id) {
   editingId = id || null;
   document.getElementById('modalTitle').textContent = id ? 'Edit Contact' : 'Add Contact';
   document.getElementById('deleteBtn').style.display = id ? 'inline-flex' : 'none';
-  ['f_name','f_org','f_title','f_email','f_phone','f_linkedin','f_address','f_notes'].forEach(f => document.getElementById(f).value = '');
+  ['f_first_name','f_last_name','f_preferred_name','f_name','f_org','f_title','f_email','f_phone','f_linkedin','f_address','f_notes'].forEach(f => document.getElementById(f).value = '');
+  document.getElementById('f_correspondence_name_mode').value = 'first_name';
   document.getElementById('f_pipeline').value = 'Unassigned';
   document.getElementById('f_assigned').value = '';
   document.getElementById('f_tier').value = '';
@@ -900,6 +926,10 @@ function openModal(id) {
   if (id) {
     const c = contacts.find(x => x.contact_id === id);
     if (c) {
+      document.getElementById('f_first_name').value = c.first_name || '';
+      document.getElementById('f_last_name').value = c.last_name || '';
+      document.getElementById('f_preferred_name').value = c.preferred_name || '';
+      document.getElementById('f_correspondence_name_mode').value = c.correspondence_name_mode || 'first_name';
       document.getElementById('f_name').value = c.name || '';
       document.getElementById('f_org').value = c.organization || '';
       document.getElementById('f_title').value = c.title || '';
@@ -922,11 +952,20 @@ function openModal(id) {
 function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); editingId = null; }
 
 async function saveContact() {
-  const name = document.getElementById('f_name').value.trim();
-  if (!name) { alert('Please enter a name.'); return; }
+  const first_name = document.getElementById('f_first_name').value.trim();
+  const last_name = document.getElementById('f_last_name').value.trim();
+  if (!first_name && !last_name) { alert('Please enter at least a first or last name.'); return; }
+  const preferred_name = document.getElementById('f_preferred_name').value.trim() || null;
+  const correspondence_name_mode = document.getElementById('f_correspondence_name_mode').value;
+  // Auto-generate display name from first + last
+  const name = [first_name, last_name].filter(Boolean).join(' ');
   const roles = [...document.querySelectorAll('.role-cb:checked')].map(cb => cb.value);
   const record = {
     name,
+    first_name: first_name || null,
+    last_name: last_name || null,
+    preferred_name,
+    correspondence_name_mode,
     organization: document.getElementById('f_org').value.trim() || null,
     title: document.getElementById('f_title').value.trim() || null,
     email: document.getElementById('f_email').value.trim() || null,
@@ -992,8 +1031,7 @@ function exportMailchimp() {
   const filtered = getFiltered().filter(c => c.email);
   const headers = ['Email Address','First Name','Last Name','TAGS'];
   const rows = filtered.map(c => {
-    const parts = (c.name || '').split(' ');
-    return [c.email, parts[0] || '', parts.slice(1).join(' ') || '', (c.roles || []).join(',')];
+    return [c.email, c.first_name || '', c.last_name || '', (c.roles || []).join(',')];
   });
   let csv = [headers, ...rows].map(r => r.map(v => `"${(v+'').replace(/"/g,'""')}"`).join(',')).join('\n');
   downloadFile(csv, 'else-mailchimp-import.csv', 'text/csv');
@@ -1127,7 +1165,8 @@ function applyTemplate(key) {
   let body = tpl.body;
   if (emailRecipients.length === 1) {
     const r = emailRecipients[0];
-    body = body.replace(/\{name\}/g, r.name.split(' ')[0]);
+    const greetingName = getCorrespondenceName(r);
+    body = body.replace(/\{name\}/g, greetingName);
     body = body.replace(/\{org\}/g, r.org || 'your organization');
   } else {
     body = body.replace(/\{name\}/g, '');
@@ -1172,6 +1211,15 @@ function sendEmail() {
     mailto += `${mailto.includes('?') ? '&' : '?'}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailto; closeEmailModal();
   }
+}
+
+function getCorrespondenceName(recipient) {
+  const c = contacts.find(x => x.contact_id === recipient.id);
+  if (!c) return (recipient.name || '').split(' ')[0];
+  const mode = c.correspondence_name_mode || 'first_name';
+  if (mode === 'preferred_name' && c.preferred_name) return c.preferred_name;
+  if (mode === 'full_name') return c.name || '';
+  return c.first_name || (c.name || '').split(' ')[0];
 }
 
 function emailSingleContact(contactId) {
