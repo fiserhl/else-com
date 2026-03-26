@@ -262,6 +262,18 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .group-sub-option input[type="checkbox"] { accent-color: var(--accent); }
 .group-sub-option .group-count { margin-left: auto; font-size: 9px; color: var(--gray-light); }
 .row-checkbox { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+.sms-icon-btn { background: none; border: none; font-size: 14px; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: background 0.15s; }
+.sms-icon-btn:hover { background: var(--green-bg); }
+.btn-sms { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+.btn-sms:hover { background: var(--green); color: #fff; }
+.sms-status { padding: 10px 14px; border-radius: var(--radius); font-size: 12px; margin-top: 10px; }
+.sms-status.sending { background: var(--blue-bg); color: var(--blue); }
+.sms-status.success { background: var(--green-bg); color: var(--green); }
+.sms-status.error { background: var(--red-bg); color: var(--red); }
+.sms-results { max-height: 120px; overflow-y: auto; font-size: 11px; margin-top: 6px; }
+.sms-result-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--border-light); }
+.sms-result-sent { color: var(--green); }
+.sms-result-failed { color: var(--red); }
 .select-all-bar {
   display: none; align-items: center; gap: 12px; padding: 6px 32px;
   background: var(--accent-bg); border-bottom: 1px solid var(--border);
@@ -335,6 +347,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
     <button class="btn btn-filter" id="filterToggleBtn" onclick="toggleFilterPanel()">☷ Roles</button>
     <div class="toolbar-right">
       <button class="btn btn-email" onclick="openGroupEmailSelector()">✉ Group Email</button>
+      <button class="btn btn-sms" onclick="openGroupSmsSelector()">💬 Group Text</button>
       <div class="export-dropdown">
         <button class="btn btn-export" id="exportBtn">↓ Export</button>
         <div class="export-menu" id="exportMenu">
@@ -399,6 +412,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 
   <!-- ═══════════ EMAIL COMPOSE MODAL ═══════════ -->
   <div class="modal-overlay" id="emailOverlay"></div>
+  <div class="modal-overlay" id="smsOverlay"></div>
 
 </div><!-- end appContainer -->
 
@@ -823,8 +837,9 @@ function renderList() {
       <div class="contact-tags">${tagHtml}${tierHtml ? ' ' + tierHtml : ''}</div>
       <div><span class="pipeline-badge ${pipelineClass(c.pipeline_status)}">${c.pipeline_status || 'Unassigned'}</span></div>
       <div class="contact-meta">${metaHtml}</div>
-      <div onclick="event.stopPropagation()">
+      <div onclick="event.stopPropagation()" style="display:flex;gap:2px;">
         ${hasEmail ? `<button class="email-icon-btn" onclick="emailSingleContact(${c.contact_id})" title="Email ${c.name}">✉</button>` : ''}
+        ${c.phone ? `<button class="sms-icon-btn" onclick="smsSingleContact(${c.contact_id})" title="Text ${c.name}">💬</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -998,6 +1013,7 @@ document.getElementById('filterTier').addEventListener('change', renderList);
 document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === document.getElementById('modalOverlay')) closeModal(); });
 document.getElementById('settingsOverlay').addEventListener('click', e => { if (e.target === document.getElementById('settingsOverlay')) closeSettings(); });
 document.getElementById('emailOverlay').addEventListener('click', e => { if (e.target === document.getElementById('emailOverlay')) closeEmailModal(); });
+document.getElementById('smsOverlay').addEventListener('click', e => { if (e.target === document.getElementById('smsOverlay')) closeSmsModal(); });
 
 // ═══════════════════════════════════════════════════════════════
 // ✉ EMAIL FEATURE
@@ -1276,6 +1292,307 @@ function composeGroupEmail() {
     return checks.some(Boolean);
   });
   openEmailModal(matched.map(c => ({ id: c.contact_id, name: c.name, email: c.email, org: c.organization })));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 💬 SMS / TEXT MESSAGING FEATURE (Twilio via Supabase Edge Function)
+// ═══════════════════════════════════════════════════════════════
+let smsRecipients = [];
+
+const SMS_TEMPLATES = {
+  quick_intro: {
+    body: `Hi {name}, this is [Your Name] from the Else School of Management at Millsaps College. I wanted to reach out and introduce myself. Would you have a few minutes to connect this week?`
+  },
+  followup: {
+    body: `Hi {name}, just following up on our recent conversation. Looking forward to connecting again soon. - [Your Name], Else School of Management`
+  },
+  event_reminder: {
+    body: `Hi {name}, this is a reminder about our upcoming Else School event: [Event Name] on [Date] at [Location]. We hope to see you there! - Else School of Management`
+  },
+  meeting_confirm: {
+    body: `Hi {name}, confirming our meeting on [Date] at [Time]. Please let me know if anything changes. Looking forward to it! - [Your Name], Else School`
+  },
+  custom: {
+    body: ``
+  }
+};
+
+function openSmsModal(recipients) {
+  smsRecipients = recipients.filter(r => r.phone && r.phone.trim());
+  const noPhone = recipients.filter(r => !r.phone || !r.phone.trim());
+
+  let recipientHtml = smsRecipients.map((r, i) => `
+    <span class="recipient-chip">
+      <strong>${r.name}</strong> ${r.phone}
+      <span class="remove-recipient" onclick="removeSmsRecipient(${i})" title="Remove">×</span>
+    </span>
+  `).join('');
+
+  if (noPhone.length > 0) {
+    recipientHtml += noPhone.map(r => `
+      <span class="recipient-chip no-email" title="No phone on file">
+        ${r.name} — no phone
+      </span>
+    `).join('');
+  }
+
+  if (smsRecipients.length === 0 && noPhone.length === 0) {
+    recipientHtml = '<em style="color:var(--text-muted);">No recipients selected</em>';
+  }
+
+  const countText = smsRecipients.length === 1 ? '1 recipient' : `${smsRecipients.length} recipients`;
+
+  const html = `
+    <div class="modal email-modal">
+      <h2>
+        <span>💬 Compose Text Message</span>
+        <span class="email-count" id="smsRecipientCount">${countText}</span>
+      </h2>
+      <div id="smsRecipientList" class="recipient-list">${recipientHtml}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">
+        <span class="template-pill" onclick="applySmsTemplate('quick_intro', this)">Quick Intro</span>
+        <span class="template-pill" onclick="applySmsTemplate('followup', this)">Follow-up</span>
+        <span class="template-pill" onclick="applySmsTemplate('event_reminder', this)">Event Reminder</span>
+        <span class="template-pill" onclick="applySmsTemplate('meeting_confirm', this)">Meeting Confirm</span>
+        <span class="template-pill" onclick="applySmsTemplate('custom', this)">Custom</span>
+      </div>
+      <div class="email-compose-field">
+        <label>Message</label>
+        <textarea id="smsBody" style="min-height:100px;" placeholder="Type your message..." maxlength="1600"></textarea>
+      </div>
+      <div style="text-align:right;font-size:11px;color:var(--text-muted);margin-top:2px;">
+        <span id="smsCharCount">0</span> / 1600 characters
+        · <span id="smsSegmentCount">0</span> segment(s)
+      </div>
+      <div id="smsStatusArea"></div>
+      <div class="send-actions">
+        <div class="hint">Messages sent via Twilio from your Else School number. Use {name} to personalize.</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" onclick="closeSmsModal()">Cancel</button>
+          <button class="btn btn-sms" id="smsSendBtn" onclick="sendSmsMessages()">💬 Send Text${smsRecipients.length > 1 ? 's' : ''}</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('smsOverlay').innerHTML = html;
+  document.getElementById('smsOverlay').classList.add('open');
+
+  // Character counter
+  document.getElementById('smsBody').addEventListener('input', updateSmsCharCount);
+
+  // Apply intro template for single, custom for group
+  if (smsRecipients.length === 1) {
+    applySmsTemplate('quick_intro');
+  }
+}
+
+function closeSmsModal() {
+  document.getElementById('smsOverlay').classList.remove('open');
+}
+
+function removeSmsRecipient(index) {
+  smsRecipients.splice(index, 1);
+  const container = document.getElementById('smsRecipientList');
+  if (container) {
+    container.innerHTML = smsRecipients.map((r, i) => `
+      <span class="recipient-chip">
+        <strong>${r.name}</strong> ${r.phone}
+        <span class="remove-recipient" onclick="removeSmsRecipient(${i})" title="Remove">×</span>
+      </span>
+    `).join('') || '<em style="color:var(--text-muted);">No recipients</em>';
+  }
+  const countEl = document.getElementById('smsRecipientCount');
+  if (countEl) countEl.textContent = smsRecipients.length === 1 ? '1 recipient' : `${smsRecipients.length} recipients`;
+}
+
+function applySmsTemplate(key, el) {
+  const tmpl = SMS_TEMPLATES[key];
+  if (!tmpl) return;
+  document.querySelectorAll('#smsOverlay .template-pill').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  let body = tmpl.body;
+  if (smsRecipients.length === 1) {
+    const r = smsRecipients[0];
+    body = body.replace(/\{name\}/g, r.name || '');
+  }
+  const bodyEl = document.getElementById('smsBody');
+  if (bodyEl) { bodyEl.value = body; updateSmsCharCount(); }
+}
+
+function updateSmsCharCount() {
+  const body = document.getElementById('smsBody');
+  if (!body) return;
+  const len = body.value.length;
+  const charEl = document.getElementById('smsCharCount');
+  const segEl = document.getElementById('smsSegmentCount');
+  if (charEl) charEl.textContent = len;
+  if (segEl) segEl.textContent = Math.max(1, Math.ceil(len / 160));
+}
+
+async function sendSmsMessages() {
+  if (smsRecipients.length === 0) { alert('No recipients with phone numbers.'); return; }
+  const body = document.getElementById('smsBody').value.trim();
+  if (!body) { alert('Please enter a message.'); return; }
+
+  const btn = document.getElementById('smsSendBtn');
+  const statusArea = document.getElementById('smsStatusArea');
+  btn.disabled = true;
+  btn.textContent = '⏳ Sending...';
+  statusArea.innerHTML = `<div class="sms-status sending">Sending ${smsRecipients.length} message${smsRecipients.length > 1 ? 's' : ''}...</div>`;
+
+  try {
+    const response = await fetch(SUPABASE_URL + '/functions/v1/send-sms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        recipients: smsRecipients.map(r => ({ phone: r.phone, name: r.name })),
+        message: body
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      statusArea.innerHTML = `<div class="sms-status error">Error: ${data.error || 'Failed to send'}</div>`;
+      btn.disabled = false;
+      btn.textContent = '💬 Retry';
+      return;
+    }
+
+    let resultsHtml = '';
+    if (data.results && data.results.length > 0) {
+      resultsHtml = `<div class="sms-results">` +
+        data.results.map(r => `<div class="sms-result-row">
+          <span>${r.name || r.phone}</span>
+          <span class="${r.status === 'sent' ? 'sms-result-sent' : 'sms-result-failed'}">${r.status === 'sent' ? '✓ Sent' : '✗ ' + (r.error || 'Failed')}</span>
+        </div>`).join('') + `</div>`;
+    }
+
+    statusArea.innerHTML = `<div class="sms-status success">✓ ${data.sent} sent${data.failed > 0 ? `, ${data.failed} failed` : ''}</div>${resultsHtml}`;
+    btn.textContent = '✓ Done';
+    setTimeout(() => { btn.disabled = false; btn.textContent = '💬 Send Again'; }, 3000);
+
+  } catch (err) {
+    statusArea.innerHTML = `<div class="sms-status error">Network error: ${err.message}. Make sure the send-sms Edge Function is deployed.</div>`;
+    btn.disabled = false;
+    btn.textContent = '💬 Retry';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SMS: SINGLE CONTACT (from row button)
+// ═══════════════════════════════════════════════════════════════
+function smsSingleContact(contactId) {
+  const c = contacts.find(x => x.contact_id === contactId);
+  if (!c) return;
+  openSmsModal([{ id: c.contact_id, name: c.name, phone: c.phone, org: c.organization }]);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SMS: GROUP SELECTOR (mirrors email group selector)
+// ═══════════════════════════════════════════════════════════════
+function openGroupSmsSelector() {
+  const statusCounts = {};
+  const tierCounts = {};
+  contacts.forEach(c => {
+    statusCounts[c.pipeline_status || 'Unassigned'] = (statusCounts[c.pipeline_status || 'Unassigned'] || 0) + 1;
+    if (c.mailing_tier) tierCounts[c.mailing_tier] = (tierCounts[c.mailing_tier] || 0) + 1;
+  });
+
+  let html = `<div class="modal email-modal" style="width:640px;">
+    <h2>💬 Group Text — Select Recipients</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Select groups to text. Contacts matching ANY selected group will be included.</p>
+    <div class="group-email-panel"><h3>By Role / Relationship</h3><div class="group-grid">`;
+
+  ROLES.forEach(r => {
+    const count = contacts.filter(c => contactHasParentRole(c, r.key)).length;
+    const hasSubs = r.children && r.children.length > 0;
+    html += `<label class="group-option"><input type="checkbox" value="${r.key}" class="group-sms-role-cb"><span>${r.label}</span><span class="group-count">${count}</span></label>`;
+    if (hasSubs) {
+      html += `<div class="group-sub-options">`;
+      r.children.forEach(ch => {
+        const subKey = r.key + ':' + ch.key;
+        const subCount = contacts.filter(c => (c.roles || []).includes(subKey)).length;
+        html += `<label class="group-sub-option"><input type="checkbox" value="${subKey}" class="group-sms-role-cb"><span>${ch.label}</span><span class="group-count">${subCount}</span></label>`;
+      });
+      html += `</div>`;
+    }
+  });
+
+  html += `</div></div>
+    <div class="group-email-panel" style="margin-top:10px;"><h3>By Mailing Tier</h3><div class="group-grid">`;
+  ['1','2','3','4','5'].forEach(t => {
+    const count = tierCounts[t] || 0;
+    html += `<label class="group-option"><input type="checkbox" value="${t}" class="group-sms-tier-cb"><span>${TIER_LABELS_FULL[t]}</span><span class="group-count">${count}</span></label>`;
+  });
+
+  html += `</div></div>
+    <div class="group-email-panel" style="margin-top:10px;"><h3>By Pipeline Status</h3><div class="group-grid">`;
+  Object.keys(statusCounts).sort().forEach(status => {
+    html += `<label class="group-option"><input type="checkbox" value="${status}" class="group-sms-status-cb"><span>${status}</span><span class="group-count">${statusCounts[status]}</span></label>`;
+  });
+
+  html += `</div></div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:12px;color:var(--text-muted);" id="groupSmsCount">0 contacts selected</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="closeSmsModal()">Cancel</button>
+        <button class="btn btn-sms" onclick="composeGroupSms()">Compose Text →</button>
+      </div>
+    </div></div>`;
+
+  document.getElementById('smsOverlay').innerHTML = html;
+  document.getElementById('smsOverlay').classList.add('open');
+  document.querySelectorAll('.group-sms-role-cb, .group-sms-status-cb, .group-sms-tier-cb').forEach(cb => cb.addEventListener('change', updateGroupSmsCount));
+}
+
+function updateGroupSmsCount() {
+  const selectedRoles = [...document.querySelectorAll('.group-sms-role-cb:checked')].map(cb => cb.value);
+  const selectedStatuses = [...document.querySelectorAll('.group-sms-status-cb:checked')].map(cb => cb.value);
+  const selectedTiers = [...document.querySelectorAll('.group-sms-tier-cb:checked')].map(cb => cb.value);
+  const matched = contacts.filter(c => {
+    if (selectedRoles.length === 0 && selectedStatuses.length === 0 && selectedTiers.length === 0) return false;
+    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => {
+      if (r.includes(':')) return (c.roles || []).includes(r);
+      return contactHasParentRole(c, r);
+    });
+    const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
+    const matchTier = selectedTiers.length === 0 || selectedTiers.includes(c.mailing_tier);
+    const checks = [];
+    if (selectedRoles.length > 0) checks.push(matchRole);
+    if (selectedStatuses.length > 0) checks.push(matchStatus);
+    if (selectedTiers.length > 0) checks.push(matchTier);
+    return checks.some(Boolean);
+  });
+  const withPhone = matched.filter(c => c.phone && c.phone.trim());
+  const el = document.getElementById('groupSmsCount');
+  if (el) el.textContent = `${withPhone.length} with phone · ${matched.length - withPhone.length} without`;
+}
+
+function composeGroupSms() {
+  const selectedRoles = [...document.querySelectorAll('.group-sms-role-cb:checked')].map(cb => cb.value);
+  const selectedStatuses = [...document.querySelectorAll('.group-sms-status-cb:checked')].map(cb => cb.value);
+  const selectedTiers = [...document.querySelectorAll('.group-sms-tier-cb:checked')].map(cb => cb.value);
+  if (selectedRoles.length === 0 && selectedStatuses.length === 0 && selectedTiers.length === 0) { alert('Please select at least one group.'); return; }
+  const matched = contacts.filter(c => {
+    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => {
+      if (r.includes(':')) return (c.roles || []).includes(r);
+      return contactHasParentRole(c, r);
+    });
+    const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
+    const matchTier = selectedTiers.length === 0 || selectedTiers.includes(c.mailing_tier);
+    const checks = [];
+    if (selectedRoles.length > 0) checks.push(matchRole);
+    if (selectedStatuses.length > 0) checks.push(matchStatus);
+    if (selectedTiers.length > 0) checks.push(matchTier);
+    return checks.some(Boolean);
+  });
+  openSmsModal(matched.map(c => ({ id: c.contact_id, name: c.name, phone: c.phone, org: c.organization })));
 }
 </script>
 </body>
