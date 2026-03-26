@@ -465,9 +465,8 @@ function closeSettings() {
   document.getElementById('settingsOverlay').classList.remove('open');
 }
 
-function changeOwnPassword() {
+async function changeOwnPassword() {
   const currentUser = sessionStorage.getItem('else_user');
-  const users = getUsers();
   const current = document.getElementById('s_currentPass').value;
   const newP = document.getElementById('s_newPass').value;
   const confirm = document.getElementById('s_confirmPass').value;
@@ -476,9 +475,6 @@ function changeOwnPassword() {
   if (!current || !newP || !confirm) {
     msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Please fill in all fields.'; return;
   }
-  if (users[currentUser] !== current) {
-    msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Current password is incorrect.'; return;
-  }
   if (newP.length < 4) {
     msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'New password must be at least 4 characters.'; return;
   }
@@ -486,26 +482,36 @@ function changeOwnPassword() {
     msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'New passwords do not match.'; return;
   }
 
-  users[currentUser] = newP;
-  saveUsers(users);
+  // Verify current password against Supabase
+  const { data: check, error: checkErr } = await db.from('app_users').select('username').eq('username', currentUser).eq('password', current).maybeSingle();
+  if (checkErr || !check) {
+    msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Current password is incorrect.'; return;
+  }
+
+  const { error } = await db.from('app_users').update({ password: newP }).eq('username', currentUser);
+  if (error) {
+    msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Error updating password. Please try again.'; return;
+  }
   msg.style.display = 'block'; msg.style.color = 'var(--green)'; msg.textContent = '✓ Password updated successfully.';
   document.getElementById('s_currentPass').value = '';
   document.getElementById('s_newPass').value = '';
   document.getElementById('s_confirmPass').value = '';
 }
 
-function renderUserList() {
-  const users = getUsers();
+async function renderUserList() {
   const currentUser = sessionStorage.getItem('else_user');
   const container = document.getElementById('userList');
-  container.innerHTML = Object.keys(users).map(u => {
-    const isYou = u === currentUser;
-    const isElse = u === 'else';
+  container.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Loading...</p>';
+  const { data: users, error } = await db.from('app_users').select('username, role').order('username');
+  if (error || !users) { container.innerHTML = '<p style="color:var(--red);font-size:12px;">Error loading users.</p>'; return; }
+  container.innerHTML = users.map(u => {
+    const isYou = u.username === currentUser;
+    const isElse = u.username === 'else';
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg);border-radius:4px;margin-bottom:4px;font-size:13px;">
-      <div><strong>${u}</strong>${isYou ? ' <span style="color:var(--accent);font-size:10px;">(you)</span>' : ''}${isElse ? ' <span style="color:var(--text-muted);font-size:10px;">admin</span>' : ''}</div>
+      <div><strong>${u.username}</strong>${isYou ? ' <span style="color:var(--accent);font-size:10px;">(you)</span>' : ''}${isElse ? ' <span style="color:var(--text-muted);font-size:10px;">admin</span>' : ''}</div>
       <div style="display:flex;gap:6px;">
-        <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="resetUserPassword('${u}')">Reset PW</button>
-        ${!isElse ? `<button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" onclick="removeUser('${u}')">Remove</button>` : ''}
+        <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="resetUserPassword('${u.username}')">Reset PW</button>
+        ${!isElse ? `<button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" onclick="removeUser('${u.username}')">Remove</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -532,10 +538,10 @@ async function addUser() {
   const password = document.getElementById('s_newUserPass').value;
   if (!username || !password) { alert('Please enter both a username and password.'); return; }
   if (password.length < 4) { alert('Password must be at least 4 characters.'); return; }
-  const users = getUsers();
-  if (users[username]) { alert(`User "${username}" already exists.`); return; }
-  users[username] = password;
-  saveUsers(users);
+  const { data: existing } = await db.from('app_users').select('username').eq('username', username).maybeSingle();
+  if (existing) { alert(`User "${username}" already exists.`); return; }
+  const { error } = await db.from('app_users').insert({ username, password, role: 'user' });
+  if (error) { alert('Error adding user. Please try again.'); return; }
   document.getElementById('s_newUser').value = '';
   document.getElementById('s_newUserPass').value = '';
   renderUserList();
@@ -570,6 +576,11 @@ const ROLES = [
   { key: 'advisory', label: 'Else Advisory Board', tagClass: 'tag-advisory' },
   { key: 'else_alum', label: 'Else Alum', tagClass: 'tag-else-alum',
     children: [
+      { key: 'mba',       label: 'MBA' },
+      { key: 'mbaa',      label: 'MBAA' },
+      { key: 'macc',      label: 'MACC' },
+      { key: 'macca',     label: 'MACCA' },
+      { key: 'data_cert', label: 'Data Analytics Certificate' },
       { key: 'econ',      label: 'Economics' },
       { key: 'acct',      label: 'Accounting' },
       { key: 'bus_admin', label: 'Business Administration' }
