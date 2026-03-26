@@ -3,92 +3,110 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Else School</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<title>Else School — Contact Database</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --sans: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
-  --serif: 'Playfair Display', Georgia, serif;
-  --bg: #f7f6f3;
+  /* Millsaps Official Brand */
+  --purple: #21145f;
+  --purple-light: #3a2d7a;
+  --purple-soft: #e8e5f3;
+  --purple-wash: #f4f3f9;
+  --gray: #75787b;
+  --gray-light: #b0b2b5;
+  --bg: #f8f8fa;
   --surface: #ffffff;
-  --border: #d8d5cf;
-  --border-light: #ebe9e4;
-  --text: #1a1a1a;
-  --text-secondary: #4a4a4a;
-  --text-muted: #8a8a8a;
-  --purple: #3b1f6e;
-  --accent: #4a2882;
-  --accent-bg: #ede8f5;
-  --blue: #1a5fb4;
-  --blue-bg: #dde8f8;
-  --green: #1b7a3d;
-  --green-bg: #d8f0e0;
-  --orange: #b45309;
-  --orange-bg: #fef0d0;
-  --red: #c0392b;
-  --red-bg: #fde8e8;
-  --teal: #0e7490;
-  --teal-bg: #d0f0f8;
-  --gray: #6b6b6b;
-  --gray-light: #b0b0b0;
+  --surface-alt: #fafafc;
+  --border: #e5e5ea;
+  --border-light: #eeeef2;
+  --text: #2c2a29;
+  --text-secondary: #5a585a;
+  --text-muted: #8a888c;
+  --accent: #21145f;
+  --accent-light: #3a2d7a;
+  --accent-bg: #e8e5f3;
+  --green: #1a7a4c;
+  --green-bg: #e6f4ed;
+  --blue: #1d5a9e;
+  --blue-bg: #e5eef8;
+  --orange: #b85c14;
+  --orange-bg: #fef3e8;
+  --red: #b82030;
+  --red-bg: #fce8ea;
+  --teal: #1a6b5a;
+  --teal-bg: #e5f3f0;
+  --shadow-sm: 0 1px 4px rgba(33,20,95,0.06);
+  --shadow-md: 0 4px 16px rgba(33,20,95,0.08);
+  --shadow-lg: 0 8px 32px rgba(33,20,95,0.12);
   --radius: 6px;
-  --radius-lg: 12px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+  --radius-lg: 10px;
+  --serif: 'EB Garamond', Georgia, serif;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: var(--sans); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; font-size: 13px; }
 
-/* ─── Toolbar ─── */
-.toolbar { background: var(--surface); border-bottom: 1px solid var(--border-light); padding: 16px 32px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-sm); }
-.toolbar .brand { font-family: var(--serif); font-size: 18px; font-weight: 500; color: var(--purple); white-space: nowrap; }
-.toolbar .brand small { font-family: var(--sans); font-size: 10px; font-weight: 400; color: var(--gray); display: block; letter-spacing: 0.5px; text-transform: uppercase; }
-.search-box { flex: 1; min-width: 200px; max-width: 400px; position: relative; }
-.search-box input { width: 100%; padding: 7px 12px 7px 32px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); outline: none; background: var(--bg); transition: border 0.2s; }
-.search-box input:focus { border-color: var(--accent); }
-.search-box::before { content: '⌕'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--gray-light); font-size: 14px; }
-.filter-bar { display: flex; gap: 8px; align-items: center; }
-.filter-bar select { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; font-family: var(--sans); background: var(--surface); color: var(--text-secondary); cursor: pointer; outline: none; }
-.btn { padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; background: var(--surface); color: var(--text-secondary); transition: all 0.15s; white-space: nowrap; }
-.btn:hover { border-color: var(--accent); color: var(--accent); }
+.header { background: var(--purple); padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+.header-left { display: flex; align-items: center; gap: 14px; }
+.header h1 { font-family: var(--serif); font-size: 21px; font-weight: 500; color: #fff; letter-spacing: 0.2px; }
+.header h1 span { opacity: 0.7; font-style: italic; font-size: 16px; font-weight: 400; }
+.header-badge { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--purple); background: rgba(255,255,255,0.92); padding: 3px 10px; border-radius: 3px; }
+
+.tabs { display: flex; gap: 0; background: var(--accent-light); padding: 0 32px; }
+.tab { padding: 8px 20px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.55); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; font-family: var(--sans); letter-spacing: 0.3px; }
+.tab:hover { color: rgba(255,255,255,0.8); }
+.tab.active { color: #fff; border-bottom-color: #fff; background: rgba(255,255,255,0.08); }
+
+.stats-row { display: flex; gap: 1px; background: var(--border); margin: 0; }
+.stat-card { background: var(--surface); padding: 14px 24px; flex: 1; text-align: center; }
+.stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 2px; }
+.stat-value { font-family: var(--serif); font-size: 28px; font-weight: 500; color: var(--accent); }
+.stat-card.warn .stat-value { color: var(--red); }
+
+.toolbar { padding: 14px 32px; display: flex; align-items: center; gap: 10px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.search-box { flex: 1; min-width: 200px; max-width: 340px; position: relative; }
+.search-box input { width: 100%; padding: 7px 12px 7px 32px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); background: var(--bg); color: var(--text); outline: none; transition: all 0.2s; }
+.search-box input:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px rgba(33,20,95,0.08); }
+.search-box::before { content: '⌕'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 16px; }
+
+select { padding: 7px 26px 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; font-family: var(--sans); background: var(--bg); color: var(--text); cursor: pointer; outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2375787b' d='M2.5 3.5l2.5 3 2.5-3'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; transition: all 0.2s; }
+select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,0.08); }
+
+.toolbar-right { display: flex; gap: 8px; margin-left: auto; }
+.btn { padding: 7px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.btn:hover { background: var(--surface-alt); }
 .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-.btn-primary:hover { background: var(--purple); }
-.btn-danger { background: #fff; color: var(--red); border-color: var(--red); }
-.btn-danger:hover { background: var(--red); color: #fff; }
-.btn-email { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
-.btn-email:hover { background: var(--accent); color: #fff; }
-.toolbar-right { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+.btn-primary:hover { background: var(--accent-light); }
+.btn-export { background: var(--green); color: #fff; border-color: var(--green); }
+.btn-export:hover { opacity: 0.9; }
+.btn-danger { background: none; color: var(--red); border-color: var(--red); }
+.btn-danger:hover { background: var(--red-bg); }
+.count-label { font-size: 12px; color: var(--text-muted); padding: 8px 0; font-weight: 500; }
 
-/* ─── Export dropdown ─── */
-.export-dropdown { position: relative; }
-.export-menu { display: none; position: absolute; top: calc(100% + 4px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); z-index: 50; min-width: 200px; }
-.export-menu.open { display: block; }
-.export-option { display: block; width: 100%; text-align: left; padding: 8px 14px; font-size: 12px; font-family: var(--sans); background: none; border: none; cursor: pointer; color: var(--text-secondary); }
-.export-option:hover { background: var(--accent-bg); color: var(--accent); }
-.export-option small { color: var(--text-muted); }
-
-/* ─── Role filter chips ─── */
-.filter-group { padding: 0 32px; display: none; flex-wrap: wrap; gap: 6px; padding-top: 10px; padding-bottom: 10px; background: var(--surface); border-bottom: 1px solid var(--border-light); }
-.filter-group.open { display: flex; }
-.filter-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; cursor: pointer; background: var(--bg); border: 1px solid var(--border); color: var(--text-secondary); transition: all 0.15s; user-select: none; }
-.filter-chip:hover { border-color: var(--accent); }
+/* ─── Collapsible Filter Panel ─── */
+.filter-group { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; background: var(--surface); border-bottom: 0 solid var(--border); padding: 0; }
+.filter-group.open { max-height: 500px; border-bottom-width: 1px; padding: 14px 32px 16px; }
+.filter-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray); width: 100%; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.filter-group-label .clear-link { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--accent); cursor: pointer; font-size: 11px; }
+.filter-group-label .clear-link:hover { text-decoration: underline; }
+.btn-filter { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-bg); }
+.btn-filter:hover { background: #d8d4e8; }
+.btn-filter.has-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-chip { padding: 4px 11px; border-radius: 4px; font-size: 11px; font-weight: 500; border: 1px solid var(--border); background: var(--bg); color: var(--text-secondary); cursor: pointer; transition: all 0.12s; user-select: none; }
+.filter-chip:hover { border-color: var(--accent); color: var(--accent); }
 .filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.filter-chip .chip-count { font-size: 9px; opacity: 0.7; }
-.filter-chip-wrap { display: inline-flex; align-items: center; gap: 2px; }
-.expand-btn { background: none; border: none; font-size: 10px; cursor: pointer; color: var(--text-muted); padding: 2px 4px; }
-.sub-chips { display: none; padding: 0 32px 8px; flex-wrap: wrap; gap: 4px; background: var(--surface); }
+.filter-chip .chip-count { font-size: 9px; opacity: 0.6; margin-left: 3px; }
+.filter-chip.sub { font-size: 10px; padding: 3px 9px; border-style: dashed; margin-left: 14px; }
+.filter-chip.sub.active { border-style: solid; }
+.sub-chips { display: none; gap: 4px; flex-wrap: wrap; padding: 4px 0 2px 4px; }
 .sub-chips.open { display: flex; }
-.filter-chip.sub { font-size: 10px; padding: 2px 8px; background: var(--surface); border-style: dashed; }
-.filter-chip.sub.active { background: var(--accent-bg); color: var(--accent); border-style: solid; }
-.filter-toggle-btn { font-size: 11px; }
-.filter-toggle-btn.has-active { color: var(--accent); border-color: var(--accent); }
+.expand-btn { font-size: 9px; padding: 3px 6px; border-radius: 3px; border: 1px solid var(--border); background: var(--surface); color: var(--gray); cursor: pointer; font-family: var(--sans); line-height: 1; }
+.expand-btn:hover { color: var(--accent); border-color: var(--accent); }
 
-/* ─── Contact rows ─── */
+/* ─── Contact List ─── */
 .contact-list { padding: 0 32px 32px; }
-.contact-row { display: grid; grid-template-columns: 30px 200px 160px 1fr 130px 120px 30px; gap: 12px; align-items: center; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius); margin-bottom: 4px; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; }
-.contact-row:hover { box-shadow: var(--shadow-sm); border-color: var(--border); }
+.contact-row { display: grid; grid-template-columns: 28px 200px 1fr 180px 120px 110px 60px; align-items: center; gap: 14px; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius); margin-bottom: 3px; cursor: pointer; transition: all 0.12s; }
+.contact-row:hover { border-color: var(--border); box-shadow: var(--shadow-sm); }
 .contact-name { font-weight: 600; font-size: 13px; color: var(--text); }
 .contact-org { font-size: 11px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
 .contact-title-cell { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -127,69 +145,122 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); font
 .contact-meta .overdue { color: var(--red); font-weight: 700; }
 
 /* ─── Modal ─── */
-.modal-overlay { position: fixed; inset: 0; background: rgba(33,20,95,0.35); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
-.modal-overlay.open { opacity: 1; pointer-events: auto; }
-.modal { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 640px; max-width: 95vw; max-height: 90vh; overflow-y: auto; padding: 28px 32px; }
-.modal h2 { font-family: var(--serif); font-size: 20px; font-weight: 500; color: var(--accent); margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
-.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(33,20,95,0.35); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s; backdrop-filter: blur(2px); }
+.modal-overlay.open { opacity: 1; visibility: visible; }
+.modal { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 720px; max-width: 95vw; max-height: 90vh; overflow-y: auto; padding: 28px; }
+.modal h2 { font-family: var(--serif); font-size: 22px; font-weight: 500; margin-bottom: 20px; color: var(--accent); }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .modal-grid .full-width { grid-column: 1 / -1; }
-.form-group { display: flex; flex-direction: column; gap: 3px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
 .form-group label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); }
-.form-group input, .form-group select, .form-group textarea { padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); outline: none; }
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
-.modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-light); }
-.left-actions { display: flex; gap: 8px; }
+.form-group input, .form-group select, .form-group textarea { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: var(--sans); color: var(--text); outline: none; transition: all 0.15s; }
+.form-group input:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,0.06); }
 
-/* ─── Role checkboxes in modal ─── */
-.role-section { margin-bottom: 8px; }
-.role-section-header { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; padding: 4px 0; }
-.role-section-header input[type="checkbox"] { accent-color: var(--accent); }
-.role-sub-toggle { font-size: 10px; color: var(--text-muted); cursor: pointer; margin-left: auto; background: none; border: none; font-family: var(--sans); }
-.role-sub-list { padding-left: 24px; display: none; }
-.role-sub-list.open { display: block; }
-.role-sub-list label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); padding: 2px 0; cursor: pointer; }
-.role-sub-list label input[type="checkbox"] { accent-color: var(--accent); }
+/* Hierarchical checkbox layout */
+.role-section { margin-bottom: 6px; }
+.role-section:last-child { margin-bottom: 0; }
+.role-section-header { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--text); cursor: pointer; padding: 5px 6px; border-radius: 4px; transition: background 0.1s; }
+.role-section-header:hover { background: var(--surface-alt); }
+.role-section-header input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; flex-shrink: 0; }
+.role-section-header .toggle-arrow { font-size: 8px; color: var(--gray-light); margin-left: auto; transition: transform 0.2s; padding: 2px 4px; }
+.role-section-header .toggle-arrow.expanded { transform: rotate(90deg); }
+.sub-options { padding-left: 28px; display: none; }
+.sub-options.open { display: block; }
+.sub-option { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer; padding: 3px 6px; border-radius: 3px; transition: background 0.1s; }
+.sub-option:hover { background: var(--surface-alt); }
+.sub-option input[type="checkbox"] { accent-color: var(--accent-light); width: 13px; height: 13px; flex-shrink: 0; }
+.modal-actions { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-light); }
+.modal-actions .left-actions { display: flex; gap: 8px; }
 
-/* ─── Email modal ─── */
-.email-modal { width: 640px; }
-.email-modal h2 { font-size: 18px; }
-.email-count { font-size: 12px; font-weight: 400; color: var(--text-muted); }
-.email-method-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
-.email-method-tab { padding: 5px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 11px; font-weight: 500; cursor: pointer; background: var(--bg); color: var(--text-muted); transition: all 0.15s; }
-.email-method-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.recipient-list { max-height: 100px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; padding: 8px; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border-light); }
-.recipient-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; font-size: 11px; color: var(--text-secondary); }
-.recipient-chip strong { color: var(--text); font-weight: 600; }
-.recipient-chip.no-email { background: var(--red-bg); border-color: transparent; color: var(--red); font-style: italic; }
-.remove-recipient { cursor: pointer; color: var(--red); font-weight: 700; font-size: 14px; line-height: 1; }
-.template-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
-.template-pill { padding: 3px 10px; border: 1px solid var(--border); border-radius: 12px; font-size: 10px; font-weight: 500; cursor: pointer; background: var(--bg); color: var(--text-muted); transition: all 0.15s; }
-.template-pill:hover { border-color: var(--accent); color: var(--accent); }
-.template-pill.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
-.email-field { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); outline: none; margin-bottom: 8px; }
-.email-field:focus { border-color: var(--accent); }
-.email-body { width: 100%; min-height: 160px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--sans); outline: none; resize: vertical; line-height: 1.6; }
-.email-body:focus { border-color: var(--accent); }
-.email-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-light); }
-.bcc-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
-.bcc-toggle input[type="checkbox"] { accent-color: var(--accent); }
-.email-icon-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: background 0.15s; }
-.email-icon-btn:hover { background: var(--accent-bg); }
+/* Export */
+.export-dropdown { position: relative; }
+.export-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); z-index: 50; min-width: 200px; display: none; }
+.export-menu.open { display: block; }
+.export-option { padding: 10px 14px; font-size: 13px; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 8px; border: none; background: none; width: 100%; font-family: inherit; text-align: left; }
+.export-option:hover { background: var(--surface-alt); }
+.export-option:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.export-option:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+.export-option small { color: var(--text-muted); font-size: 11px; }
 
-/* ─── Group email selector ─── */
-.group-email-panel { background: var(--bg); border-radius: var(--radius); padding: 12px; }
-.group-email-panel h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); margin-bottom: 8px; }
-.group-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-.group-option { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); padding: 4px 8px; border-radius: var(--radius); cursor: pointer; transition: background 0.1s; }
-.group-option:hover { background: var(--surface); }
+/* ─── EMAIL FEATURE STYLES ─── */
+.btn-email { background: var(--blue); color: #fff; border-color: var(--blue); }
+.btn-email:hover { background: #1a4f8a; }
+.email-icon-btn {
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  padding: 3px 7px; cursor: pointer; font-size: 13px; color: var(--blue);
+  transition: all 0.15s; display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--sans); font-size: 10px; font-weight: 600;
+}
+.email-icon-btn:hover { background: var(--blue-bg); border-color: var(--blue); }
+.email-modal { width: 680px; }
+.email-modal h2 { display: flex; align-items: center; gap: 10px; }
+.email-modal h2 .email-count {
+  font-family: var(--sans); font-size: 12px; font-weight: 600;
+  background: var(--blue-bg); color: var(--blue); padding: 2px 10px; border-radius: 12px;
+}
+.recipient-list {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 14px; margin-bottom: 14px; max-height: 120px; overflow-y: auto;
+  font-size: 12px; line-height: 1.8;
+}
+.recipient-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--surface); border: 1px solid var(--border-light);
+  border-radius: 4px; padding: 2px 8px 2px 6px; margin: 2px 3px;
+  font-size: 11px; color: var(--text-secondary); white-space: nowrap;
+}
+.recipient-chip .remove-recipient { cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; margin-left: 2px; }
+.recipient-chip .remove-recipient:hover { color: var(--red); }
+.recipient-chip.no-email { border-color: var(--orange); color: var(--orange); border-style: dashed; opacity: 0.7; }
+.email-template-bar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.template-chip {
+  padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 500;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text-secondary);
+  cursor: pointer; transition: all 0.12s; user-select: none;
+}
+.template-chip:hover { border-color: var(--accent); color: var(--accent); }
+.template-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.email-compose-field { margin-bottom: 12px; }
+.email-compose-field label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--gray); display: block; margin-bottom: 4px;
+}
+.email-compose-field input, .email-compose-field textarea {
+  width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius); font-size: 13px; font-family: var(--sans);
+  color: var(--text); outline: none; transition: all 0.15s;
+}
+.email-compose-field input:focus, .email-compose-field textarea:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,0.06);
+}
+.email-compose-field textarea { resize: vertical; min-height: 140px; line-height: 1.6; }
+.email-method-toggle { display: flex; gap: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }
+.email-method-option {
+  flex: 1; padding: 8px 14px; font-size: 12px; font-weight: 500;
+  text-align: center; cursor: pointer; border: none;
+  background: var(--bg); color: var(--text-secondary);
+  font-family: var(--sans); transition: all 0.15s;
+  border-right: 1px solid var(--border);
+}
+.email-method-option:last-child { border-right: none; }
+.email-method-option:hover { background: var(--surface-alt); }
+.email-method-option.active { background: var(--accent); color: #fff; }
+.email-method-option small { display: block; font-size: 10px; font-weight: 400; margin-top: 2px; opacity: 0.7; }
+.send-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); }
+.send-actions .hint { font-size: 11px; color: var(--text-muted); max-width: 300px; }
+.group-email-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
+.group-email-panel h3 { font-family: var(--serif); font-size: 16px; font-weight: 500; color: var(--accent); margin-bottom: 12px; }
+.group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; }
+.group-option { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border-light); border-radius: var(--radius); cursor: pointer; transition: all 0.12s; font-size: 12px; }
+.group-option:hover { border-color: var(--accent); background: var(--purple-wash); }
+.group-option.selected { border-color: var(--accent); background: var(--accent-bg); }
 .group-option input[type="checkbox"] { accent-color: var(--accent); }
-.group-option .group-count { margin-left: auto; font-size: 10px; color: var(--text-muted); background: var(--surface); padding: 1px 6px; border-radius: 3px; }
+.group-option .group-count { margin-left: auto; font-size: 10px; color: var(--text-muted); background: var(--bg); padding: 1px 6px; border-radius: 3px; }
 .group-sub-options { padding-left: 24px; grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
 .group-sub-option { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); padding: 2px 8px; cursor: pointer; }
 .group-sub-option:hover { color: var(--text-secondary); }
 .group-sub-option input[type="checkbox"] { accent-color: var(--accent); }
 .group-sub-option .group-count { margin-left: auto; font-size: 9px; color: var(--gray-light); }
-
 .row-checkbox { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
 .select-all-bar {
   display: none; align-items: center; gap: 12px; padding: 6px 32px;
@@ -204,8 +275,6 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); font
 }
 .footer { text-align: center; padding: 24px 32px; font-size: 11px; color: var(--gray-light); letter-spacing: 0.3px; }
 .footer strong { color: var(--gray); font-weight: 600; }
-
-.count-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -227,47 +296,47 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); font
       <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);display:block;margin-bottom:4px;">Password</label>
       <input type="password" id="loginPass" placeholder="Enter password" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);outline:none;" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-    <div id="loginError" style="display:none;background:var(--red-bg);color:var(--red);font-size:12px;padding:8px 12px;border-radius:var(--radius);margin-bottom:14px;">Invalid username or password.</div>
-    <button onclick="doLogin()" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;">Sign In</button>
-    <p style="font-size:10px;color:var(--gray-light);margin-top:16px;">Millsaps College · Jackson, Mississippi</p>
+    <button onclick="doLogin()" style="width:100%;padding:10px;background:var(--purple);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;letter-spacing:0.3px;">Sign In</button>
+    <p id="loginError" style="color:var(--red);font-size:12px;margin-top:12px;display:none;">Invalid username or password</p>
   </div>
 </div>
 
 <!-- ═══════════ MAIN APP ═══════════ -->
 <div id="appContainer" style="display:none;">
-
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <div class="brand">Else School<small>Corporate &amp; Contact Database</small></div>
-    <div class="search-box"><input type="text" id="searchInput" placeholder="Search contacts..."></div>
-    <div class="filter-bar">
-      <select id="filterStatus">
-        <option value="all">All Statuses</option>
-        <option value="Prospective">Prospective</option><option value="In-Development">In-Development</option>
-        <option value="Active Pipeline">Active Pipeline</option><option value="Closed Won">Closed Won</option>
-        <option value="Closed Lost">Closed Lost</option><option value="Low ROI">Low ROI</option>
-        <option value="Dormant">Dormant</option><option value="Unassigned">Unassigned</option>
-      </select>
-      <select id="filterTeam">
-        <option value="all">All Team</option>
-        <option value="none">Unassigned</option>
-        <option value="Fiser">Fiser, Harvey</option><option value="Pickering">Pickering, Steve</option>
-        <option value="McCaa">McCaa, Meg</option><option value="Freeman">Freeman, Naomi</option>
-        <option value="Fender">Fender, Peyton</option>
-      </select>
-      <select id="filterTier">
-        <option value="all">All Tiers</option>
-        <option value="none">No Tier</option>
-        <option value="1">T1 · Inner Circle</option><option value="2">T2 · Engaged</option>
-        <option value="3">T3 · Exec Ed Mktg</option><option value="4">T4 · Informed</option>
-        <option value="5">T5 · Minimal</option>
-      </select>
-      <button class="btn filter-toggle-btn" id="filterToggleBtn" onclick="document.getElementById('roleFilters').classList.toggle('open')">☷ Roles</button>
+  <div class="header">
+    <div class="header-left">
+      <h1>Else School of Management <span>— Contact Database</span></h1>
     </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="header-badge">Millsaps College</span>
+      <button onclick="openSettings()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:16px;padding:4px;" title="Settings">⚙</button>
+      <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;cursor:pointer;font-size:11px;font-family:var(--sans);padding:4px 10px;border-radius:4px;font-weight:500;">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="contacts">Contacts</button>
+    <button class="tab" data-tab="tasks">Tasks</button>
+    <button class="tab" data-tab="campaigns">Campaigns</button>
+    <button class="tab" data-tab="mailings">Mailings</button>
+    <button class="tab" data-tab="compliance">Compliance</button>
+    <button class="tab" data-tab="audit">Audit Log</button>
+  </div>
+
+  <div class="stats-row" id="statsRow"></div>
+
+  <div class="toolbar">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search by name, org, title, email...">
+    </div>
+    <select id="filterStatus"><option value="all">All statuses</option></select>
+    <select id="filterTeam"><option value="all">Assigned to…</option></select>
+    <select id="filterTier"><option value="all">All mailing tiers</option></select>
+    <button class="btn btn-filter" id="filterToggleBtn" onclick="toggleFilterPanel()">☷ Roles</button>
     <div class="toolbar-right">
       <button class="btn btn-email" onclick="openGroupEmailSelector()">✉ Group Email</button>
       <div class="export-dropdown">
-        <button class="btn" id="exportBtn">↓ Export</button>
+        <button class="btn btn-export" id="exportBtn">↓ Export</button>
         <div class="export-menu" id="exportMenu">
           <button class="export-option" onclick="exportCSV()">📄 CSV <small>— universal</small></button>
           <button class="export-option" onclick="exportExcel()">📊 Excel (.xlsx) <small>— formatted</small></button>
@@ -275,8 +344,6 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); font
         </div>
       </div>
       <button class="btn btn-primary" onclick="openModal()">+ Add Contact</button>
-      <button class="btn" onclick="openSettings()" title="Settings">⚙</button>
-      <button class="btn" onclick="doLogout()" title="Sign out">↗ Sign Out</button>
     </div>
   </div>
 
@@ -295,66 +362,9 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); font
     <span class="count-label" id="countLabel"></span>
   </div>
 
-  <div class="contact-list" id="contactList"><div style="text-align:center;padding:60px;color:var(--text-muted);">Loading pipeline data...</div></div>
+  <div class="contact-list" id="contactList"></div>
 
   <div class="footer"><strong>Else School of Management</strong> — Corporate Outreach &amp; Contact Database — Millsaps College, Jackson MS</div>
-
-  <!-- ═══════════ ADD/EDIT CONTACT MODAL ═══════════ -->
-  <div class="modal-overlay" id="modalOverlay">
-    <div class="modal">
-      <h2 id="modalTitle">Add Contact</h2>
-      <div class="modal-grid">
-        <div class="form-group"><label>Name *</label><input type="text" id="f_name" placeholder="Full name"></div>
-        <div class="form-group"><label>Organization</label><input type="text" id="f_org" placeholder="Company / Org"></div>
-        <div class="form-group"><label>Title</label><input type="text" id="f_title" placeholder="Job title"></div>
-        <div class="form-group"><label>Email</label><input type="email" id="f_email" placeholder="email@example.com"></div>
-        <div class="form-group"><label>Phone</label><input type="text" id="f_phone" placeholder="(601) 555-0000"></div>
-        <div class="form-group"><label>LinkedIn</label><input type="text" id="f_linkedin" placeholder="linkedin.com/in/..."></div>
-        <div class="form-group"><label>Pipeline Status</label>
-          <select id="f_pipeline">
-            <option value="Prospective">Prospective</option><option value="In-Development">In-Development</option>
-            <option value="Active Pipeline">Active Pipeline</option>
-            <option value="Closed Won">Closed Won</option><option value="Closed Lost">Closed Lost</option>
-            <option value="Low ROI">Low ROI</option><option value="Dormant">Dormant</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Assigned To</label>
-          <select id="f_assigned">
-            <option value="">Unassigned</option>
-            <option value="Fiser, Harvey">Fiser, Harvey</option><option value="Pickering, Steve">Pickering, Steve</option>
-            <option value="McCaa, Meg">McCaa, Meg</option><option value="Freeman, Naomi">Freeman, Naomi</option>
-            <option value="Fender, Peyton">Fender, Peyton</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Mailing Tier</label>
-          <select id="f_tier">
-            <option value="">No tier assigned</option>
-            <option value="1">Tier 1 — Inner Circle</option><option value="2">Tier 2 — Engaged Network</option>
-            <option value="3">Tier 3 — Exec Ed Marketing</option><option value="4">Tier 4 — Informed</option>
-            <option value="5">Tier 5 — Minimal / Do Not Contact</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Last Contact Date</label><input type="date" id="f_lastContact"></div>
-        <div class="form-group"><label>Follow-up Date</label><input type="date" id="f_followUp"></div>
-        <div class="form-group"><label>Address / City, State, Zip</label><input type="text" id="f_address" placeholder="City, State ZIP"></div>
-        <div class="form-group full-width">
-          <label>Roles &amp; Relationships</label>
-          <div style="border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--bg);max-height:260px;overflow-y:auto;" id="roleCheckboxes"></div>
-        </div>
-        <div class="form-group full-width">
-          <label>Notes</label>
-          <textarea id="f_notes" rows="2" style="resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;" placeholder="Any additional notes..."></textarea>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <div class="left-actions"><button class="btn btn-danger" id="deleteBtn" onclick="deleteContact()" style="display:none">Delete</button></div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn" onclick="closeModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="saveContact()">Save Contact</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- ═══════════ SETTINGS MODAL ═══════════ -->
   <div class="modal-overlay" id="settingsOverlay">
@@ -369,27 +379,85 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); font
           <div class="form-group"><label>Current Password</label><input type="password" id="s_currentPass" placeholder="Enter current password"></div>
           <div class="form-group"><label>New Password</label><input type="password" id="s_newPass" placeholder="Enter new password"></div>
           <div class="form-group"><label>Confirm New Password</label><input type="password" id="s_confirmPass" placeholder="Confirm new password"></div>
-          <div><button class="btn btn-primary" onclick="changePassword()">Update Password</button></div>
-          <div id="passMsg" style="display:none;font-size:12px;padding:6px 10px;border-radius:var(--radius);"></div>
+          <div><button class="btn btn-primary" onclick="changeOwnPassword()" style="width:100%;">Update Password</button><p id="passMsg" style="font-size:12px;margin-top:8px;display:none;"></p></div>
         </div>
       </div>
       <div id="adminSection" style="display:none;border-top:1px solid var(--border-light);padding-top:20px;">
-        <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:12px;">User Management <span style="font-size:10px;font-weight:400;color:var(--text-muted);">(Admin only)</span></h3>
-        <div id="userListContainer" style="margin-bottom:16px;"></div>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <input type="text" id="s_newUser" placeholder="New username" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:var(--sans);">
-          <input type="password" id="s_newUserPass" placeholder="Password" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:var(--sans);">
-          <button class="btn btn-primary" onclick="addUser()" style="font-size:11px;">Add User</button>
+        <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:12px;">Manage Users <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:11px;">(Admin only)</span></h3>
+        <div id="userList" style="margin-bottom:14px;"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+          <div class="form-group"><label>New Username</label><input type="text" id="s_newUser" placeholder="username"></div>
+          <div class="form-group"><label>Password</label><input type="text" id="s_newUserPass" placeholder="password"></div>
+          <button class="btn btn-primary" onclick="addUser()" style="margin-bottom:1px;">+ Add</button>
         </div>
       </div>
-      <div style="margin-top:20px;text-align:right;"><button class="btn" onclick="closeSettings()">Close</button></div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-light);text-align:right;">
+        <button class="btn" onclick="closeSettings()">Close</button>
+      </div>
     </div>
   </div>
 
-  <!-- ═══════════ EMAIL OVERLAY (dynamic content) ═══════════ -->
+  <!-- ═══════════ EMAIL COMPOSE MODAL ═══════════ -->
   <div class="modal-overlay" id="emailOverlay"></div>
 
-</div><!-- /appContainer -->
+</div><!-- end appContainer -->
+
+<!-- ═══════════ CONTACT MODAL ═══════════ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">Add Contact</h2>
+    <div class="modal-grid">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="f_name" placeholder="First Last"></div>
+      <div class="form-group"><label>Organization</label><input type="text" id="f_org" placeholder="Company or institution"></div>
+      <div class="form-group"><label>Title</label><input type="text" id="f_title" placeholder="Job title"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="f_email" placeholder="email@example.com"></div>
+      <div class="form-group"><label>Phone</label><input type="text" id="f_phone" placeholder="Phone number"></div>
+      <div class="form-group"><label>LinkedIn URL</label><input type="url" id="f_linkedin" placeholder="https://linkedin.com/in/..."></div>
+      <div class="form-group"><label>Pipeline Status</label>
+        <select id="f_pipeline">
+          <option value="Unassigned">Unassigned</option><option value="Prospective">Prospective</option>
+          <option value="In-Development">In-Development</option><option value="Active Pipeline">Active Pipeline</option>
+          <option value="Closed Won">Closed Won</option><option value="Closed Lost">Closed Lost</option>
+          <option value="Low ROI">Low ROI</option><option value="Dormant">Dormant</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Assigned To</label>
+        <select id="f_assigned">
+          <option value="">Unassigned</option>
+          <option value="Fiser, Harvey">Fiser, Harvey</option><option value="Pickering, Steve">Pickering, Steve</option>
+          <option value="McCaa, Meg">McCaa, Meg</option><option value="Freeman, Naomi">Freeman, Naomi</option>
+          <option value="Fender, Peyton">Fender, Peyton</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Mailing Tier</label>
+        <select id="f_tier">
+          <option value="">No tier assigned</option>
+          <option value="1">Tier 1 — Inner Circle</option><option value="2">Tier 2 — Engaged Network</option>
+          <option value="3">Tier 3 — Exec Ed Marketing</option><option value="4">Tier 4 — Informed</option>
+          <option value="5">Tier 5 — Minimal / Do Not Contact</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Last Contact Date</label><input type="date" id="f_lastContact"></div>
+      <div class="form-group"><label>Follow-up Date</label><input type="date" id="f_followUp"></div>
+      <div class="form-group"><label>Address / City, State, Zip</label><input type="text" id="f_address" placeholder="City, State ZIP"></div>
+      <div class="form-group full-width">
+        <label>Roles &amp; Relationships</label>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--bg);max-height:260px;overflow-y:auto;" id="roleCheckboxes"></div>
+      </div>
+      <div class="form-group full-width">
+        <label>Notes</label>
+        <textarea id="f_notes" rows="2" style="resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;" placeholder="Any additional notes..."></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <div class="left-actions"><button class="btn btn-danger" id="deleteBtn" onclick="deleteContact()" style="display:none">Delete</button></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveContact()">Save Contact</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -454,30 +522,34 @@ function openSettings() {
 }
 function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
 
-async function changePassword() {
+async function changeOwnPassword() {
   const currentUser = sessionStorage.getItem('else_user');
-  const cur = document.getElementById('s_currentPass').value;
-  const np = document.getElementById('s_newPass').value;
-  const cp = document.getElementById('s_confirmPass').value;
+  const current = document.getElementById('s_currentPass').value;
+  const newP = document.getElementById('s_newPass').value;
+  const confirm = document.getElementById('s_confirmPass').value;
   const msg = document.getElementById('passMsg');
-  if (!cur || !np || !cp) { msg.textContent = 'All fields required.'; msg.style.background = 'var(--red-bg)'; msg.style.color = 'var(--red)'; msg.style.display = 'block'; return; }
-  if (np !== cp) { msg.textContent = 'New passwords do not match.'; msg.style.background = 'var(--red-bg)'; msg.style.color = 'var(--red)'; msg.style.display = 'block'; return; }
-  if (np.length < 4) { msg.textContent = 'Password must be at least 4 characters.'; msg.style.background = 'var(--red-bg)'; msg.style.color = 'var(--red)'; msg.style.display = 'block'; return; }
-  const { data } = await db.from('app_users').select('username').eq('username', currentUser).eq('password', cur).maybeSingle();
-  if (!data) { msg.textContent = 'Current password is incorrect.'; msg.style.background = 'var(--red-bg)'; msg.style.color = 'var(--red)'; msg.style.display = 'block'; return; }
-  const { error } = await db.from('app_users').update({ password: np }).eq('username', currentUser);
-  if (!error) { msg.textContent = 'Password updated successfully!'; msg.style.background = 'var(--green-bg)'; msg.style.color = 'var(--green)'; msg.style.display = 'block'; } else { msg.textContent = 'Error updating password.'; msg.style.background = 'var(--red-bg)'; msg.style.color = 'var(--red)'; msg.style.display = 'block'; }
+  if (!current || !newP || !confirm) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Please fill in all fields.'; return; }
+  if (newP.length < 4) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'New password must be at least 4 characters.'; return; }
+  if (newP !== confirm) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'New passwords do not match.'; return; }
+  const { data: check } = await db.from('app_users').select('username').eq('username', currentUser).eq('password', current).maybeSingle();
+  if (!check) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Current password is incorrect.'; return; }
+  const { error } = await db.from('app_users').update({ password: newP }).eq('username', currentUser);
+  if (error) { msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Error updating password.'; return; }
+  msg.style.display = 'block'; msg.style.color = 'var(--green)'; msg.textContent = '✓ Password updated successfully.';
+  document.getElementById('s_currentPass').value = ''; document.getElementById('s_newPass').value = ''; document.getElementById('s_confirmPass').value = '';
 }
 
 async function renderUserList() {
-  const { data } = await db.from('app_users').select('username, role').order('username');
-  if (!data) return;
   const currentUser = sessionStorage.getItem('else_user');
-  document.getElementById('userListContainer').innerHTML = data.map(u => {
+  const container = document.getElementById('userList');
+  container.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Loading...</p>';
+  const { data: users, error } = await db.from('app_users').select('username, role').order('username');
+  if (error || !users) { container.innerHTML = '<p style="color:var(--red);font-size:12px;">Error loading users.</p>'; return; }
+  container.innerHTML = users.map(u => {
     const isYou = u.username === currentUser;
     const isElse = u.username === 'else';
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg);border-radius:var(--radius);margin-bottom:4px;">
-      <div style="font-size:12px;font-weight:500;color:var(--text);">${u.username} ${isYou ? '<span style="color:var(--accent);font-size:10px;">(you)</span>' : ''}${isElse ? ' <span style="color:var(--text-muted);font-size:10px;">admin</span>' : ''}</div>
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg);border-radius:4px;margin-bottom:4px;font-size:13px;">
+      <div><strong>${u.username}</strong>${isYou ? ' <span style="color:var(--accent);font-size:10px;">(you)</span>' : ''}${isElse ? ' <span style="color:var(--text-muted);font-size:10px;">admin</span>' : ''}</div>
       <div style="display:flex;gap:6px;">
         <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="resetUserPassword('${u.username}')">Reset PW</button>
         ${!isElse ? `<button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" onclick="removeUser('${u.username}')">Remove</button>` : ''}
@@ -532,10 +604,16 @@ const ROLES = [
   { key: 'advisory', label: 'Else Advisory Board', tagClass: 'tag-advisory' },
   { key: 'else_alum', label: 'Else Alum', tagClass: 'tag-else-alum',
     children: [
-      { key: 'mba', label: 'MBA' }, { key: 'mbaa', label: 'MBAA' },
-      { key: 'macc', label: 'MACC' }, { key: 'macca', label: 'MACCA' },
-      { key: 'data_cert', label: 'Data Analytics Certificate' }, { key: 'econ', label: 'Economics' },
-      { key: 'acct', label: 'Accounting' }, { key: 'bus_admin', label: 'Business Administration' }
+      { key: 'econ', label: 'Economics' },
+      { key: 'acct', label: 'Accounting' },
+      { key: 'bus_admin', label: 'Business Administration' },
+      { key: 'mba', label: 'MBA' },
+      { key: 'mbaa', label: 'MBAA' },
+      { key: 'macc', label: 'MACC' },
+      { key: 'macca', label: 'MACCA' },
+      { key: 'data_analytics', label: 'Data Analytics' },
+      { key: 'data_analytics_cert', label: 'Data Analytics Cert' },
+      { key: 'data_cert', label: 'Data Analytics Certificate' }
     ]
   },
   { key: 'millsaps_alum', label: 'Non-Else Millsaps Alum', tagClass: 'tag-millsaps' },
@@ -585,7 +663,7 @@ async function loadContacts() {
     const { data, error } = await db.from('contacts').select('*').order('name');
     if (data) {
       contacts = data;
-      window._allContacts = data;
+      window._allContacts = data; // Store for email feature
       renderAll();
     } else { console.error('Error loading contacts:', error); }
   } catch(e) { console.error('Failed to load contacts:', e); }
@@ -624,20 +702,61 @@ function getFiltered() {
 // ═══════════════════════════════════════════════════════════════
 // RENDERING
 // ═══════════════════════════════════════════════════════════════
-function renderAll() { renderRoleFilters(); renderList(); }
+function renderAll() { renderStats(); renderDropdowns(); renderRoleFilters(); renderList(); renderRoleCheckboxes(); }
+
+function renderStats() {
+  const total = contacts.length;
+  const active = contacts.filter(c => c.pipeline_status === 'Active Pipeline').length;
+  const inDev = contacts.filter(c => c.pipeline_status === 'In-Development').length;
+  const today = new Date();
+  const overdue = contacts.filter(c => c.follow_up_date && new Date(c.follow_up_date) < today).length;
+  const tagged = contacts.filter(c => (c.roles || []).length > 0).length;
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${total}</div></div>
+    <div class="stat-card"><div class="stat-label">Active Pipeline</div><div class="stat-value">${active}</div></div>
+    <div class="stat-card"><div class="stat-label">In Development</div><div class="stat-value">${inDev}</div></div>
+    <div class="stat-card ${overdue > 0 ? 'warn' : ''}"><div class="stat-label">Overdue</div><div class="stat-value">${overdue}</div></div>
+    <div class="stat-card"><div class="stat-label">Tagged</div><div class="stat-value">${tagged}</div></div>`;
+}
+
+function renderDropdowns() {
+  const statuses = ['Prospective','In-Development','Active Pipeline','Closed Won','Closed Lost','Low ROI','Dormant','Unassigned'];
+  const statusSel = document.getElementById('filterStatus');
+  statusSel.innerHTML = '<option value="all">All statuses</option>';
+  statuses.forEach(s => { statusSel.innerHTML += `<option value="${s}">${s} (${contacts.filter(c => c.pipeline_status === s).length})</option>`; });
+
+  const teamSel = document.getElementById('filterTeam');
+  teamSel.innerHTML = '<option value="all">Assigned to…</option>';
+  ['Fiser, Harvey','Pickering, Steve','McCaa, Meg','Freeman, Naomi','Fender, Peyton'].forEach(tm => {
+    teamSel.innerHTML += `<option value="${tm}">${tm.split(',')[0]} (${contacts.filter(c => c.assigned_to && c.assigned_to.includes(tm)).length})</option>`;
+  });
+  teamSel.innerHTML += `<option value="none">Unassigned (${contacts.filter(c => !c.assigned_to).length})</option>`;
+
+  const tierSel = document.getElementById('filterTier');
+  tierSel.innerHTML = '<option value="all">All tiers</option>';
+  ['1','2','3','4','5'].forEach(t => { tierSel.innerHTML += `<option value="${t}">${TIER_LABELS_FULL[t]} (${contacts.filter(c => c.mailing_tier === t).length})</option>`; });
+  tierSel.innerHTML += `<option value="none">No tier (${contacts.filter(c => !c.mailing_tier).length})</option>`;
+}
+
+function toggleFilterPanel() { document.getElementById('roleFilters').classList.toggle('open'); }
+function clearAllRoleFilters() {
+  activeRoleFilters = []; renderRoleFilters(); renderList();
+  document.getElementById('filterToggleBtn').textContent = '☷ Roles';
+  document.getElementById('filterToggleBtn').classList.remove('has-active');
+}
 
 function renderRoleFilters() {
   const container = document.getElementById('roleFilters');
-  const subContainer = document.getElementById('subChipsContainer');
   const isOpen = container.classList.contains('open');
-  container.innerHTML = '';
+  const subContainer = document.getElementById('subChipsContainer');
+  container.innerHTML = '<span class="filter-group-label">Roles &amp; Relationships <span class="clear-link" onclick="clearAllRoleFilters()">Clear all</span></span>';
   subContainer.innerHTML = '';
   ROLES.forEach(r => {
     const count = contacts.filter(c => contactHasParentRole(c, r.key)).length;
+    const isActive = activeRoleFilters.includes(r.key);
     const hasSubs = r.children && r.children.length > 0;
     const isExpanded = expandedFilterParents.has(r.key);
-    let chipHtml = `<span class="filter-chip-wrap">`;
-    chipHtml += `<span class="filter-chip ${activeRoleFilters.includes(r.key) ? 'active' : ''}" onclick="toggleRoleFilter('${r.key}')">${r.label}<span class="chip-count">${count}</span></span>`;
+    let chipHtml = `<span style="display:inline-flex;gap:3px;align-items:center;margin-bottom:4px;"><span class="filter-chip ${isActive ? 'active' : ''}" onclick="toggleRoleFilter('${r.key}')">${r.label}<span class="chip-count">${count}</span></span>`;
     if (hasSubs) chipHtml += `<button class="expand-btn" onclick="toggleExpandFilter('${r.key}')">${isExpanded ? '▾' : '▸'}</button>`;
     chipHtml += `</span> `;
     container.innerHTML += chipHtml;
@@ -722,12 +841,12 @@ function renderRoleCheckboxes() {
       <label class="role-section-header">
         <input type="checkbox" value="${r.key}" class="role-cb" onchange="handleParentRoleChange(this)">
         ${r.label}
-        ${hasSubs ? `<button type="button" class="role-sub-toggle" onclick="event.preventDefault();this.closest('.role-section').querySelector('.role-sub-list').classList.toggle('open');this.textContent=this.textContent==='▸'?'▾':'▸';">▸</button>` : ''}
+        ${hasSubs ? `<span class="toggle-arrow" onclick="event.preventDefault();this.classList.toggle('expanded');this.closest('.role-section').querySelector('.sub-options').classList.toggle('open')">▸</span>` : ''}
       </label>`;
     if (hasSubs) {
-      html += `<div class="role-sub-list">`;
+      html += `<div class="sub-options">`;
       r.children.forEach(ch => {
-        html += `<label><input type="checkbox" value="${r.key}:${ch.key}" class="role-cb"> ${ch.label}</label>`;
+        html += `<label class="sub-option"><input type="checkbox" value="${r.key}:${ch.key}" class="role-cb">${ch.label}</label>`;
       });
       html += `</div>`;
     }
@@ -736,51 +855,44 @@ function renderRoleCheckboxes() {
   }).join('');
 }
 
-function handleParentRoleChange(parentCb) {
-  const section = parentCb.closest('.role-section');
-  const subList = section.querySelector('.role-sub-list');
-  if (subList) {
-    subList.querySelectorAll('.role-cb').forEach(cb => { cb.checked = false; });
-    if (parentCb.checked) subList.classList.add('open');
-  }
+function handleParentRoleChange(cb) {
+  const section = cb.closest('.role-section');
+  const subs = section.querySelectorAll('.sub-options input[type="checkbox"]');
+  if (!cb.checked) subs.forEach(s => s.checked = false);
 }
 
-function openModal(contactId) {
-  editingId = contactId || null;
-  renderRoleCheckboxes();
-  document.getElementById('modalTitle').textContent = editingId ? 'Edit Contact' : 'Add Contact';
-  document.getElementById('deleteBtn').style.display = editingId ? 'inline-block' : 'none';
-  if (editingId) {
-    const c = contacts.find(x => x.contact_id === editingId);
-    if (!c) return;
-    document.getElementById('f_name').value = c.name || '';
-    document.getElementById('f_org').value = c.organization || '';
-    document.getElementById('f_title').value = c.title || '';
-    document.getElementById('f_email').value = c.email || '';
-    document.getElementById('f_phone').value = c.phone || '';
-    document.getElementById('f_linkedin').value = c.linkedin_url || '';
-    document.getElementById('f_pipeline').value = c.pipeline_status || 'Prospective';
-    document.getElementById('f_assigned').value = c.assigned_to || '';
-    document.getElementById('f_tier').value = c.mailing_tier || '';
-    document.getElementById('f_lastContact').value = c.last_contact_date || '';
-    document.getElementById('f_followUp').value = c.follow_up_date || '';
-    document.getElementById('f_address').value = c.city_state_zip || '';
-    document.getElementById('f_notes').value = c.notes || '';
-    const roles = c.roles || [];
-    document.querySelectorAll('#roleCheckboxes .role-cb').forEach(cb => {
-      cb.checked = roles.includes(cb.value);
-      if (cb.checked && cb.value.includes(':')) {
-        const subList = cb.closest('.role-sub-list');
-        if (subList) subList.classList.add('open');
-      }
-    });
-  } else {
-    ['f_name','f_org','f_title','f_email','f_phone','f_linkedin','f_address','f_notes'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('f_pipeline').value = 'Prospective';
-    document.getElementById('f_assigned').value = '';
-    document.getElementById('f_tier').value = '';
-    document.getElementById('f_lastContact').value = '';
-    document.getElementById('f_followUp').value = '';
+function openModal(id) {
+  editingId = id || null;
+  document.getElementById('modalTitle').textContent = id ? 'Edit Contact' : 'Add Contact';
+  document.getElementById('deleteBtn').style.display = id ? 'inline-flex' : 'none';
+  // Clear form
+  ['f_name','f_org','f_title','f_email','f_phone','f_linkedin','f_address','f_notes'].forEach(f => document.getElementById(f).value = '');
+  document.getElementById('f_pipeline').value = 'Unassigned';
+  document.getElementById('f_assigned').value = '';
+  document.getElementById('f_tier').value = '';
+  document.getElementById('f_lastContact').value = '';
+  document.getElementById('f_followUp').value = '';
+  document.querySelectorAll('.role-cb').forEach(cb => cb.checked = false);
+
+  if (id) {
+    const c = contacts.find(x => x.contact_id === id);
+    if (c) {
+      document.getElementById('f_name').value = c.name || '';
+      document.getElementById('f_org').value = c.organization || '';
+      document.getElementById('f_title').value = c.title || '';
+      document.getElementById('f_email').value = c.email || '';
+      document.getElementById('f_phone').value = c.phone || '';
+      document.getElementById('f_linkedin').value = c.linkedin_url || '';
+      document.getElementById('f_pipeline').value = c.pipeline_status || 'Unassigned';
+      document.getElementById('f_assigned').value = c.assigned_to || '';
+      document.getElementById('f_tier').value = c.mailing_tier || '';
+      document.getElementById('f_lastContact').value = c.last_contact_date || '';
+      document.getElementById('f_followUp').value = c.follow_up_date || '';
+      document.getElementById('f_address').value = c.city_state_zip || c.address || '';
+      document.getElementById('f_notes').value = c.notes || '';
+      const roles = c.roles || [];
+      document.querySelectorAll('.role-cb').forEach(cb => { cb.checked = roles.includes(cb.value); });
+    }
   }
   document.getElementById('modalOverlay').classList.add('open');
 }
@@ -788,8 +900,8 @@ function closeModal() { document.getElementById('modalOverlay').classList.remove
 
 async function saveContact() {
   const name = document.getElementById('f_name').value.trim();
-  if (!name) { alert('Name is required.'); return; }
-  const roles = [...document.querySelectorAll('#roleCheckboxes .role-cb:checked')].map(cb => cb.value);
+  if (!name) { alert('Please enter a name.'); return; }
+  const roles = [...document.querySelectorAll('.role-cb:checked')].map(cb => cb.value);
   const record = {
     name,
     organization: document.getElementById('f_org').value.trim() || null,
@@ -852,6 +964,7 @@ function exportCSV() {
 }
 
 function exportExcel() {
+  // Simple CSV with .xlsx naming — for proper Excel, use SheetJS
   exportCSV();
 }
 
@@ -899,7 +1012,7 @@ const EMAIL_TEMPLATES = {
   },
   followup: {
     subject: 'Following Up — Else School of Management',
-    body: `Dear {name},\n\nI wanted to follow up on our previous conversation and see if there are any updates on your end.\n\nWe remain very interested in continuing our discussion.\n\nPlease let me know if there's a convenient time to reconnect — I'm happy to work around your schedule.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
+    body: `Dear {name},\n\nI wanted to follow up on our previous conversation and see if there are any updates on your end. We remain very interested in continuing our discussion.\n\nPlease let me know if there's a convenient time to reconnect — I'm happy to work around your schedule.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
   },
   meeting: {
     subject: 'Meeting Request — Else School of Management',
@@ -907,208 +1020,139 @@ const EMAIL_TEMPLATES = {
   },
   advisory: {
     subject: 'Else School Advisory Board — Update & Upcoming Meeting',
-    body: `Dear Advisory Board Members,\n\nThank you for your continued support of the Else School of Management. I'm writing to share a few updates and provide details for our next advisory board meeting.\n\n[Meeting details here]\n\nYour guidance and involvement make a real difference in shaping the future of business education at Millsaps.\n\nWith appreciation,\n[Your Name]\nElse School of Management | Millsaps College`
+    body: `Dear Advisory Board Members,\n\nThank you for your continued support of the Else School of Management. I'm writing to share a few updates and provide details for our next advisory board meeting.\n\n[Meeting details here]\n\nYour guidance and involvement make a real difference in shaping the future of business education at Millsaps. Please don't hesitate to reach out with any questions.\n\nWith appreciation,\n[Your Name]\nElse School of Management | Millsaps College`
   },
   event: {
-    subject: 'You\'re Invited — Else School of Management Event',
-    body: `Dear {name},\n\nWe are pleased to invite you to an upcoming event hosted by the Else School of Management at Millsaps College.\n\n[Event Name]\n[Date & Time]\n[Location / Virtual Link]\n\nThis event brings together business leaders, alumni, and students for [purpose]. We would be honored to have you join us.\n\nPlease RSVP by [date] to confirm your attendance.\n\nWe look forward to seeing you there.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
+    subject: "You're Invited — Else School of Management Event",
+    body: `Dear {name},\n\nWe are pleased to invite you to an upcoming event hosted by the Else School of Management at Millsaps College.\n\n[Event Name]\n[Date & Time]\n[Location / Virtual Link]\n\nPlease RSVP by [date] to confirm your attendance.\n\nBest regards,\n[Your Name]\nElse School of Management | Millsaps College`
   },
-  custom: {
-    subject: '',
-    body: ''
-  }
+  custom: { subject: '', body: '' }
 };
 
-// ═══════════════════════════════════════════════════════════════
-// EMAIL UI FUNCTIONS
-// ═══════════════════════════════════════════════════════════════
-function buildEmailModalHTML() {
-  return `
-    <div class="modal email-modal">
-      <h2>
-        <span>✉ Compose Email</span>
-        <span class="email-count" id="emailRecipientCount"></span>
-      </h2>
-      <div class="email-method-tabs">
-        <div class="email-method-tab active" onclick="setEmailMethod('outlook')">Outlook Web</div>
-        <div class="email-method-tab" onclick="setEmailMethod('mailto')">Default Client</div>
-        <div class="email-method-tab" onclick="setEmailMethod('copy')">Copy Addresses</div>
+const EMAIL_MODAL_HTML = `
+  <div class="modal email-modal">
+    <h2><span>✉ Compose Email</span><span class="email-count" id="emailRecipientCount">0 recipients</span></h2>
+    <div class="recipient-list" id="emailRecipientList"><em style="color:var(--text-muted);">No recipients selected</em></div>
+    <div class="email-method-toggle">
+      <button class="email-method-option active" onclick="setEmailMethod('outlook')" id="methodOutlook">📧 Open in Outlook<small>Pre-fills your college email</small></button>
+      <button class="email-method-option" onclick="setEmailMethod('mailto')" id="methodMailto">🔗 mailto: Link<small>Opens default mail client</small></button>
+      <button class="email-method-option" onclick="setEmailMethod('copy')" id="methodCopy">📋 Copy Addresses<small>Copy to clipboard</small></button>
+    </div>
+    <div>
+      <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);margin-bottom:6px;display:block;">Quick Templates</label>
+      <div class="email-template-bar" id="emailTemplates">
+        <span class="template-chip" onclick="applyTemplate('intro',this)">Introduction</span>
+        <span class="template-chip" onclick="applyTemplate('followup',this)">Follow-up</span>
+        <span class="template-chip" onclick="applyTemplate('meeting',this)">Meeting Request</span>
+        <span class="template-chip" onclick="applyTemplate('advisory',this)">Advisory Board</span>
+        <span class="template-chip" onclick="applyTemplate('event',this)">Event Invite</span>
+        <span class="template-chip" onclick="applyTemplate('custom',this)">Custom</span>
       </div>
-      <div id="emailRecipientList" class="recipient-list"></div>
-      <div class="template-pills">
-        <span class="template-pill" onclick="applyTemplate('intro')">Introduction</span>
-        <span class="template-pill" onclick="applyTemplate('followup')">Follow-up</span>
-        <span class="template-pill" onclick="applyTemplate('meeting')">Meeting Request</span>
-        <span class="template-pill" onclick="applyTemplate('advisory')">Advisory Board</span>
-        <span class="template-pill" onclick="applyTemplate('event')">Event Invite</span>
-        <span class="template-pill" onclick="applyTemplate('custom')">Custom</span>
+    </div>
+    <div class="email-compose-field"><label>Subject</label><input type="text" id="emailSubject" placeholder="Email subject line..."></div>
+    <div class="email-compose-field"><label>Message Body</label><textarea id="emailBody" placeholder="Write your message here...\n\nUse {name} to personalize with contact's name.\nUse {org} to insert their organization."></textarea></div>
+    <div style="margin-bottom:8px;"><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer;"><input type="checkbox" id="emailBcc" checked style="accent-color:var(--accent);">Send as BCC (hide recipient addresses from each other)</label></div>
+    <div class="send-actions">
+      <span class="hint" id="emailHint">Recipients will be BCC'd to protect privacy. Email opens in your Outlook.</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="closeEmailModal()">Cancel</button>
+        <button class="btn btn-email" onclick="sendEmail()" id="emailSendBtn">Open in Outlook →</button>
       </div>
-      <input type="text" class="email-field" id="emailSubject" placeholder="Subject line...">
-      <textarea class="email-body" id="emailBody" placeholder="Compose your message..."></textarea>
-      <div class="email-actions">
-        <label class="bcc-toggle"><input type="checkbox" id="emailBcc" checked> BCC recipients (hide addresses from each other)</label>
-        <div style="display:flex;gap:8px;">
-          <button class="btn" onclick="closeEmailModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="sendEmail()">Send →</button>
-        </div>
-      </div>
-    </div>`;
-}
+    </div>
+  </div>`;
+
+function restoreEmailModalHTML() { document.getElementById('emailOverlay').innerHTML = EMAIL_MODAL_HTML; }
 
 function openEmailModal(recipients) {
-  emailRecipients = recipients.filter(r => r.email && r.email.trim());
+  restoreEmailModalHTML();
   const noEmail = recipients.filter(r => !r.email || !r.email.trim());
-
-  const overlay = document.getElementById('emailOverlay');
-  overlay.innerHTML = buildEmailModalHTML();
-
+  emailRecipients = recipients.filter(r => r.email && r.email.trim());
   renderRecipientList(noEmail);
   updateRecipientCount();
-
-  document.getElementById('emailSubject').value = '';
-  document.getElementById('emailBody').value = '';
-  document.getElementById('emailBcc').checked = emailRecipients.length > 1;
-
   setEmailMethod('outlook');
-
-  if (emailRecipients.length === 1) {
-    applyTemplate('intro');
-  } else {
-    applyTemplate('advisory');
-  }
-
-  overlay.classList.add('open');
+  if (emailRecipients.length === 1) applyTemplate('intro'); else applyTemplate('advisory');
+  document.getElementById('emailOverlay').classList.add('open');
 }
 
-function closeEmailModal() {
-  document.getElementById('emailOverlay').classList.remove('open');
-}
+function closeEmailModal() { document.getElementById('emailOverlay').classList.remove('open'); }
 
 function renderRecipientList(noEmailContacts) {
   const container = document.getElementById('emailRecipientList');
-  if (!container) return;
-
   if (emailRecipients.length === 0 && (!noEmailContacts || noEmailContacts.length === 0)) {
-    container.innerHTML = '<em style="color:var(--text-muted);">No recipients selected</em>';
-    return;
+    container.innerHTML = '<em style="color:var(--text-muted);">No recipients selected</em>'; return;
   }
-
-  let html = emailRecipients.map((r, i) => `
-    <span class="recipient-chip">
-      <strong>${r.name}</strong> &lt;${r.email}&gt;
-      <span class="remove-recipient" onclick="removeRecipient(${i})" title="Remove">×</span>
-    </span>
-  `).join('');
-
-  if (noEmailContacts && noEmailContacts.length > 0) {
-    html += noEmailContacts.map(r => `
-      <span class="recipient-chip no-email" title="No email on file">
-        ${r.name} — no email
-      </span>
-    `).join('');
-  }
-
+  let html = emailRecipients.map((r, i) => `<span class="recipient-chip"><strong>${r.name}</strong> &lt;${r.email}&gt;<span class="remove-recipient" onclick="removeRecipient(${i})" title="Remove">×</span></span>`).join('');
+  if (noEmailContacts) html += noEmailContacts.map(r => `<span class="recipient-chip no-email">${r.name} — no email</span>`).join('');
   container.innerHTML = html;
 }
 
-function removeRecipient(index) {
-  emailRecipients.splice(index, 1);
-  renderRecipientList([]);
-  updateRecipientCount();
-}
-
-function updateRecipientCount() {
-  const count = emailRecipients.length;
-  const el = document.getElementById('emailRecipientCount');
-  if (el) el.textContent = count === 1 ? '1 recipient' : `${count} recipients`;
-}
+function removeRecipient(index) { emailRecipients.splice(index, 1); renderRecipientList([]); updateRecipientCount(); }
+function updateRecipientCount() { document.getElementById('emailRecipientCount').textContent = emailRecipients.length === 1 ? '1 recipient' : `${emailRecipients.length} recipients`; }
 
 function setEmailMethod(method) {
   emailMethod = method;
-  document.querySelectorAll('.email-method-tab').forEach(t => t.classList.remove('active'));
-  const tabs = document.querySelectorAll('.email-method-tab');
-  if (method === 'outlook' && tabs[0]) tabs[0].classList.add('active');
-  if (method === 'mailto' && tabs[1]) tabs[1].classList.add('active');
-  if (method === 'copy' && tabs[2]) tabs[2].classList.add('active');
+  document.querySelectorAll('.email-method-option').forEach(btn => btn.classList.remove('active'));
+  document.getElementById({outlook:'methodOutlook',mailto:'methodMailto',copy:'methodCopy'}[method]).classList.add('active');
+  const sendBtn = document.getElementById('emailSendBtn');
+  const hint = document.getElementById('emailHint');
+  if (method === 'outlook') { sendBtn.textContent = 'Open in Outlook →'; hint.textContent = 'Opens Outlook Web with your college account pre-filled.'; }
+  else if (method === 'mailto') { sendBtn.textContent = 'Open Mail Client →'; hint.textContent = 'Opens your default email application with message pre-filled.'; }
+  else { sendBtn.textContent = '📋 Copy All Addresses'; hint.textContent = 'Copies all email addresses to clipboard.'; }
 }
 
-function applyTemplate(key) {
-  const tmpl = EMAIL_TEMPLATES[key];
-  if (!tmpl) return;
-  document.querySelectorAll('.template-pill').forEach(p => p.classList.remove('active'));
-  event && event.target && event.target.classList.add('active');
-
-  let subject = tmpl.subject;
-  let body = tmpl.body;
-
+function applyTemplate(key, el) {
+  const tpl = EMAIL_TEMPLATES[key]; if (!tpl) return;
+  document.querySelectorAll('.template-chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('emailSubject').value = tpl.subject;
+  let body = tpl.body;
   if (emailRecipients.length === 1) {
-    const r = emailRecipients[0];
-    subject = subject.replace(/\{name\}/g, r.name || '').replace(/\{org\}/g, r.org || '');
-    body = body.replace(/\{name\}/g, r.name || '').replace(/\{org\}/g, r.org || '');
-  }
-
-  const subjectEl = document.getElementById('emailSubject');
-  const bodyEl = document.getElementById('emailBody');
-  if (subjectEl) subjectEl.value = subject;
-  if (bodyEl) bodyEl.value = body;
+    body = body.replace(/\{name\}/g, emailRecipients[0].name.split(' ')[0]);
+    body = body.replace(/\{org\}/g, emailRecipients[0].org || 'your organization');
+  } else { body = body.replace(/\{name\}/g, '').replace(/\{org\}/g, ''); }
+  document.getElementById('emailBody').value = body;
 }
 
 function sendEmail() {
-  if (emailRecipients.length === 0) { alert('No recipients with email addresses.'); return; }
-
+  if (emailRecipients.length === 0) { alert('No recipients with email addresses selected.'); return; }
   const subject = document.getElementById('emailSubject').value;
   const body = document.getElementById('emailBody').value;
   const useBcc = document.getElementById('emailBcc').checked;
   const emails = emailRecipients.map(r => r.email);
 
   if (emailMethod === 'copy') {
-    const text = emails.join('; ');
-    navigator.clipboard.writeText(text).then(() => {
-      const btn = document.querySelector('.btn-primary[onclick="sendEmail()"]');
-      if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = 'Send →'; }, 2000); }
-    }).catch(() => { prompt('Copy these addresses:', text); });
+    navigator.clipboard.writeText(emails.join('; ')).then(() => {
+      const btn = document.getElementById('emailSendBtn'); btn.textContent = '✓ Copied!';
+      setTimeout(() => { btn.textContent = '📋 Copy All Addresses'; }, 2000);
+    }).catch(() => prompt('Copy these addresses:', emails.join('; ')));
     return;
   }
-
   if (emailMethod === 'outlook') {
     const toField = useBcc && emails.length > 1 ? '' : emails.join(';');
     const bccField = useBcc && emails.length > 1 ? emails.join(';') : '';
     let url = 'https://outlook.office.com/mail/deeplink/compose?';
     if (toField) url += `to=${encodeURIComponent(toField)}&`;
     if (bccField) url += `bcc=${encodeURIComponent(bccField)}&`;
-    url += `subject=${encodeURIComponent(subject)}`;
-    url += `&body=${encodeURIComponent(body)}`;
-    window.open(url, '_blank');
-    closeEmailModal();
-    return;
+    url += `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(url, '_blank'); closeEmailModal(); return;
   }
-
   if (emailMethod === 'mailto') {
     let mailto = 'mailto:';
-    if (useBcc && emails.length > 1) {
-      mailto += `?bcc=${encodeURIComponent(emails.join(','))}`;
-    } else {
-      mailto += encodeURIComponent(emails.join(','));
-      mailto += '?';
-    }
+    if (useBcc && emails.length > 1) mailto += `?bcc=${encodeURIComponent(emails.join(','))}`;
+    else { mailto += encodeURIComponent(emails.join(',')); mailto += '?'; }
     mailto += `${mailto.includes('?') ? '&' : '?'}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailto;
-    closeEmailModal();
+    window.location.href = mailto; closeEmailModal();
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// EMAIL: SINGLE CONTACT (from row button)
-// ═══════════════════════════════════════════════════════════════
+// Email a single contact from row button
 function emailSingleContact(contactId) {
   const c = contacts.find(x => x.contact_id === contactId);
   if (!c) return;
   openEmailModal([{ id: c.contact_id, name: c.name, email: c.email, org: c.organization }]);
 }
 
-// ═══════════════════════════════════════════════════════════════
-// EMAIL: SELECTED CONTACTS (checkboxes)
-// ═══════════════════════════════════════════════════════════════
+// Email selected contacts (checkboxes)
 function emailSelectedContacts() {
   if (selectedContactIds.size === 0) { alert('No contacts selected. Use the checkboxes to select contacts first.'); return; }
   const selected = contacts.filter(c => selectedContactIds.has(c.contact_id));
@@ -1135,85 +1179,47 @@ function updateSelectionBar() {
   } else { bar.style.display = 'none'; }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// ✉ GROUP EMAIL SELECTOR — with subcategories + tiers
-// ═══════════════════════════════════════════════════════════════
+// Group email selector
 function openGroupEmailSelector() {
   const statusCounts = {};
   const tierCounts = {};
-
   contacts.forEach(c => {
     statusCounts[c.pipeline_status || 'Unassigned'] = (statusCounts[c.pipeline_status || 'Unassigned'] || 0) + 1;
-    if (c.mailing_tier) {
-      tierCounts[c.mailing_tier] = (tierCounts[c.mailing_tier] || 0) + 1;
-    }
+    if (c.mailing_tier) tierCounts[c.mailing_tier] = (tierCounts[c.mailing_tier] || 0) + 1;
   });
 
   let html = `<div class="modal email-modal" style="width:640px;">
     <h2>✉ Group Email — Select Recipients</h2>
     <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Select groups to email. Contacts matching ANY selected group will be included.</p>
+    <div class="group-email-panel"><h3>By Role / Relationship</h3><div class="group-grid">`;
 
-    <div class="group-email-panel">
-      <h3>By Role / Relationship</h3>
-      <div class="group-grid">`;
-
-  // ── Render each role with subcategories ──
   ROLES.forEach(r => {
     const count = contacts.filter(c => contactHasParentRole(c, r.key)).length;
     const hasSubs = r.children && r.children.length > 0;
-
-    html += `<label class="group-option">
-      <input type="checkbox" value="${r.key}" class="group-role-cb">
-      <span>${r.label}</span>
-      <span class="group-count">${count}</span>
-    </label>`;
-
-    // Render subcategories indented beneath the parent
+    html += `<label class="group-option"><input type="checkbox" value="${r.key}" class="group-role-cb"><span>${r.label}</span><span class="group-count">${count}</span></label>`;
     if (hasSubs) {
       html += `<div class="group-sub-options">`;
       r.children.forEach(ch => {
         const subKey = r.key + ':' + ch.key;
         const subCount = contacts.filter(c => (c.roles || []).includes(subKey)).length;
-        html += `<label class="group-sub-option">
-          <input type="checkbox" value="${subKey}" class="group-role-cb">
-          <span>${ch.label}</span>
-          <span class="group-count">${subCount}</span>
-        </label>`;
+        html += `<label class="group-sub-option"><input type="checkbox" value="${subKey}" class="group-role-cb"><span>${ch.label}</span><span class="group-count">${subCount}</span></label>`;
       });
       html += `</div>`;
     }
   });
 
   html += `</div></div>
-
-    <div class="group-email-panel" style="margin-top:10px;">
-      <h3>By Mailing Tier</h3>
-      <div class="group-grid">`;
-
-  // ── Render tier options ──
+    <div class="group-email-panel" style="margin-top:10px;"><h3>By Mailing Tier</h3><div class="group-grid">`;
   ['1','2','3','4','5'].forEach(t => {
     const count = tierCounts[t] || 0;
-    html += `<label class="group-option">
-      <input type="checkbox" value="${t}" class="group-tier-cb">
-      <span>${TIER_LABELS_FULL[t]}</span>
-      <span class="group-count">${count}</span>
-    </label>`;
+    html += `<label class="group-option"><input type="checkbox" value="${t}" class="group-tier-cb"><span>${TIER_LABELS_FULL[t]}</span><span class="group-count">${count}</span></label>`;
   });
 
   html += `</div></div>
-
-    <div class="group-email-panel" style="margin-top:10px;">
-      <h3>By Pipeline Status</h3>
-      <div class="group-grid">`;
-
+    <div class="group-email-panel" style="margin-top:10px;"><h3>By Pipeline Status</h3><div class="group-grid">`;
   Object.keys(statusCounts).sort().forEach(status => {
-    html += `<label class="group-option">
-      <input type="checkbox" value="${status}" class="group-status-cb">
-      <span>${status}</span>
-      <span class="group-count">${statusCounts[status]}</span>
-    </label>`;
+    html += `<label class="group-option"><input type="checkbox" value="${status}" class="group-status-cb"><span>${status}</span><span class="group-count">${statusCounts[status]}</span></label>`;
   });
-
   html += `</div></div>
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:12px;color:var(--text-muted);" id="groupSelectedCount">0 contacts selected</span>
@@ -1221,8 +1227,7 @@ function openGroupEmailSelector() {
         <button class="btn" onclick="closeEmailModal()">Cancel</button>
         <button class="btn btn-email" onclick="composeGroupEmail()">Compose Email →</button>
       </div>
-    </div>
-  </div>`;
+    </div></div>`;
 
   document.getElementById('emailOverlay').innerHTML = html;
   document.getElementById('emailOverlay').classList.add('open');
@@ -1233,32 +1238,20 @@ function updateGroupCount() {
   const selectedRoles = [...document.querySelectorAll('.group-role-cb:checked')].map(cb => cb.value);
   const selectedStatuses = [...document.querySelectorAll('.group-status-cb:checked')].map(cb => cb.value);
   const selectedTiers = [...document.querySelectorAll('.group-tier-cb:checked')].map(cb => cb.value);
-
   const matched = contacts.filter(c => {
     if (selectedRoles.length === 0 && selectedStatuses.length === 0 && selectedTiers.length === 0) return false;
-
-    // Check role match — handles both parent keys and sub-keys (parent:child)
     const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => {
-      if (r.includes(':')) {
-        // Specific subcategory selected
-        return (c.roles || []).includes(r);
-      }
-      // Parent role selected — match if contact has parent or any child
+      if (r.includes(':')) return (c.roles || []).includes(r);
       return contactHasParentRole(c, r);
     });
-
     const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
     const matchTier = selectedTiers.length === 0 || selectedTiers.includes(c.mailing_tier);
-
-    // ANY selected filter group matches (OR between groups)
     const checks = [];
     if (selectedRoles.length > 0) checks.push(matchRole);
     if (selectedStatuses.length > 0) checks.push(matchStatus);
     if (selectedTiers.length > 0) checks.push(matchTier);
-
     return checks.some(Boolean);
   });
-
   const withEmail = matched.filter(c => c.email && c.email.trim());
   const el = document.getElementById('groupSelectedCount');
   if (el) el.textContent = `${withEmail.length} with email · ${matched.length - withEmail.length} without`;
@@ -1268,12 +1261,7 @@ function composeGroupEmail() {
   const selectedRoles = [...document.querySelectorAll('.group-role-cb:checked')].map(cb => cb.value);
   const selectedStatuses = [...document.querySelectorAll('.group-status-cb:checked')].map(cb => cb.value);
   const selectedTiers = [...document.querySelectorAll('.group-tier-cb:checked')].map(cb => cb.value);
-
-  if (selectedRoles.length === 0 && selectedStatuses.length === 0 && selectedTiers.length === 0) {
-    alert('Please select at least one group.');
-    return;
-  }
-
+  if (selectedRoles.length === 0 && selectedStatuses.length === 0 && selectedTiers.length === 0) { alert('Please select at least one group.'); return; }
   const matched = contacts.filter(c => {
     const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => {
       if (r.includes(':')) return (c.roles || []).includes(r);
@@ -1281,15 +1269,12 @@ function composeGroupEmail() {
     });
     const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
     const matchTier = selectedTiers.length === 0 || selectedTiers.includes(c.mailing_tier);
-
     const checks = [];
     if (selectedRoles.length > 0) checks.push(matchRole);
     if (selectedStatuses.length > 0) checks.push(matchStatus);
     if (selectedTiers.length > 0) checks.push(matchTier);
-
     return checks.some(Boolean);
   });
-
   openEmailModal(matched.map(c => ({ id: c.contact_id, name: c.name, email: c.email, org: c.organization })));
 }
 </script>
