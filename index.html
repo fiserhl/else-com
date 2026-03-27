@@ -612,35 +612,37 @@ async function doLogin() {
   document.getElementById('loginError').textContent = 'Invalid username or password';
   document.getElementById('loginError').style.display = 'none';
   try {
-    // First check: try hashed password (new format)
     const hashedPass = await hashPassword(pass);
-    let { data } = await db.from('app_users').select('username, role').eq('username', user).eq('password', hashedPass).maybeSingle();
-    // Fallback: try plaintext password (legacy — will be migrated)
-    if (!data) {
-      const legacy = await db.from('app_users').select('username, role').eq('username', user).eq('password', pass).maybeSingle();
-      if (legacy.data) {
-        data = legacy.data;
+    // Try hashed password first (already-migrated accounts)
+    const q1 = await db.from('app_users').select('username, role').eq('username', user).eq('password', hashedPass).maybeSingle();
+    let matched = q1.data || null;
+    // Fallback: try plaintext password (legacy accounts not yet migrated)
+    if (!matched) {
+      const q2 = await db.from('app_users').select('username, role').eq('username', user).eq('password', pass).maybeSingle();
+      if (q2.data) {
+        matched = q2.data;
         // Auto-migrate: update plaintext password to hashed
         await db.from('app_users').update({ password: hashedPass }).eq('username', user);
         console.log(`Password for "${user}" migrated to hashed format.`);
       }
     }
-    if (data) {
+    if (matched) {
       _loginAttempts = 0;
       sessionStorage.setItem('else_auth', 'true');
       sessionStorage.setItem('else_user', user);
-      sessionStorage.setItem('else_role', data.role || 'user');
+      sessionStorage.setItem('else_role', matched.role || 'user');
       showApp();
     } else {
       _loginAttempts++;
       if (_loginAttempts >= 5) {
-        _loginLockoutUntil = Date.now() + 60000; // 1-minute lockout
+        _loginLockoutUntil = Date.now() + 60000;
         document.getElementById('loginError').textContent = 'Too many failed attempts. Locked for 60 seconds.';
       }
       document.getElementById('loginError').style.display = 'block';
       document.getElementById('loginPass').value = '';
     }
   } catch(e) {
+    console.error('Login error:', e);
     document.getElementById('loginError').style.display = 'block';
     document.getElementById('loginPass').value = '';
   }
