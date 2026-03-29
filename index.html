@@ -1781,17 +1781,22 @@ function composeGroupText() {
   const withPhone = matched.filter(c => c.cell_phone && c.cell_phone.trim());
   if (withPhone.length === 0) { alert('No contacts in the selected groups have cell phone numbers.'); return; }
   const body = (document.getElementById('textMessageBody') || {}).value || '';
-  const phones = withPhone.map(c => c.cell_phone.replace(/\D/g, '')).join(',');
-  // Open SMS via sms: protocol
-  window.open(`sms:${phones}${body ? '?body=' + encodeURIComponent(body) : ''}`, '_self');
+  // Format numbers with +1 prefix for reliable macOS/iOS Messages routing
+  const phones = withPhone.map(c => {
+    const digits = c.cell_phone.replace(/\D/g, '');
+    return digits.length === 10 ? '+1' + digits : '+' + digits;
+  }).join(',');
+  // Use location.href — the only method that reliably opens Messages on macOS/iOS from a browser
+  window.location.href = `sms:${phones}${body ? '?&body=' + encodeURIComponent(body) : ''}`;
   closeEmailModal();
 }
 
 function textSingleContact(contactId) {
   const c = contacts.find(x => x.contact_id === contactId);
   if (!c || !c.cell_phone) return;
-  const phone = c.cell_phone.replace(/\D/g, '');
-  window.open(`sms:${phone}`, '_self');
+  const digits = c.cell_phone.replace(/\D/g, '');
+  const phone = digits.length === 10 ? '+1' + digits : '+' + digits;
+  window.location.href = `sms:${phone}`;
 }
 
 function copyGroupTextNumbers() {
