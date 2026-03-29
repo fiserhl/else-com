@@ -230,6 +230,24 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .footer strong { color: var(--gray); font-weight: 600; }
 .footer a { color: var(--gray); text-decoration: none; font-size: 10px; }
 .footer a:hover { text-decoration: underline; color: var(--accent); }
+
+/* ═══ Contact History Panel ═══ */
+.history-panel { border-top: 1px solid var(--border-light); margin-top: 16px; padding-top: 12px; }
+.history-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--accent); cursor: pointer; background: none; border: none; font-family: var(--sans); padding: 4px 0; }
+.history-toggle:hover { text-decoration: underline; }
+.history-toggle .arrow { font-size: 10px; transition: transform 0.2s; }
+.history-toggle.open .arrow { transform: rotate(90deg); }
+.history-body { display: none; margin-top: 10px; max-height: 260px; overflow-y: auto; }
+.history-body.open { display: block; }
+.history-entry { display: grid; grid-template-columns: 100px 1fr; gap: 8px; padding: 8px 10px; border-left: 3px solid var(--border); margin-bottom: 6px; font-size: 12px; background: var(--bg); border-radius: 0 var(--radius) var(--radius) 0; }
+.history-entry.action-created { border-left-color: var(--green); }
+.history-entry.action-updated { border-left-color: var(--blue); }
+.history-entry.action-deleted { border-left-color: var(--red); }
+.history-date { font-size: 11px; color: var(--text-muted); line-height: 1.6; }
+.history-detail { color: var(--text-secondary); line-height: 1.6; }
+.history-user { font-weight: 600; color: var(--text); }
+.history-source { display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 1px 6px; border-radius: 3px; background: var(--purple-soft); color: var(--accent); margin-left: 4px; }
+.history-empty { font-size: 12px; color: var(--text-muted); font-style: italic; padding: 12px 0; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -413,8 +431,17 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 
   <!-- ═══════════ AUDIT LOG TAB ═══════════ -->
   <div class="tab-content" id="tabAudit">
-    <div style="padding:40px 32px;text-align:center;color:var(--text-muted);">
-      <p style="font-size:14px;">Audit Log — coming soon</p>
+    <div style="padding:20px 32px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <h3 style="font-family:var(--serif);font-size:20px;font-weight:500;color:var(--accent);margin-bottom:2px;">Audit Log</h3>
+          <p style="font-size:12px;color:var(--text-muted);">All changes to the contact database, newest first</p>
+        </div>
+        <button class="btn" onclick="loadAuditLog()">↻ Refresh</button>
+      </div>
+      <div id="auditLogContent" style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
+        <p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">Click "Refresh" or switch to this tab to load the audit log.</p>
+      </div>
     </div>
   </div>
 
@@ -524,6 +551,27 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
         <label>Notes</label>
         <textarea id="f_notes" rows="2" style="resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;" placeholder="Any additional notes..."></textarea>
       </div>
+      <div class="form-group full-width">
+        <label>Data Source <span style="font-weight:400;color:var(--text-muted);font-size:10px;text-transform:none;letter-spacing:0;">(where was this info found or provided?)</span></label>
+        <select id="f_data_source">
+          <option value="">— select source —</option>
+          <option value="Self-Provided">Self-Provided</option>
+          <option value="LinkedIn">LinkedIn</option>
+          <option value="Referral">Referral</option>
+          <option value="Business Card">Business Card</option>
+          <option value="Event">Event / Conference</option>
+          <option value="College Records">College Records</option>
+          <option value="Website">Website / Online</option>
+          <option value="Email Correspondence">Email Correspondence</option>
+          <option value="Phone Call">Phone Call</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <!-- History Panel (only shown when editing) -->
+    <div class="history-panel" id="historyPanel" style="display:none;">
+      <button class="history-toggle" id="historyToggle" onclick="toggleHistory()"><span class="arrow">▸</span> 📋 Change History</button>
+      <div class="history-body" id="historyBody"></div>
     </div>
     <div class="modal-actions">
       <div class="left-actions"><button class="btn btn-danger" id="deleteBtn" onclick="deleteContact()" style="display:none">Delete</button></div>
@@ -596,6 +644,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     const tabMap = { contacts:'tabContacts', tasks:'tabTasks', campaigns:'tabCampaigns', mailings:'tabMailings', compliance:'tabCompliance', audit:'tabAudit' };
     const target = document.getElementById(tabMap[tabName]);
     if (target) target.classList.add('active');
+    if (tabName === 'audit') loadAuditLog();
   });
 });
 
@@ -1072,7 +1121,15 @@ function openModal(id) {
   document.getElementById('f_tier').value = '';
   document.getElementById('f_lastContact').value = '';
   document.getElementById('f_followUp').value = '';
+  document.getElementById('f_data_source').value = '';
   document.querySelectorAll('.role-cb').forEach(cb => cb.checked = false);
+
+  // Reset history panel
+  const historyToggle = document.getElementById('historyToggle');
+  const historyBody = document.getElementById('historyBody');
+  historyToggle.classList.remove('open');
+  historyBody.classList.remove('open');
+  historyBody.innerHTML = '';
 
   if (id) {
     const c = contacts.find(x => x.contact_id === id);
@@ -1101,6 +1158,10 @@ function openModal(id) {
       const roles = c.roles || [];
       document.querySelectorAll('.role-cb').forEach(cb => { cb.checked = roles.includes(cb.value); });
     }
+    // Load history for this contact
+    loadContactHistory(id);
+  } else {
+    document.getElementById('historyPanel').style.display = 'none';
   }
   document.getElementById('modalOverlay').classList.add('open');
 }
@@ -1115,6 +1176,7 @@ async function saveContact() {
   // Auto-generate display name from first + last
   const name = [first_name, last_name].filter(Boolean).join(' ');
   const roles = [...document.querySelectorAll('.role-cb:checked')].map(cb => cb.value);
+  const dataSource = document.getElementById('f_data_source').value || null;
   const record = {
     name,
     first_name: first_name || null,
@@ -1140,12 +1202,22 @@ async function saveContact() {
     notes: document.getElementById('f_notes').value.trim() || null,
     roles
   };
+  const currentUser = sessionStorage.getItem('else_user') || 'unknown';
   try {
     if (editingId) {
+      // Detect what changed
+      const oldContact = contacts.find(x => x.contact_id === editingId);
+      const diffs = oldContact ? diffContactChanges(oldContact, record) : ['Record updated'];
       record.updated_at = new Date().toISOString();
       await db.from('contacts').update(record).eq('contact_id', editingId);
+      if (diffs.length > 0) {
+        await logContactHistory(editingId, 'updated', diffs.join('\n'), currentUser, dataSource);
+      }
     } else {
-      await db.from('contacts').insert(record);
+      const { data: inserted } = await db.from('contacts').insert(record).select('contact_id').single();
+      if (inserted) {
+        await logContactHistory(inserted.contact_id, 'created', `Contact "${name}" created`, currentUser, dataSource);
+      }
     }
     closeModal();
     loadContacts();
@@ -1160,10 +1232,154 @@ async function deleteContact() {
   try {
     const user = sessionStorage.getItem('else_user') || 'unknown';
     console.log(`[AUDIT] ${new Date().toISOString()} — User "${user}" deleted contact: ${contactName} (ID: ${editingId})`);
+    await logContactHistory(editingId, 'deleted', `Contact "${contactName}" deleted`, user, null);
     await db.from('contacts').delete().eq('contact_id', editingId);
     closeModal();
     loadContacts();
   } catch(e) { alert('Error deleting contact.'); console.error(e); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 📋 CONTACT HISTORY / AUDIT TRAIL
+// ═══════════════════════════════════════════════════════════════
+async function logContactHistory(contactId, action, changes, changedBy, dataSource) {
+  try {
+    await db.from('contact_history').insert({
+      contact_id: contactId,
+      action: action,
+      changes: changes,
+      changed_by: changedBy || sessionStorage.getItem('else_user') || 'unknown',
+      data_source: dataSource || null,
+      changed_at: new Date().toISOString()
+    });
+  } catch(e) { console.error('Failed to log history:', e); }
+}
+
+function diffContactChanges(oldContact, newRecord) {
+  const fieldLabels = {
+    first_name: 'First Name', last_name: 'Last Name', preferred_name: 'Preferred Name',
+    correspondence_name_mode: 'Correspondence Name', name: 'Display Name',
+    organization: 'Organization', title: 'Title', email: 'Email',
+    phone: 'Phone', cell_phone: 'Cell Phone', linkedin_url: 'LinkedIn',
+    pipeline_status: 'Pipeline Status', assigned_to: 'Assigned To',
+    mailing_tier: 'Mailing Tier', last_contact_date: 'Last Contact',
+    follow_up_date: 'Follow-up Date', address: 'Address',
+    city: 'City', state: 'State', zip: 'Zip', notes: 'Notes'
+  };
+  const diffs = [];
+  for (const [key, label] of Object.entries(fieldLabels)) {
+    const oldVal = (oldContact[key] || '').toString().trim();
+    const newVal = (newRecord[key] || '').toString().trim();
+    if (oldVal !== newVal) {
+      if (!oldVal && newVal) diffs.push(`${label}: set to "${newVal}"`);
+      else if (oldVal && !newVal) diffs.push(`${label}: cleared`);
+      else diffs.push(`${label}: "${oldVal}" → "${newVal}"`);
+    }
+  }
+  // Compare roles arrays
+  const oldRoles = (oldContact.roles || []).sort().join(',');
+  const newRoles = (newRecord.roles || []).sort().join(',');
+  if (oldRoles !== newRoles) {
+    const added = (newRecord.roles || []).filter(r => !(oldContact.roles || []).includes(r));
+    const removed = (oldContact.roles || []).filter(r => !(newRecord.roles || []).includes(r));
+    if (added.length) diffs.push(`Roles added: ${added.join(', ')}`);
+    if (removed.length) diffs.push(`Roles removed: ${removed.join(', ')}`);
+  }
+  return diffs;
+}
+
+async function loadContactHistory(contactId) {
+  const panel = document.getElementById('historyPanel');
+  const body = document.getElementById('historyBody');
+  if (!contactId) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  body.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Loading history…</p>';
+  try {
+    const { data, error } = await db.from('contact_history')
+      .select('*')
+      .eq('contact_id', contactId)
+      .order('changed_at', { ascending: false });
+    if (error || !data || data.length === 0) {
+      body.innerHTML = '<p class="history-empty">No history recorded yet for this contact.</p>';
+      return;
+    }
+    body.innerHTML = data.map(h => {
+      const dt = new Date(h.changed_at);
+      const dateStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const timeStr = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const actionClass = h.action === 'created' ? 'action-created' : h.action === 'deleted' ? 'action-deleted' : 'action-updated';
+      const sourceHtml = h.data_source ? `<span class="history-source">${esc(h.data_source)}</span>` : '';
+      const changesText = (h.changes || '').split('\n').map(line => esc(line)).join('<br>');
+      return `<div class="history-entry ${actionClass}">
+        <div class="history-date">${dateStr}<br>${timeStr}</div>
+        <div class="history-detail">
+          <span class="history-user">${esc(h.changed_by)}</span> — <em>${esc(h.action)}</em>${sourceHtml}<br>
+          ${changesText}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    body.innerHTML = '<p style="font-size:12px;color:var(--red);">Error loading history.</p>';
+    console.error('History load error:', e);
+  }
+}
+
+function toggleHistory() {
+  const toggle = document.getElementById('historyToggle');
+  const body = document.getElementById('historyBody');
+  toggle.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+async function loadAuditLog() {
+  const container = document.getElementById('auditLogContent');
+  container.innerHTML = '<p style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">Loading audit log…</p>';
+  try {
+    const { data, error } = await db.from('contact_history')
+      .select('*')
+      .order('changed_at', { ascending: false })
+      .limit(200);
+    if (error) { container.innerHTML = '<p style="padding:24px;color:var(--red);font-size:13px;">Error loading audit log.</p>'; return; }
+    if (!data || data.length === 0) {
+      container.innerHTML = '<p style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">No history entries yet. Changes will appear here as contacts are added, edited, or deleted.</p>';
+      return;
+    }
+    // Look up contact names
+    const contactIds = [...new Set(data.map(h => h.contact_id))];
+    const { data: nameData } = await db.from('contacts').select('contact_id, name').in('contact_id', contactIds);
+    const nameMap = {};
+    if (nameData) nameData.forEach(n => { nameMap[n.contact_id] = n.name; });
+
+    container.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="background:var(--bg);border-bottom:1px solid var(--border);">
+        <th style="text-align:left;padding:10px 14px;font-weight:700;color:var(--gray);font-size:10px;text-transform:uppercase;letter-spacing:0.8px;">Date</th>
+        <th style="text-align:left;padding:10px 14px;font-weight:700;color:var(--gray);font-size:10px;text-transform:uppercase;letter-spacing:0.8px;">Contact</th>
+        <th style="text-align:left;padding:10px 14px;font-weight:700;color:var(--gray);font-size:10px;text-transform:uppercase;letter-spacing:0.8px;">Action</th>
+        <th style="text-align:left;padding:10px 14px;font-weight:700;color:var(--gray);font-size:10px;text-transform:uppercase;letter-spacing:0.8px;">By</th>
+        <th style="text-align:left;padding:10px 14px;font-weight:700;color:var(--gray);font-size:10px;text-transform:uppercase;letter-spacing:0.8px;">Source</th>
+        <th style="text-align:left;padding:10px 14px;font-weight:700;color:var(--gray);font-size:10px;text-transform:uppercase;letter-spacing:0.8px;">Details</th>
+      </tr></thead><tbody>` +
+    data.map(h => {
+      const dt = new Date(h.changed_at);
+      const dateStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const timeStr = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const contactName = nameMap[h.contact_id] || `ID ${h.contact_id}`;
+      const actionColor = h.action === 'created' ? 'var(--green)' : h.action === 'deleted' ? 'var(--red)' : 'var(--blue)';
+      const changesPreview = (h.changes || '').split('\n').slice(0, 2).map(l => esc(l)).join('; ');
+      const hasMore = (h.changes || '').split('\n').length > 2;
+      return `<tr style="border-bottom:1px solid var(--border-light);">
+        <td style="padding:8px 14px;white-space:nowrap;color:var(--text-muted);">${dateStr}<br>${timeStr}</td>
+        <td style="padding:8px 14px;font-weight:500;">${esc(contactName)}</td>
+        <td style="padding:8px 14px;"><span style="color:${actionColor};font-weight:600;text-transform:capitalize;">${esc(h.action)}</span></td>
+        <td style="padding:8px 14px;">${esc(h.changed_by)}</td>
+        <td style="padding:8px 14px;">${h.data_source ? `<span class="history-source">${esc(h.data_source)}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
+        <td style="padding:8px 14px;max-width:300px;color:var(--text-secondary);">${changesPreview}${hasMore ? ' …' : ''}</td>
+      </tr>`;
+    }).join('') + '</tbody></table>';
+  } catch(e) {
+    container.innerHTML = '<p style="padding:24px;color:var(--red);font-size:13px;">Error loading audit log.</p>';
+    console.error('Audit log error:', e);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
