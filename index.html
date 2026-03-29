@@ -289,6 +289,16 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
       <select id="filterStatus"><option value="all">All statuses</option></select>
       <select id="filterTeam"><option value="all">Assigned to…</option></select>
       <select id="filterTier"><option value="all">All mailing tiers</option></select>
+      <select id="sortBy" onchange="renderList()" style="min-width:130px;">
+        <option value="last_name">Sort: Last Name</option>
+        <option value="first_name">Sort: First Name</option>
+        <option value="organization">Sort: Organization</option>
+        <option value="city">Sort: City</option>
+        <option value="state">Sort: State</option>
+        <option value="pipeline_status">Sort: Pipeline</option>
+        <option value="mailing_tier">Sort: Mailing Tier</option>
+        <option value="assigned_to">Sort: Assigned To</option>
+      </select>
       <button class="btn btn-filter" id="filterToggleBtn" onclick="toggleFilterPanel()">☷ Roles</button>
       <div class="toolbar-right">
         <button class="btn btn-email" onclick="openGroupEmailSelector()">✉ Group Email</button>
@@ -498,7 +508,14 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
       </div>
       <div class="form-group"><label>Last Contact Date</label><input type="date" id="f_lastContact"></div>
       <div class="form-group"><label>Follow-up Date</label><input type="date" id="f_followUp"></div>
-      <div class="form-group"><label>Address / City, State, Zip</label><input type="text" id="f_address" placeholder="City, State ZIP"></div>
+      <div class="form-group full-width"><label>Street Address</label><input type="text" id="f_address" placeholder="123 Main Street"></div>
+      <div class="form-group"><label>City</label><input type="text" id="f_city" placeholder="City"></div>
+      <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);display:block;margin-bottom:4px;">State</label><select id="f_state" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);background:var(--bg);color:var(--text);outline:none;">
+          <option value="">—</option><option>AL</option><option>AK</option><option>AZ</option><option>AR</option><option>CA</option><option>CO</option><option>CT</option><option>DE</option><option>FL</option><option>GA</option><option>HI</option><option>ID</option><option>IL</option><option>IN</option><option>IA</option><option>KS</option><option>KY</option><option>LA</option><option>ME</option><option>MD</option><option>MA</option><option>MI</option><option>MN</option><option>MS</option><option>MO</option><option>MT</option><option>NE</option><option>NV</option><option>NH</option><option>NJ</option><option>NM</option><option>NY</option><option>NC</option><option>ND</option><option>OH</option><option>OK</option><option>OR</option><option>PA</option><option>RI</option><option>SC</option><option>SD</option><option>TN</option><option>TX</option><option>UT</option><option>VT</option><option>VA</option><option>WA</option><option>WV</option><option>WI</option><option>WY</option><option>DC</option>
+        </select></div>
+        <div><label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray);display:block;margin-bottom:4px;">Zip</label><input type="text" id="f_zip" placeholder="Zip" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);background:var(--bg);color:var(--text);outline:none;"></div>
+      </div>
       <div class="form-group full-width">
         <label>Roles &amp; Relationships</label>
         <div style="border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--bg);max-height:260px;overflow-y:auto;" id="roleCheckboxes"></div>
@@ -812,7 +829,7 @@ let selectedContactIds = new Set();
 
 async function loadContacts() {
   try {
-    const { data, error } = await db.from('contacts').select('*, first_name, last_name, preferred_name, correspondence_name_mode').order('name');
+    const { data, error } = await db.from('contacts').select('*, first_name, last_name, preferred_name, correspondence_name_mode, address, city, state, zip').order('name');
     if (data) {
       contacts = data;
       window._allContacts = data;
@@ -831,7 +848,7 @@ function getFiltered() {
   const tier = document.getElementById('filterTier').value;
   return contacts.filter(c => {
     if (q) {
-      const haystack = [c.name, c.organization, c.title, c.email, c.phone, c.cell_phone, c.notes].filter(Boolean).join(' ').toLowerCase();
+      const haystack = [c.name, c.organization, c.title, c.email, c.phone, c.cell_phone, c.address, c.city, c.state, c.zip, c.notes].filter(Boolean).join(' ').toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     if (status !== 'all' && c.pipeline_status !== status) return false;
@@ -954,7 +971,23 @@ function renderList() {
   const container = document.getElementById('contactList');
   if (filtered.length === 0) { container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">No contacts match your filters.</div>'; return; }
 
-  container.innerHTML = filtered.sort((a, b) => a.name.localeCompare(b.name)).map(c => {
+  container.innerHTML = filtered.sort((a, b) => {
+    const sortKey = document.getElementById('sortBy').value;
+    let va = '', vb = '';
+    if (sortKey === 'last_name') { va = a.last_name || a.name || ''; vb = b.last_name || b.name || ''; }
+    else if (sortKey === 'first_name') { va = a.first_name || ''; vb = b.first_name || ''; }
+    else if (sortKey === 'organization') { va = a.organization || ''; vb = b.organization || ''; }
+    else if (sortKey === 'city') { va = a.city || ''; vb = b.city || ''; }
+    else if (sortKey === 'state') { va = a.state || ''; vb = b.state || ''; }
+    else if (sortKey === 'pipeline_status') { va = a.pipeline_status || 'zzz'; vb = b.pipeline_status || 'zzz'; }
+    else if (sortKey === 'mailing_tier') { va = a.mailing_tier || '9'; vb = b.mailing_tier || '9'; }
+    else if (sortKey === 'assigned_to') { va = a.assigned_to || 'zzz'; vb = b.assigned_to || 'zzz'; }
+    else { va = a.name || ''; vb = b.name || ''; }
+    const cmp = va.localeCompare(vb);
+    // Secondary sort by last name when primary is equal
+    if (cmp !== 0) return cmp;
+    return (a.last_name || a.name || '').localeCompare(b.last_name || b.name || '');
+  }).map(c => {
     const roleKeys = c.roles || [];
     const tagHtml = roleKeys.map(rk => {
       const d = resolveRoleDisplay(rk);
@@ -974,7 +1007,7 @@ function renderList() {
     const hasCell = c.cell_phone && c.cell_phone.trim();
     return `<div class="contact-row" onclick="openModal(${parseInt(c.contact_id)})">
       <div onclick="event.stopPropagation()"><input type="checkbox" class="row-checkbox" data-id="${parseInt(c.contact_id)}" ${checked} onchange="toggleContactSelection(${parseInt(c.contact_id)}, this)"></div>
-      <div><div class="contact-name">${esc(c.name)}</div><div class="contact-org">${esc(c.organization || '')}</div></div>
+      <div><div class="contact-name">${esc(c.name)}</div><div class="contact-org">${esc(c.organization || '')}${c.city || c.state ? ' · ' + esc([c.city, c.state].filter(Boolean).join(', ')) : ''}</div></div>
       <div class="contact-title-cell">${esc(c.title || '')}</div>
       <div class="contact-tags">${tagHtml}${tierHtml ? ' ' + tierHtml : ''}</div>
       <div><span class="pipeline-badge ${pipelineClass(c.pipeline_status)}">${esc(c.pipeline_status || 'Unassigned')}</span></div>
@@ -1031,7 +1064,8 @@ function openModal(id) {
   editingId = id || null;
   document.getElementById('modalTitle').textContent = id ? 'Edit Contact' : 'Add Contact';
   document.getElementById('deleteBtn').style.display = id ? 'inline-flex' : 'none';
-  ['f_first_name','f_last_name','f_preferred_name','f_name','f_org','f_title','f_email','f_phone','f_cell_phone','f_linkedin','f_address','f_notes'].forEach(f => document.getElementById(f).value = '');
+  ['f_first_name','f_last_name','f_preferred_name','f_name','f_org','f_title','f_email','f_phone','f_cell_phone','f_linkedin','f_address','f_city','f_zip','f_notes'].forEach(f => document.getElementById(f).value = '');
+  document.getElementById('f_state').value = '';
   document.getElementById('f_correspondence_name_mode').value = 'first_name';
   document.getElementById('f_pipeline').value = 'Unassigned';
   document.getElementById('f_assigned').value = '';
@@ -1059,7 +1093,10 @@ function openModal(id) {
       document.getElementById('f_tier').value = c.mailing_tier || '';
       document.getElementById('f_lastContact').value = c.last_contact_date || '';
       document.getElementById('f_followUp').value = c.follow_up_date || '';
-      document.getElementById('f_address').value = c.city_state_zip || c.address || '';
+      document.getElementById('f_address').value = c.address || '';
+      document.getElementById('f_city').value = c.city || '';
+      document.getElementById('f_state').value = c.state || '';
+      document.getElementById('f_zip').value = c.zip || '';
       document.getElementById('f_notes').value = c.notes || '';
       const roles = c.roles || [];
       document.querySelectorAll('.role-cb').forEach(cb => { cb.checked = roles.includes(cb.value); });
@@ -1095,7 +1132,11 @@ async function saveContact() {
     mailing_tier: document.getElementById('f_tier').value || null,
     last_contact_date: document.getElementById('f_lastContact').value || null,
     follow_up_date: document.getElementById('f_followUp').value || null,
-    city_state_zip: document.getElementById('f_address').value.trim() || null,
+    city_state_zip: [document.getElementById('f_city').value.trim(), document.getElementById('f_state').value.trim(), document.getElementById('f_zip').value.trim()].filter(Boolean).join(', ') || null,
+    address: document.getElementById('f_address').value.trim() || null,
+    city: document.getElementById('f_city').value.trim() || null,
+    state: document.getElementById('f_state').value.trim() || null,
+    zip: document.getElementById('f_zip').value.trim() || null,
     notes: document.getElementById('f_notes').value.trim() || null,
     roles
   };
@@ -1140,9 +1181,10 @@ function exportCSV() {
   if (!confirm(`You are about to export ${filtered.length} contact records.\n\nThis data may contain sensitive information protected under FERPA and institutional privacy policies.\n\nPlease handle exported data responsibly:\n• Do not share outside authorized Else School personnel\n• Delete exported files when no longer needed\n• Do not store on unsecured devices\n\nProceed with export?`)) return;
   const user = sessionStorage.getItem('else_user') || 'unknown';
   console.log(`[AUDIT] ${new Date().toISOString()} — User "${user}" exported ${filtered.length} contacts as CSV`);
-  const headers = ['Name','Organization','Title','Email','Phone','Cell Phone','Pipeline','Assigned','Mailing Tier','Roles','Notes'];
+  const headers = ['Name','Organization','Title','Email','Phone','Cell Phone','Address','City','State','Zip','Pipeline','Assigned','Mailing Tier','Roles','Notes'];
   const rows = filtered.map(c => [
     c.name, c.organization || '', c.title || '', c.email || '', c.phone || '', c.cell_phone || '',
+    c.address || '', c.city || '', c.state || '', c.zip || '',
     c.pipeline_status || '', c.assigned_to || '', c.mailing_tier || '',
     (c.roles || []).join('; '), c.notes || ''
   ]);
