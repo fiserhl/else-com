@@ -125,6 +125,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .tag-prospect { background: var(--orange-bg); color: var(--orange); }
 .tag-exec-alum { background: var(--green-bg); color: var(--green); }
 .tag-advisory { background: var(--accent-bg); color: var(--accent); }
+.tag-former_faculty { background: #f0f0f0; color: #555555; }
 .tag-millsaps_board { background: #e8f4e8; color: #2a6b2a; }
 .tag-donor { background: var(--teal-bg); color: var(--teal); }
 .tag-community { background: #f5e6ff; color: #7b2d8e; }
@@ -610,7 +611,9 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 // ═══════════════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://akegekomjwggrvpphxog.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrZWdla29tandnZ3J2cHBoeG9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NTA3MjYsImV4cCI6MjA4OTAyNjcyNn0.yo3lXeRzQTLAZYfYY8QM0vuHYw5AzJwIdZjE2n8bpnw';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  global: { headers: { 'x-app-secret': 'd316cb840036aeffc93a26863b73ee1d39bb675722a682a07c642c219bbd33bc' } }
+});
 
 // ═══════════════════════════════════════════════════════════════
 // XSS SANITIZATION — Escape HTML in user-supplied data
@@ -857,7 +860,8 @@ const ROLES = [
   { key: 'exec_prospect', label: 'Exec Ed Prospect', tagClass: 'tag-prospect' },
   { key: 'community', label: 'Community Partner', tagClass: 'tag-community' },
   { key: 'donor', label: 'Donor / Friend', tagClass: 'tag-donor' },
-  { key: 'faculty', label: 'Faculty / Staff', tagClass: 'tag-advisory' }
+  { key: 'faculty', label: 'Faculty / Staff', tagClass: 'tag-advisory' },
+  { key: 'former_faculty', label: 'Former Faculty / Staff', tagClass: 'tag-former_faculty' }
 ];
 
 const TIER_LABELS = { '1': 'T1', '2': 'T2', '3': 'T3', '4': 'T4', '5': 'T5' };
