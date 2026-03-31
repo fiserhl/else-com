@@ -551,6 +551,26 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
         <label>Notes</label>
         <textarea id="f_notes" rows="2" style="resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;" placeholder="Any additional notes..."></textarea>
       </div>
+      <!-- Alumni & Donor Fields -->
+      <div class="form-group full-width" style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--accent);display:block;margin-bottom:10px;">Alumni &amp; Donor Info</label>
+      </div>
+      <div class="form-group"><label>Formal Salutation</label><input type="text" id="f_formal_salutation" placeholder="e.g. Mr. James A. Smith"></div>
+      <div class="form-group"><label>Spouse / Partner Name</label><input type="text" id="f_spouse_name" placeholder="Spouse or partner first name"></div>
+      <div class="form-group"><label>Grad Year</label><input type="number" id="f_grad_year" placeholder="e.g. 2005" min="1900" max="2099"></div>
+      <div class="form-group"><label>Major / Concentration</label><input type="text" id="f_alum_major" placeholder="e.g. Business Administration"></div>
+      <div class="form-group">
+        <label>Alumni Status</label>
+        <select id="f_alum_status">
+          <option value="">— unknown —</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+          <option value="Unverified">Unverified</option>
+          <option value="Returned mail">Returned mail</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Alumni ID</label><input type="number" id="f_alumni_id" placeholder="Millsaps alumni system ID"></div>
+      <div class="form-group"><label>Donor ID</label><input type="text" id="f_donor_id" placeholder="Gift system donor ID"></div>
       <div class="form-group full-width">
         <label>Data Source <span style="font-weight:400;color:var(--text-muted);font-size:10px;text-transform:none;letter-spacing:0;">(where was this info found or provided?)</span></label>
         <select id="f_data_source">
@@ -878,7 +898,7 @@ let selectedContactIds = new Set();
 
 async function loadContacts() {
   try {
-    const { data, error } = await db.from('contacts').select('*, first_name, last_name, preferred_name, correspondence_name_mode, address, city, state, zip').order('name');
+    const { data, error } = await db.from('contacts').select('*, first_name, last_name, preferred_name, correspondence_name_mode, address, city, state, zip, formal_salutation, spouse_name, grad_year, alum_major, alum_status, alumni_id, donor_id').order('name');
     if (data) {
       contacts = data;
       window._allContacts = data;
@@ -1113,7 +1133,8 @@ function openModal(id) {
   editingId = id || null;
   document.getElementById('modalTitle').textContent = id ? 'Edit Contact' : 'Add Contact';
   document.getElementById('deleteBtn').style.display = id ? 'inline-flex' : 'none';
-  ['f_first_name','f_last_name','f_preferred_name','f_name','f_org','f_title','f_email','f_phone','f_cell_phone','f_linkedin','f_address','f_city','f_zip','f_notes'].forEach(f => document.getElementById(f).value = '');
+  ['f_first_name','f_last_name','f_preferred_name','f_name','f_org','f_title','f_email','f_phone','f_cell_phone','f_linkedin','f_address','f_city','f_zip','f_notes','f_formal_salutation','f_spouse_name','f_grad_year','f_alum_major','f_alumni_id','f_donor_id'].forEach(f => document.getElementById(f).value = '');
+  document.getElementById('f_alum_status').value = '';
   document.getElementById('f_state').value = '';
   document.getElementById('f_correspondence_name_mode').value = 'first_name';
   document.getElementById('f_pipeline').value = 'Unassigned';
@@ -1155,6 +1176,13 @@ function openModal(id) {
       document.getElementById('f_state').value = c.state || '';
       document.getElementById('f_zip').value = c.zip || '';
       document.getElementById('f_notes').value = c.notes || '';
+      document.getElementById('f_formal_salutation').value = c.formal_salutation || '';
+      document.getElementById('f_spouse_name').value = c.spouse_name || '';
+      document.getElementById('f_grad_year').value = c.grad_year || '';
+      document.getElementById('f_alum_major').value = c.alum_major || '';
+      document.getElementById('f_alum_status').value = c.alum_status || '';
+      document.getElementById('f_alumni_id').value = c.alumni_id || '';
+      document.getElementById('f_donor_id').value = c.donor_id || '';
       const roles = c.roles || [];
       document.querySelectorAll('.role-cb').forEach(cb => { cb.checked = roles.includes(cb.value); });
     }
@@ -1200,6 +1228,13 @@ async function saveContact() {
     state: document.getElementById('f_state').value.trim() || null,
     zip: document.getElementById('f_zip').value.trim() || null,
     notes: document.getElementById('f_notes').value.trim() || null,
+    formal_salutation: document.getElementById('f_formal_salutation').value.trim() || null,
+    spouse_name: document.getElementById('f_spouse_name').value.trim() || null,
+    grad_year: document.getElementById('f_grad_year').value ? parseInt(document.getElementById('f_grad_year').value) : null,
+    alum_major: document.getElementById('f_alum_major').value.trim() || null,
+    alum_status: document.getElementById('f_alum_status').value || null,
+    alumni_id: document.getElementById('f_alumni_id').value ? parseInt(document.getElementById('f_alumni_id').value) : null,
+    donor_id: document.getElementById('f_donor_id').value.trim() || null,
     roles
   };
   const currentUser = sessionStorage.getItem('else_user') || 'unknown';
