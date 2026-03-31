@@ -125,6 +125,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .tag-prospect { background: var(--orange-bg); color: var(--orange); }
 .tag-exec-alum { background: var(--green-bg); color: var(--green); }
 .tag-advisory { background: var(--accent-bg); color: var(--accent); }
+.tag-millsaps_board { background: #e8f4e8; color: #2a6b2a; }
 .tag-donor { background: var(--teal-bg); color: var(--teal); }
 .tag-community { background: #f5e6ff; color: #7b2d8e; }
 .tag-friend { background: #fff3e0; color: #e65100; }
@@ -841,6 +842,7 @@ async function addUser() {
 // ═══════════════════════════════════════════════════════════════
 const ROLES = [
   { key: 'advisory', label: 'Advisory Board', tagClass: 'tag-advisory' },
+  { key: 'millsaps_board', label: 'Millsaps Board', tagClass: 'tag-millsaps_board' },
   { key: 'corporate', label: 'Corporate Partner', tagClass: 'tag-corporate' },
   { key: 'else_alum', label: 'Else Alumni', tagClass: 'tag-alumni',
     children: [
