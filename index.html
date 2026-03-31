@@ -898,7 +898,7 @@ let selectedContactIds = new Set();
 
 async function loadContacts() {
   try {
-    const { data, error } = await db.from('contacts').select('*, first_name, last_name, preferred_name, correspondence_name_mode, address, city, state, zip, formal_salutation, spouse_name, grad_year, alum_major, alum_status, alumni_id, donor_id').order('name');
+    const { data, error } = await db.from('contacts').select('*, first_name, last_name, preferred_name, correspondence_name_mode, address, city, state, zip, formal_salutation, spouse_name, grad_year, alum_major, alum_status, alumni_id, donor_id').order('name').range(0, 9999);
     if (data) {
       contacts = data;
       window._allContacts = data;
