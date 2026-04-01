@@ -251,6 +251,41 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .history-user { font-weight: 600; color: var(--text); }
 .history-source { display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 1px 6px; border-radius: 3px; background: var(--purple-soft); color: var(--accent); margin-left: 4px; }
 .history-empty { font-size: 12px; color: var(--text-muted); font-style: italic; padding: 12px 0; }
+
+/* ═══ Relationship Timeline ═══ */
+.timeline-panel { border-top: 1px solid var(--border-light); margin-top: 16px; padding-top: 12px; }
+.timeline-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.timeline-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--teal); cursor: pointer; background: none; border: none; font-family: var(--sans); padding: 4px 0; }
+.timeline-toggle:hover { text-decoration: underline; }
+.timeline-toggle .arrow { font-size: 10px; transition: transform 0.2s; }
+.timeline-toggle.open .arrow { transform: rotate(90deg); }
+.timeline-body { display: none; margin-top: 6px; }
+.timeline-body.open { display: block; }
+.timeline-add-form { display: grid; grid-template-columns: 120px 1fr; gap: 8px; margin-bottom: 14px; padding: 12px; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.timeline-add-form .full-span { grid-column: 1 / -1; }
+.timeline-add-form input, .timeline-add-form select, .timeline-add-form textarea { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; font-family: var(--sans); background: var(--surface); outline: none; }
+.timeline-add-form textarea { resize: vertical; min-height: 48px; }
+.timeline-add-form input:focus, .timeline-add-form select:focus, .timeline-add-form textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(33,20,95,0.06); }
+.timeline-entries { max-height: 320px; overflow-y: auto; }
+.timeline-entry { display: grid; grid-template-columns: 90px 1fr 24px; gap: 8px; padding: 8px 10px; border-left: 3px solid var(--teal); margin-bottom: 6px; font-size: 12px; background: var(--bg); border-radius: 0 var(--radius) var(--radius) 0; }
+.timeline-entry:hover { background: var(--surface-alt); }
+.timeline-date { font-size: 11px; color: var(--text-muted); line-height: 1.6; }
+.timeline-detail { color: var(--text-secondary); line-height: 1.6; }
+.timeline-category { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 1px 6px; border-radius: 3px; margin-bottom: 2px; }
+.cat-promotion { background: var(--green-bg); color: var(--green); }
+.cat-job-change { background: var(--blue-bg); color: var(--blue); }
+.cat-life-event { background: #fce4ec; color: #c62828; }
+.cat-meeting { background: var(--orange-bg); color: var(--orange); }
+.cat-email { background: var(--teal-bg); color: var(--teal); }
+.cat-event { background: var(--accent-bg); color: var(--accent); }
+.cat-gift { background: #fff3e0; color: #e65100; }
+.cat-referral { background: #e3f2fd; color: #1565c0; }
+.cat-note { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
+.timeline-logged-by { font-size: 10px; color: var(--text-muted); }
+.timeline-delete { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 14px; padding: 0; line-height: 1; opacity: 0.5; }
+.timeline-delete:hover { color: var(--red); opacity: 1; }
+.timeline-empty { font-size: 12px; color: var(--text-muted); font-style: italic; padding: 12px 0; }
+.timeline-count { font-size: 10px; color: var(--text-muted); font-weight: 400; margin-left: 6px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -589,6 +624,44 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
           <option value="Phone Call">Phone Call</option>
           <option value="Other">Other</option>
         </select>
+      </div>
+    </div>
+    <!-- Relationship Timeline (only shown when editing) -->
+    <div class="timeline-panel" id="timelinePanel" style="display:none;">
+      <div class="timeline-header">
+        <button class="timeline-toggle" id="timelineToggle" onclick="toggleTimeline()"><span class="arrow">▸</span> 📅 Relationship Timeline <span class="timeline-count" id="timelineCount"></span></button>
+        <button class="btn" id="timelineAddBtn" onclick="toggleTimelineForm()" style="font-size:11px;padding:3px 10px;display:none;">+ Add Event</button>
+      </div>
+      <div class="timeline-body" id="timelineBody">
+        <div class="timeline-add-form" id="timelineForm" style="display:none;">
+          <div>
+            <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray);display:block;margin-bottom:3px;">Date</label>
+            <input type="date" id="tl_date">
+          </div>
+          <div>
+            <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray);display:block;margin-bottom:3px;">Category</label>
+            <select id="tl_category">
+              <option value="Note / General">Note / General</option>
+              <option value="Promotion / Career Change">Promotion / Career Change</option>
+              <option value="Job Change / New Employer">Job Change / New Employer</option>
+              <option value="Life Event">Life Event (baby, marriage, retirement…)</option>
+              <option value="Meeting / Lunch / Call">Meeting / Lunch / Call</option>
+              <option value="Email Exchange">Email Exchange</option>
+              <option value="Event Attendance">Event Attendance (gala, board meeting…)</option>
+              <option value="Gift / Recognition Sent">Gift / Recognition Sent</option>
+              <option value="Referral / Introduction">Referral / Introduction</option>
+            </select>
+          </div>
+          <div class="full-span">
+            <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray);display:block;margin-bottom:3px;">Description</label>
+            <textarea id="tl_description" rows="2" placeholder="What happened? Be specific — this is your institutional memory."></textarea>
+          </div>
+          <div class="full-span" style="display:flex;gap:6px;justify-content:flex-end;">
+            <button class="btn" onclick="toggleTimelineForm()" style="font-size:11px;padding:4px 12px;">Cancel</button>
+            <button class="btn btn-primary" onclick="addRelationshipEvent()" style="font-size:11px;padding:4px 12px;">Save Event</button>
+          </div>
+        </div>
+        <div class="timeline-entries" id="timelineEntries"></div>
       </div>
     </div>
     <!-- History Panel (only shown when editing) -->
@@ -1196,8 +1269,11 @@ function openModal(id) {
     }
     // Load history for this contact
     loadContactHistory(id);
+    // Load relationship timeline
+    loadRelationshipTimeline(id);
   } else {
     document.getElementById('historyPanel').style.display = 'none';
+    document.getElementById('timelinePanel').style.display = 'none';
   }
   document.getElementById('modalOverlay').classList.add('open');
 }
@@ -1861,6 +1937,150 @@ function copyGroupTextNumbers() {
     btn.textContent = '✓ Copied!';
     setTimeout(() => { btn.textContent = orig; }, 2000);
   }).catch(() => { prompt('Copy these numbers:', text); });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RELATIONSHIP TIMELINE
+// ═══════════════════════════════════════════════════════════════
+
+const EVENT_CATEGORIES = {
+  'Promotion / Career Change': 'cat-promotion',
+  'Job Change / New Employer': 'cat-job-change',
+  'Life Event': 'cat-life-event',
+  'Meeting / Lunch / Call': 'cat-meeting',
+  'Email Exchange': 'cat-email',
+  'Event Attendance': 'cat-event',
+  'Gift / Recognition Sent': 'cat-gift',
+  'Referral / Introduction': 'cat-referral',
+  'Note / General': 'cat-note'
+};
+
+function toggleTimeline() {
+  const toggle = document.getElementById('timelineToggle');
+  const body = document.getElementById('timelineBody');
+  const addBtn = document.getElementById('timelineAddBtn');
+  toggle.classList.toggle('open');
+  body.classList.toggle('open');
+  if (body.classList.contains('open')) {
+    addBtn.style.display = 'inline-flex';
+  } else {
+    addBtn.style.display = 'none';
+  }
+}
+
+function toggleTimelineForm() {
+  const form = document.getElementById('timelineForm');
+  if (form.style.display === 'none') {
+    form.style.display = 'grid';
+    document.getElementById('tl_date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('tl_category').value = 'Note / General';
+    document.getElementById('tl_description').value = '';
+    document.getElementById('tl_description').focus();
+  } else {
+    form.style.display = 'none';
+  }
+}
+
+async function loadRelationshipTimeline(contactId) {
+  const panel = document.getElementById('timelinePanel');
+  const entries = document.getElementById('timelineEntries');
+  const countEl = document.getElementById('timelineCount');
+  const toggle = document.getElementById('timelineToggle');
+  const body = document.getElementById('timelineBody');
+  const addBtn = document.getElementById('timelineAddBtn');
+
+  if (!contactId) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  // Reset state
+  toggle.classList.remove('open');
+  body.classList.remove('open');
+  addBtn.style.display = 'none';
+  document.getElementById('timelineForm').style.display = 'none';
+  entries.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Loading timeline…</p>';
+
+  try {
+    const { data, error } = await db.from('contact_events')
+      .select('*')
+      .eq('contact_id', contactId)
+      .order('event_date', { ascending: false });
+    if (error) throw error;
+
+    countEl.textContent = data && data.length ? `(${data.length})` : '';
+
+    if (!data || data.length === 0) {
+      entries.innerHTML = '<p class="timeline-empty">No relationship events recorded yet. Click "+ Add Event" to start building this contact\'s timeline.</p>';
+      // Auto-open if empty so the user sees the prompt
+      toggle.classList.add('open');
+      body.classList.add('open');
+      addBtn.style.display = 'inline-flex';
+      return;
+    }
+
+    entries.innerHTML = data.map(ev => {
+      const dt = new Date(ev.event_date + 'T00:00:00');
+      const dateStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const catClass = EVENT_CATEGORIES[ev.category] || 'cat-note';
+      const catLabel = ev.category || 'Note';
+      return `<div class="timeline-entry">
+        <div class="timeline-date">${dateStr}</div>
+        <div class="timeline-detail">
+          <span class="timeline-category ${catClass}">${esc(catLabel)}</span><br>
+          ${esc(ev.description || '')}
+          <div class="timeline-logged-by">— ${esc(ev.logged_by || 'unknown')}, ${new Date(ev.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+        </div>
+        <button class="timeline-delete" title="Delete this event" onclick="deleteRelationshipEvent(${ev.event_id})">×</button>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    entries.innerHTML = '<p style="font-size:12px;color:var(--red);">Error loading timeline.</p>';
+    console.error('Timeline load error:', e);
+  }
+}
+
+async function addRelationshipEvent() {
+  if (!editingId) return;
+  const eventDate = document.getElementById('tl_date').value;
+  const category = document.getElementById('tl_category').value;
+  const description = document.getElementById('tl_description').value.trim();
+  if (!description) { alert('Please enter a description of the event.'); return; }
+  const loggedBy = sessionStorage.getItem('else_user') || 'unknown';
+  try {
+    const { error } = await db.from('contact_events').insert({
+      contact_id: editingId,
+      event_date: eventDate || new Date().toISOString().slice(0, 10),
+      category: category,
+      description: description,
+      logged_by: loggedBy
+    });
+    if (error) throw error;
+    document.getElementById('timelineForm').style.display = 'none';
+    await loadRelationshipTimeline(editingId);
+    // Auto-open the timeline to show the new entry
+    const toggle = document.getElementById('timelineToggle');
+    const body = document.getElementById('timelineBody');
+    const addBtn = document.getElementById('timelineAddBtn');
+    if (!toggle.classList.contains('open')) {
+      toggle.classList.add('open');
+      body.classList.add('open');
+      addBtn.style.display = 'inline-flex';
+    }
+  } catch(e) {
+    alert('Error saving event. Please try again.');
+    console.error('Timeline save error:', e);
+  }
+}
+
+async function deleteRelationshipEvent(eventId) {
+  if (!confirm('Delete this timeline event?')) return;
+  try {
+    const { error } = await db.from('contact_events').delete().eq('event_id', eventId);
+    if (error) throw error;
+    await loadRelationshipTimeline(editingId);
+  } catch(e) {
+    alert('Error deleting event.');
+    console.error('Timeline delete error:', e);
+  }
 }
 </script>
 </body>
