@@ -133,6 +133,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .tag-friend { background: #fff3e0; color: #e65100; }
 .tag-alumni { background: #e3f2fd; color: #1565c0; }
 .tag-student { background: #e8f5e9; color: #2e7d32; }
+.tag-exec-ed { background: #fff8e1; color: #f57f17; }
 
 .pipeline-badge { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 3px; }
 .pipeline-prospective { background: var(--blue-bg); color: var(--blue); }
@@ -923,12 +924,21 @@ const ROLES = [
   { key: 'corporate', label: 'Corporate Partner', tagClass: 'tag-corporate' },
   { key: 'else_alum', label: 'Else Alumni', tagClass: 'tag-alumni',
     children: [
-      { key: 'mba', label: 'MBA' }, { key: 'mbaa', label: 'MBAA' },
+      { key: 'mba', label: 'MBA' }, { key: 'emba', label: 'EMBA' },
+      { key: 'mbaa', label: 'MBAA' },
       { key: 'macc', label: 'MACC' }, { key: 'macca', label: 'MACCA' },
       { key: 'data_analytics', label: 'Data Analytics' },
       { key: 'data_analytics_cert', label: 'Data Analytics Cert' },
       { key: 'econ', label: 'Economics' }, { key: 'acct', label: 'Accounting' },
       { key: 'bus_admin', label: 'Business Administration' }
+    ]
+  },
+  { key: 'exec_ed_alum', label: 'Executive Education Alumni', tagClass: 'tag-exec-ed',
+    children: [
+      { key: 'exec_ed_business_advantage', label: 'Business Advantage' },
+      { key: 'exec_ed_aalp', label: 'AALP' },
+      { key: 'exec_ed_bap', label: 'BAP' },
+      { key: 'exec_ed_other', label: 'Other (Specify)', hasTextField: true }
     ]
   },
   { key: 'millsaps_alum', label: 'Millsaps Alumni (Non-Else)', tagClass: 'tag-millsaps' },
@@ -979,7 +989,7 @@ let selectedContactIds = new Set();
 
 async function loadContacts() {
   try {
-    const { data, error } = await db.from('contacts').select('*, first_name, last_name, preferred_name, correspondence_name_mode, address, city, state, zip, formal_salutation, spouse_name, grad_year, alum_major, alum_status, alumni_id, donor_id').order('name').range(0, 9999);
+    const { data, error } = await db.from('contacts').select('*, first_name, last_name, preferred_name, correspondence_name_mode, address, city, state, zip, formal_salutation, spouse_name, grad_year, alum_major, alum_status, alumni_id, donor_id, exec_ed_other_specify').order('name').range(0, 9999);
     if (data) {
       contacts = data;
       window._allContacts = data;
@@ -1187,7 +1197,16 @@ function renderRoleCheckboxes() {
     if (hasSubs) {
       html += `<div class="sub-options">`;
       r.children.forEach(ch => {
-        html += `<label class="sub-option"><input type="checkbox" value="${ch.key}" class="role-cb">${ch.label}</label>`;
+        if (ch.hasTextField) {
+          html += `<label class="sub-option"><input type="checkbox" value="${ch.key}" class="role-cb" onchange="toggleExecEdOther(this)">${ch.label}</label>`;
+          html += `<div id="execEdOtherWrap" style="display:none;padding:4px 0 4px 22px;">
+            <input type="text" id="f_exec_ed_other_specify" placeholder="Specify program name…" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:var(--sans);background:var(--surface);outline:none;">
+          </div>`;
+        } else if (ch.key === 'emba') {
+          html += `<label class="sub-option"><input type="checkbox" value="${ch.key}" class="role-cb" onchange="handleEmbaChange(this)">${ch.label}</label>`;
+        } else {
+          html += `<label class="sub-option"><input type="checkbox" value="${ch.key}" class="role-cb">${ch.label}</label>`;
+        }
       });
       html += `</div>`;
     }
@@ -1210,6 +1229,22 @@ function handleParentRoleChange(cb) {
   }
 }
 
+function handleEmbaChange(cb) {
+  // EMBA requires MBA — auto-check MBA when EMBA is checked
+  if (cb.checked) {
+    const mbaCb = document.querySelector('.role-cb[value="mba"]');
+    if (mbaCb && !mbaCb.checked) mbaCb.checked = true;
+  }
+}
+
+function toggleExecEdOther(cb) {
+  const wrap = document.getElementById('execEdOtherWrap');
+  if (wrap) {
+    wrap.style.display = cb.checked ? 'block' : 'none';
+    if (!cb.checked) document.getElementById('f_exec_ed_other_specify').value = '';
+  }
+}
+
 function openModal(id) {
   editingId = id || null;
   document.getElementById('modalTitle').textContent = id ? 'Edit Contact' : 'Add Contact';
@@ -1225,6 +1260,8 @@ function openModal(id) {
   document.getElementById('f_followUp').value = '';
   document.getElementById('f_data_source').value = '';
   document.querySelectorAll('.role-cb').forEach(cb => cb.checked = false);
+  document.getElementById('f_exec_ed_other_specify').value = '';
+  document.getElementById('execEdOtherWrap').style.display = 'none';
 
   // Reset history panel
   const historyToggle = document.getElementById('historyToggle');
@@ -1266,6 +1303,11 @@ function openModal(id) {
       document.getElementById('f_donor_id').value = c.donor_id || '';
       const roles = c.roles || [];
       document.querySelectorAll('.role-cb').forEach(cb => { cb.checked = roles.includes(cb.value); });
+      // Show "Other (Specify)" text field if exec_ed_other is checked
+      if (roles.includes('exec_ed_other')) {
+        document.getElementById('execEdOtherWrap').style.display = 'block';
+        document.getElementById('f_exec_ed_other_specify').value = c.exec_ed_other_specify || '';
+      }
     }
     // Load history for this contact
     loadContactHistory(id);
@@ -1319,6 +1361,7 @@ async function saveContact() {
     alum_status: document.getElementById('f_alum_status').value || null,
     alumni_id: document.getElementById('f_alumni_id').value ? parseInt(document.getElementById('f_alumni_id').value) : null,
     donor_id: document.getElementById('f_donor_id').value.trim() || null,
+    exec_ed_other_specify: roles.includes('exec_ed_other') ? (document.getElementById('f_exec_ed_other_specify').value.trim() || null) : null,
     roles
   };
   const currentUser = sessionStorage.getItem('else_user') || 'unknown';
