@@ -134,6 +134,8 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .tag-alumni { background: #e3f2fd; color: #1565c0; }
 .tag-student { background: #e8f5e9; color: #2e7d32; }
 .tag-exec-ed { background: #fff8e1; color: #f57f17; }
+.tag-trips { background: #fce4d6; color: #8b4513; }
+.tag-mentor { background: #e0f2f1; color: #00695c; }
 
 .pipeline-badge { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 3px; }
 .pipeline-prospective { background: var(--blue-bg); color: var(--blue); }
@@ -935,10 +937,21 @@ const ROLES = [
   },
   { key: 'exec_ed_alum', label: 'Executive Education Alumni', tagClass: 'tag-exec-ed',
     children: [
-      { key: 'exec_ed_business_advantage', label: 'Business Advantage' },
       { key: 'exec_ed_aalp', label: 'AALP' },
       { key: 'exec_ed_bap', label: 'BAP' },
       { key: 'exec_ed_other', label: 'Other (Specify)', hasTextField: true }
+    ]
+  },
+  { key: 'trips_experiences', label: 'Trips / Experiences / EW', tagClass: 'tag-trips',
+    children: [
+      { key: 'trip_econ', label: 'Econ Trip' },
+      { key: 'trip_bba', label: 'BBA Trip' },
+      { key: 'trip_acct', label: 'Acct Trip' },
+      { key: 'trip_europe', label: 'Europe Study Abroad' },
+      { key: 'trip_yucatan', label: 'Yucatan Study Abroad' },
+      { key: 'trip_other_abroad', label: 'Other Study Abroad' },
+      { key: 'trip_elseworks', label: 'ELSEWORKS' },
+      { key: 'trip_louis_wilson', label: 'Louis Wilson Fund' }
     ]
   },
   { key: 'millsaps_alum', label: 'Millsaps Alumni (Non-Else)', tagClass: 'tag-millsaps' },
@@ -946,7 +959,8 @@ const ROLES = [
   { key: 'community', label: 'Community Partner', tagClass: 'tag-community' },
   { key: 'donor', label: 'Donor / Friend', tagClass: 'tag-donor' },
   { key: 'faculty', label: 'Faculty / Staff', tagClass: 'tag-advisory' },
-  { key: 'former_faculty', label: 'Former Faculty / Staff', tagClass: 'tag-former_faculty' }
+  { key: 'former_faculty', label: 'Former Faculty / Staff', tagClass: 'tag-former_faculty' },
+  { key: 'mentor', label: 'Mentor', tagClass: 'tag-mentor' }
 ];
 
 const TIER_LABELS = { '1': 'T1', '2': 'T2', '3': 'T3', '4': 'T4', '5': 'T5' };
@@ -1325,6 +1339,20 @@ async function saveContact() {
   const first_name = document.getElementById('f_first_name').value.trim();
   const last_name = document.getElementById('f_last_name').value.trim();
   if (!first_name && !last_name) { alert('Please enter at least a first or last name.'); return; }
+  // ── Notes validation: detect phone numbers / emails buried in notes ──
+  const notesVal = document.getElementById('f_notes').value.trim();
+  if (notesVal) {
+    const cellVal = document.getElementById('f_cell_phone').value.trim();
+    const emailVal = document.getElementById('f_email').value.trim();
+    const phoneRx = /(?:cell|mobile|phone|direct|ph)?[:\s]*(?:\+?\(?\d{3}\)?[\s\-\.]?\d{3}[\s\-\.]?\d{4})/gi;
+    const emailRx = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+    const foundPhones = notesVal.match(phoneRx);
+    const foundEmails = notesVal.match(emailRx);
+    let warnings = [];
+    if (foundPhones && !cellVal) warnings.push("📞 A phone number was detected in the Notes field (\"" + foundPhones[0].trim() + "\") but the Cell Phone field is empty.\n\nConsider moving it to the Cell Phone field so it is searchable.");
+    if (foundEmails && !emailVal) warnings.push("📧 An email was detected in the Notes field (\"" + foundEmails[0] + "\") but the Email field is empty.\n\nConsider moving it to the Email field so it is searchable.");
+    if (warnings.length > 0 && !confirm(warnings.join("\n\n") + "\n\nClick OK to save anyway, or Cancel to go back and fix it.")) return;
+  }
   const preferred_name = document.getElementById('f_preferred_name').value.trim() || null;
   const correspondence_name_mode = document.getElementById('f_correspondence_name_mode').value;
   // Auto-generate display name from first + last
