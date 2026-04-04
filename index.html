@@ -289,6 +289,44 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .timeline-delete:hover { color: var(--red); opacity: 1; }
 .timeline-empty { font-size: 12px; color: var(--text-muted); font-style: italic; padding: 12px 0; }
 .timeline-count { font-size: 10px; color: var(--text-muted); font-weight: 400; margin-left: 6px; }
+/* ═══ Research Tab ═══ */
+.research-subtab { background:transparent; border:none; color:var(--text-muted); font-weight:500; transition:all 0.15s; }
+.research-subtab.active { background:var(--surface); color:var(--text); box-shadow:var(--shadow-sm); }
+.enrich-card { border:1px solid var(--border-light); border-radius:var(--radius); margin-bottom:8px; background:var(--surface); overflow:hidden; }
+.enrich-card-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; cursor:pointer; user-select:none; transition:background 0.1s; }
+.enrich-card-header:hover { background:rgba(0,0,0,0.02); }
+.enrich-card-body { display:none; border-top:1px solid var(--border-light); padding:16px; }
+.enrich-card.expanded .enrich-card-body { display:block; }
+.enrich-card.expanded .ec-arrow { transform:rotate(90deg); }
+.ec-arrow { font-size:10px; color:var(--text-muted); transition:transform 0.15s; margin-right:8px; }
+.ec-name { font-weight:600; font-size:13px; }
+.ec-badge { padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; }
+.ec-match { background:#e8f5e9; color:#2d8a4e; }
+.ec-nomatch { background:#fdecea; color:#c0392b; }
+.ec-pending { background:#fff8e1; color:#f57f17; }
+.ec-approved { background:#e8f5e9; color:#2d8a4e; }
+.ec-rejected { background:#fdecea; color:#c0392b; }
+.ec-partial { background:#e3f2fd; color:#1565c0; }
+.ec-conf { font-weight:600; font-size:11px; }
+.ec-conf-high { color:#2d8a4e; }
+.ec-conf-med { color:#f57f17; }
+.ec-conf-low { color:#c0392b; }
+.enrich-compare { width:100%; border-collapse:collapse; font-size:12px; }
+.enrich-compare th { text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); padding:5px 8px; border-bottom:1px solid var(--border-light); }
+.enrich-compare td { padding:6px 8px; border-bottom:1px solid rgba(0,0,0,0.04); vertical-align:top; }
+.ec-field { font-weight:600; font-size:11px; color:var(--text-muted); width:100px; }
+.ec-empty { color:#bbb; font-style:italic; }
+.ec-new { color:#2d8a4e; font-weight:500; }
+.ec-diff { color:#f57f17; font-weight:500; }
+.ec-same { color:var(--text); }
+.enrich-actions { display:flex; gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border-light); }
+.enrich-check { margin-right:6px; accent-color:var(--purple); }
+.enrich-preview-row { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid var(--border-light); font-size:12px; }
+.enrich-preview-row:last-child { border-bottom:none; }
+.enrich-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
+.enrich-stat { background:var(--surface); border:1px solid var(--border-light); border-radius:var(--radius); padding:14px; text-align:center; }
+.enrich-stat .es-num { font-family:var(--serif); font-size:28px; font-weight:600; line-height:1; }
+.enrich-stat .es-label { font-size:10px; color:var(--text-muted); margin-top:3px; text-transform:uppercase; letter-spacing:0.5px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -335,6 +373,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
     <button class="tab" data-tab="mailings">Mailings</button>
     <button class="tab" data-tab="compliance">Compliance</button>
     <button class="tab" data-tab="audit">Audit Log</button>
+    <button class="tab" data-tab="research">🔍 Research</button>
   </div>
 
   <!-- ═══════════ CONTACTS TAB ═══════════ -->
@@ -483,6 +522,146 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
       <div id="auditLogContent" style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
         <p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">Click "Refresh" or switch to this tab to load the audit log.</p>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ RESEARCH TAB ═══════════ -->
+  <div class="tab-content" id="tabResearch">
+    <div style="padding:20px 32px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <h3 style="font-family:var(--serif);font-size:20px;font-weight:500;color:var(--accent);margin-bottom:2px;">Contact Enrichment</h3>
+          <p style="font-size:12px;color:var(--text-muted);">Enrich contact records with People Data Labs — all updates require approval</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span id="pdlCreditInfo" style="font-size:11px;color:var(--text-muted);"></span>
+          <button class="btn" onclick="loadEnrichmentQueue()">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Sub-tabs for Research -->
+      <div style="display:flex;gap:2px;margin-bottom:16px;background:var(--border-light);border-radius:var(--radius);padding:2px;">
+        <button class="btn research-subtab active" data-subtab="queue" onclick="switchResearchTab('queue')" style="flex:1;border-radius:var(--radius);font-size:12px;padding:8px 12px;">📋 Review Queue <span id="queueBadge" style="background:var(--accent);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px;display:none;">0</span></button>
+        <button class="btn research-subtab" data-subtab="run" onclick="switchResearchTab('run')" style="flex:1;border-radius:var(--radius);font-size:12px;padding:8px 12px;">🚀 Run Enrichment</button>
+        <button class="btn research-subtab" data-subtab="history" onclick="switchResearchTab('history')" style="flex:1;border-radius:var(--radius);font-size:12px;padding:8px 12px;">📊 History</button>
+      </div>
+
+      <!-- QUEUE SUB-TAB -->
+      <div class="research-panel" id="panelQueue">
+        <div id="enrichmentQueueContent" style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
+          <p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">Loading enrichment queue...</p>
+        </div>
+      </div>
+
+      <!-- RUN ENRICHMENT SUB-TAB -->
+      <div class="research-panel" id="panelRun" style="display:none;">
+        <div style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:24px;">
+          <h4 style="font-family:var(--serif);font-size:16px;font-weight:500;margin-bottom:16px;">Select Contacts to Enrich</h4>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+            <!-- Filter: Missing fields -->
+            <div class="form-group">
+              <label>Find contacts missing...</label>
+              <select id="enrichMissingField">
+                <option value="">— select —</option>
+                <option value="organization">Organization</option>
+                <option value="title">Job Title</option>
+                <option value="linkedin_url">LinkedIn URL</option>
+                <option value="city">City</option>
+                <option value="phone_any">Any Phone</option>
+              </select>
+            </div>
+            <!-- Filter: Has email (required for PDL) -->
+            <div class="form-group">
+              <label>Must have...</label>
+              <select id="enrichRequireField">
+                <option value="email">Email (best match rate)</option>
+                <option value="linkedin_url">LinkedIn URL</option>
+                <option value="any">Any identifier</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
+            <div class="form-group">
+              <label>Role filter</label>
+              <select id="enrichRoleFilter">
+                <option value="">Any role</option>
+                <option value="else_alum">Else Alumni</option>
+                <option value="advisory">Advisory Board</option>
+                <option value="corporate">Corporate Partner</option>
+                <option value="exec_ed_alum">Exec Ed Alumni</option>
+                <option value="donor">Donor / Friend</option>
+                <option value="mentor">Mentor</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Grad year range</label>
+              <div style="display:flex;gap:6px;">
+                <input type="number" id="enrichYearFrom" placeholder="From" style="width:50%;">
+                <input type="number" id="enrichYearTo" placeholder="To" style="width:50%;">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Max contacts</label>
+              <select id="enrichLimit">
+                <option value="10">10 contacts</option>
+                <option value="25">25 contacts</option>
+                <option value="50">50 contacts</option>
+                <option value="100" selected>100 contacts</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;">
+            <button class="btn btn-primary" onclick="previewEnrichmentBatch()" style="padding:8px 20px;">Preview Batch</button>
+            <span id="enrichPreviewCount" style="font-size:12px;color:var(--text-muted);"></span>
+          </div>
+
+          <!-- Preview list -->
+          <div id="enrichPreviewList" style="display:none;border:1px solid var(--border-light);border-radius:var(--radius);max-height:300px;overflow-y:auto;margin-bottom:16px;">
+          </div>
+
+          <!-- Run button -->
+          <div id="enrichRunSection" style="display:none;border-top:1px solid var(--border-light);padding-top:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <span style="font-size:13px;font-weight:600;" id="enrichCreditEstimate"></span>
+                <br><span style="font-size:11px;color:var(--text-muted);">Only matched results consume credits</span>
+              </div>
+              <button class="btn btn-primary" onclick="runEnrichmentBatch()" id="enrichRunBtn" style="padding:10px 28px;font-size:14px;">🔍 Run Enrichment</button>
+            </div>
+            <div id="enrichProgress" style="display:none;margin-top:16px;">
+              <div style="background:var(--border-light);border-radius:4px;height:8px;overflow:hidden;">
+                <div id="enrichProgressBar" style="background:var(--gold);height:100%;width:0%;transition:width 0.3s;border-radius:4px;"></div>
+              </div>
+              <div id="enrichProgressText" style="font-size:12px;color:var(--text-muted);margin-top:6px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Single contact enrichment -->
+        <div style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:24px;margin-top:16px;">
+          <h4 style="font-family:var(--serif);font-size:16px;font-weight:500;margin-bottom:12px;">Enrich Single Contact</h4>
+          <div style="display:flex;gap:10px;align-items:end;">
+            <div class="form-group" style="flex:1;margin-bottom:0;">
+              <label>Search by name</label>
+              <input type="text" id="enrichSingleSearch" placeholder="Type a contact name..." oninput="searchEnrichSingle()">
+            </div>
+            <button class="btn btn-primary" id="enrichSingleBtn" onclick="runSingleEnrich()" disabled style="margin-bottom:1px;">Enrich</button>
+          </div>
+          <div id="enrichSingleResults" style="margin-top:8px;max-height:200px;overflow-y:auto;"></div>
+          <div id="enrichSingleStatus" style="margin-top:8px;font-size:12px;"></div>
+        </div>
+      </div>
+
+      <!-- HISTORY SUB-TAB -->
+      <div class="research-panel" id="panelHistory" style="display:none;">
+        <div id="enrichmentHistoryContent" style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
+          <p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">Loading history...</p>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -743,10 +922,11 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.add('active');
     const tabName = tab.dataset.tab;
     document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-    const tabMap = { contacts:'tabContacts', tasks:'tabTasks', campaigns:'tabCampaigns', mailings:'tabMailings', compliance:'tabCompliance', audit:'tabAudit' };
+    const tabMap = { contacts:'tabContacts', tasks:'tabTasks', campaigns:'tabCampaigns', mailings:'tabMailings', compliance:'tabCompliance', audit:'tabAudit', research:'tabResearch' };
     const target = document.getElementById(tabMap[tabName]);
     if (target) target.classList.add('active');
     if (tabName === 'audit') loadAuditLog();
+    if (tabName === 'research') loadEnrichmentQueue();
   });
 });
 
@@ -2277,6 +2457,586 @@ async function deleteRelationshipEvent(eventId) {
   } catch(e) {
     alert('Error deleting event.');
     console.error('Timeline delete error:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PDL ENRICHMENT — Research Tab
+// ═══════════════════════════════════════════════════════════════
+const PDL_API_KEY = '3cc4f68a09a7c2bde2396770550b2432d9c5c1125f8b14068e0a25013bb199d9';
+const PDL_ENRICH_URL = 'https://api.peopledatalabs.com/v5/person/enrich';
+let enrichPreviewContacts = [];
+let selectedEnrichSingleId = null;
+
+function switchResearchTab(tab) {
+  document.querySelectorAll('.research-subtab').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.research-subtab[data-subtab="${tab}"]`).classList.add('active');
+  document.querySelectorAll('.research-panel').forEach(p => p.style.display = 'none');
+  const panelMap = { queue:'panelQueue', run:'panelRun', history:'panelHistory' };
+  document.getElementById(panelMap[tab]).style.display = 'block';
+  if (tab === 'queue') loadEnrichmentQueue();
+  if (tab === 'history') loadEnrichmentHistory();
+}
+
+// ─── PDL API Call ───────────────────────────────────────────
+async function callPDL(contact) {
+  const params = new URLSearchParams();
+  if (contact.first_name) params.set('first_name', contact.first_name);
+  if (contact.last_name) params.set('last_name', contact.last_name);
+  if (contact.email) params.set('email', contact.email);
+  if (contact.linkedin_url) params.set('profile', contact.linkedin_url);
+  if (contact.city && contact.state) params.set('location', `${contact.city}, ${contact.state}`);
+  else if (contact.city) params.set('location', contact.city);
+  if (contact.organization) params.set('company', contact.organization);
+
+  const resp = await fetch(`${PDL_ENRICH_URL}?${params}`, {
+    headers: { 'X-Api-Key': PDL_API_KEY }
+  });
+  return { status: resp.status, data: await resp.json() };
+}
+
+// ─── Confidence Scoring ─────────────────────────────────────
+function computeEnrichConfidence(contact, pdl) {
+  let pts = 0, max = 0, details = {};
+  // Name
+  max += 2;
+  const pdlLast = (pdl.last_name || '').toLowerCase();
+  const ourLast = (contact.last_name || '').toLowerCase();
+  if (pdlLast && ourLast && pdlLast === ourLast) { pts += 2; details.name = 'match'; }
+  else if (pdlLast && ourLast && (pdlLast.includes(ourLast) || ourLast.includes(pdlLast))) { pts += 1; details.name = 'partial'; }
+  else { details.name = 'mismatch'; }
+  // City
+  if (contact.city) {
+    max += 1;
+    const pdlCity = (pdl.location_locality || '').toLowerCase();
+    if (pdlCity && pdlCity === contact.city.toLowerCase()) { pts += 1; details.city = 'match'; }
+    else { details.city = 'different'; }
+  }
+  // Org
+  if (contact.organization) {
+    max += 1;
+    const pdlOrg = (pdl.job_company_name || '').toLowerCase();
+    const ourOrg = contact.organization.toLowerCase();
+    if (pdlOrg && (pdlOrg.includes(ourOrg) || ourOrg.includes(pdlOrg))) { pts += 1; details.org = 'match'; }
+    else { details.org = 'different'; }
+  }
+  // LinkedIn
+  if (contact.linkedin_url && pdl.linkedin_url) {
+    max += 2;
+    if (contact.linkedin_url.replace(/\/$/,'').toLowerCase().includes(pdl.linkedin_url.replace(/\/$/,'').toLowerCase()) ||
+        pdl.linkedin_url.replace(/\/$/,'').toLowerCase().includes(contact.linkedin_url.replace(/\/$/,'').toLowerCase())) {
+      pts += 2; details.linkedin = 'match';
+    } else { details.linkedin = 'different'; }
+  }
+  const score = max > 0 ? Math.round((pts / max) * 10 * 10) / 10 : 5;
+  return { score, details };
+}
+
+// ─── Parse PDL into suggested updates ───────────────────────
+function parsePDLSuggestions(contact, pdl) {
+  const suggestions = {};
+  const fields = [
+    ['organization', pdl.job_company_name],
+    ['title', pdl.job_title],
+    ['linkedin_url', pdl.linkedin_url ? (pdl.linkedin_url.startsWith('http') ? pdl.linkedin_url : 'https://' + pdl.linkedin_url) : null],
+    ['city', pdl.location_locality],
+    ['state', pdl.location_region],
+  ];
+  for (const [key, val] of fields) {
+    if (val && String(val).trim()) {
+      const current = contact[key] || '';
+      if (!current.trim() || current.trim().toLowerCase() !== String(val).trim().toLowerCase()) {
+        suggestions[key] = String(val).trim();
+      }
+    }
+  }
+  // Also capture extra data for display but not direct field mapping
+  suggestions._extra = {};
+  if (pdl.personal_emails && pdl.personal_emails.length) suggestions._extra.personal_emails = pdl.personal_emails;
+  if (pdl.work_email) suggestions._extra.work_email = pdl.work_email;
+  if (pdl.phone_numbers && pdl.phone_numbers.length) suggestions._extra.phone_numbers = pdl.phone_numbers;
+  if (pdl.mobile_phone) suggestions._extra.mobile_phone = pdl.mobile_phone;
+  if (pdl.industry) suggestions._extra.industry = pdl.industry;
+  if (pdl.education && pdl.education.length) {
+    suggestions._extra.education = pdl.education.filter(e => e.school && e.school.name).map(e => ({
+      school: e.school.name, degrees: e.degrees || [], majors: e.majors || [], end_date: e.end_date
+    }));
+  }
+  return suggestions;
+}
+
+// ─── Enrich one contact and write to queue ──────────────────
+async function enrichAndQueue(contact) {
+  try {
+    const { status, data } = await callPDL(contact);
+    if (status === 200 && data.data) {
+      const pdl = data.data;
+      const conf = computeEnrichConfidence(contact, pdl);
+      const suggestions = parsePDLSuggestions(contact, pdl);
+      const matchedOn = contact.email ? 'email' : contact.linkedin_url ? 'linkedin' : 'name';
+      // Write to enrichment_queue
+      const { error } = await db.from('enrichment_queue').insert({
+        contact_id: contact.contact_id,
+        source: 'pdl',
+        status: 'pending',
+        pdl_response: data.data,
+        suggested_updates: suggestions,
+        matched_on: matchedOn,
+        confidence: conf.score,
+        confidence_details: conf.details
+      });
+      if (error) throw error;
+      return { matched: true, confidence: conf.score, likelihood: data.likelihood };
+    } else {
+      return { matched: false, reason: data.error ? data.error.message : `HTTP ${status}` };
+    }
+  } catch(e) {
+    console.error('PDL enrich error:', e);
+    return { matched: false, reason: e.message };
+  }
+}
+
+// ─── Load Enrichment Queue ──────────────────────────────────
+async function loadEnrichmentQueue() {
+  const container = document.getElementById('enrichmentQueueContent');
+  container.innerHTML = '<p style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">Loading...</p>';
+  try {
+    const { data: queue, error } = await db.from('enrichment_queue')
+      .select('*').eq('status', 'pending').order('created_at', { ascending: false });
+    if (error) throw error;
+
+    // Update badge
+    const badge = document.getElementById('queueBadge');
+    if (queue.length > 0) { badge.textContent = queue.length; badge.style.display = 'inline'; }
+    else { badge.style.display = 'none'; }
+
+    if (!queue.length) {
+      container.innerHTML = '<p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">No pending enrichment results to review. Go to "Run Enrichment" to get started.</p>';
+      return;
+    }
+
+    // Get contact names for each queue item
+    const contactIds = [...new Set(queue.map(q => q.contact_id))];
+    const { data: contacts } = await db.from('contacts').select('contact_id,name,first_name,last_name,email,organization,title,linkedin_url,city,state,phone,cell_phone').in('contact_id', contactIds);
+    const contactMap = {};
+    (contacts || []).forEach(c => contactMap[c.contact_id] = c);
+
+    let html = '';
+    for (const q of queue) {
+      const c = contactMap[q.contact_id] || {};
+      const suggestions = q.suggested_updates || {};
+      const confClass = q.confidence >= 7 ? 'ec-conf-high' : q.confidence >= 4 ? 'ec-conf-med' : 'ec-conf-low';
+      const suggestionKeys = Object.keys(suggestions).filter(k => k !== '_extra');
+      const extra = suggestions._extra || {};
+
+      html += `<div class="enrich-card" id="eq-${q.id}">
+        <div class="enrich-card-header" onclick="document.getElementById('eq-${q.id}').classList.toggle('expanded')">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="ec-arrow">▸</span>
+            <span class="ec-name">${esc(c.name || 'Unknown')}</span>
+            <span style="font-size:11px;color:var(--text-muted);">ID:${q.contact_id}</span>
+            <span style="font-size:10px;color:var(--text-muted);background:var(--border-light);padding:1px 6px;border-radius:4px;">matched on ${esc(q.matched_on || '?')}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="ec-conf ${confClass}">${q.confidence}/10</span>
+            <span style="font-size:11px;color:var(--text-muted);">${suggestionKeys.length} update${suggestionKeys.length!==1?'s':''}</span>
+            <span class="ec-badge ec-pending">Pending</span>
+          </div>
+        </div>
+        <div class="enrich-card-body">
+          <table class="enrich-compare">
+            <tr><th style="width:30%;">Field</th><th style="width:35%;">Current Value</th><th style="width:35%;">PDL Suggestion</th></tr>`;
+
+      // Show comparison for each enrichable field
+      const compareFields = [
+        ['Organization', 'organization'], ['Title', 'title'], ['LinkedIn', 'linkedin_url'],
+        ['City', 'city'], ['State', 'state']
+      ];
+      for (const [label, key] of compareFields) {
+        const current = c[key] || '';
+        const suggested = suggestions[key] || '';
+        let currentHtml, suggestedHtml;
+        if (!current && suggested) {
+          currentHtml = '<span class="ec-empty">empty</span>';
+          suggestedHtml = `<label style="cursor:pointer;"><input type="checkbox" class="enrich-check" data-qid="${q.id}" data-field="${key}" checked> <span class="ec-new">${esc(suggested)} 🆕</span></label>`;
+        } else if (current && suggested) {
+          currentHtml = esc(current);
+          suggestedHtml = `<label style="cursor:pointer;"><input type="checkbox" class="enrich-check" data-qid="${q.id}" data-field="${key}"> <span class="ec-diff">${esc(suggested)} ⚠️</span></label>`;
+        } else if (current && !suggested) {
+          currentHtml = esc(current);
+          suggestedHtml = '<span class="ec-same">✅ no change</span>';
+        } else {
+          currentHtml = '<span class="ec-empty">empty</span>';
+          suggestedHtml = '<span class="ec-empty">no data</span>';
+        }
+        html += `<tr><td class="ec-field">${label}</td><td>${currentHtml}</td><td>${suggestedHtml}</td></tr>`;
+      }
+      html += '</table>';
+
+      // Extra data section
+      const extraParts = [];
+      if (extra.personal_emails && extra.personal_emails.length) {
+        extraParts.push(`<div><strong style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">📧 Personal Emails</strong><br>${extra.personal_emails.map(e => esc(e)).join(', ')}</div>`);
+      }
+      if (extra.work_email) {
+        extraParts.push(`<div><strong style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">💼 Work Email</strong><br>${esc(extra.work_email)}</div>`);
+      }
+      if (extra.mobile_phone || (extra.phone_numbers && extra.phone_numbers.length)) {
+        const phones = [];
+        if (extra.mobile_phone) phones.push(extra.mobile_phone);
+        if (extra.phone_numbers) phones.push(...extra.phone_numbers);
+        extraParts.push(`<div><strong style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">📱 Phone Numbers</strong><br>${[...new Set(phones)].map(p => esc(p)).join(', ')}</div>`);
+      }
+      if (extra.education && extra.education.length) {
+        const eduStr = extra.education.map(e => `${esc(e.school)}${e.majors.length ? ' — ' + esc(e.majors.join(', ')) : ''}${e.end_date ? ' (' + esc(e.end_date) + ')' : ''}`).join('<br>');
+        extraParts.push(`<div><strong style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">🎓 Education</strong><br>${eduStr}</div>`);
+      }
+      if (extra.industry) {
+        extraParts.push(`<div><strong style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">🏢 Industry</strong><br>${esc(extra.industry)}</div>`);
+      }
+      if (extraParts.length) {
+        html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-light);display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;font-size:12px;">${extraParts.join('')}</div>`;
+      }
+
+      // Action buttons
+      html += `<div class="enrich-actions">
+        <button class="btn btn-primary" onclick="approveEnrichment(${q.id}, ${q.contact_id}, true)" style="font-size:12px;padding:6px 14px;">✅ Approve Selected</button>
+        <button class="btn" onclick="approveEnrichment(${q.id}, ${q.contact_id}, false)" style="font-size:12px;padding:6px 14px;background:#e8f5e9;color:#2d8a4e;">✅ Approve All</button>
+        <button class="btn" onclick="rejectEnrichment(${q.id})" style="font-size:12px;padding:6px 14px;background:#fdecea;color:#c0392b;">❌ Reject</button>
+      </div>`;
+
+      html += '</div></div>';
+    }
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = `<p style="padding:20px;text-align:center;color:var(--red);font-size:12px;">Error loading queue: ${esc(e.message)}</p>`;
+    console.error('Queue load error:', e);
+  }
+}
+
+// ─── Approve Enrichment ─────────────────────────────────────
+async function approveEnrichment(queueId, contactId, selectedOnly) {
+  try {
+    // Get the queue record
+    const { data: qRec, error: qErr } = await db.from('enrichment_queue').select('*').eq('id', queueId).single();
+    if (qErr) throw qErr;
+    const suggestions = qRec.suggested_updates || {};
+
+    // Determine which fields to apply
+    let fieldsToApply = {};
+    let appliedFieldNames = [];
+
+    if (selectedOnly) {
+      // Only checked boxes
+      const checks = document.querySelectorAll(`input.enrich-check[data-qid="${queueId}"]:checked`);
+      checks.forEach(cb => {
+        const field = cb.dataset.field;
+        if (suggestions[field]) {
+          fieldsToApply[field] = suggestions[field];
+          appliedFieldNames.push(field);
+        }
+      });
+      if (appliedFieldNames.length === 0) { alert('No fields selected. Check the boxes next to the fields you want to apply.'); return; }
+    } else {
+      // All non-extra fields
+      for (const [k, v] of Object.entries(suggestions)) {
+        if (k !== '_extra' && v) {
+          fieldsToApply[k] = v;
+          appliedFieldNames.push(k);
+        }
+      }
+    }
+
+    if (Object.keys(fieldsToApply).length === 0) { alert('No updates to apply.'); return; }
+
+    // Get current contact for diff logging
+    const { data: oldContact } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
+
+    // Apply updates to contacts table
+    fieldsToApply.updated_at = new Date().toISOString();
+    fieldsToApply.last_enriched_at = new Date().toISOString();
+    const { error: updErr } = await db.from('contacts').update(fieldsToApply).eq('contact_id', contactId);
+    if (updErr) throw updErr;
+
+    // Build diff string for audit log
+    const fieldLabels = { organization:'Organization', title:'Title', linkedin_url:'LinkedIn', city:'City', state:'State' };
+    const diffs = appliedFieldNames.map(f => {
+      const oldVal = oldContact[f] || '(empty)';
+      const newVal = fieldsToApply[f];
+      return `${fieldLabels[f] || f}: "${oldVal}" → "${newVal}"`;
+    });
+
+    // Log to contact_history
+    await logContactHistory(contactId, 'updated', diffs.join('\n'), sessionStorage.getItem('else_user') || 'system', 'PDL Enrichment');
+
+    // Update queue record
+    const allSuggestionKeys = Object.keys(suggestions).filter(k => k !== '_extra');
+    const newStatus = appliedFieldNames.length >= allSuggestionKeys.length ? 'approved' : 'partial';
+    await db.from('enrichment_queue').update({
+      status: newStatus,
+      reviewed_by: sessionStorage.getItem('else_user') || 'unknown',
+      reviewed_at: new Date().toISOString(),
+      applied_fields: appliedFieldNames
+    }).eq('id', queueId);
+
+    // Refresh
+    await loadEnrichmentQueue();
+    await loadContacts();
+  } catch(e) {
+    alert('Error applying enrichment: ' + e.message);
+    console.error('Approve error:', e);
+  }
+}
+
+// ─── Reject Enrichment ──────────────────────────────────────
+async function rejectEnrichment(queueId) {
+  try {
+    await db.from('enrichment_queue').update({
+      status: 'rejected',
+      reviewed_by: sessionStorage.getItem('else_user') || 'unknown',
+      reviewed_at: new Date().toISOString()
+    }).eq('id', queueId);
+    await loadEnrichmentQueue();
+  } catch(e) {
+    alert('Error rejecting: ' + e.message);
+  }
+}
+
+// ─── Preview Enrichment Batch ───────────────────────────────
+async function previewEnrichmentBatch() {
+  const missingField = document.getElementById('enrichMissingField').value;
+  const requireField = document.getElementById('enrichRequireField').value;
+  const roleFilter = document.getElementById('enrichRoleFilter').value;
+  const yearFrom = document.getElementById('enrichYearFrom').value;
+  const yearTo = document.getElementById('enrichYearTo').value;
+  const limit = parseInt(document.getElementById('enrichLimit').value);
+
+  let query = db.from('contacts').select('contact_id,name,first_name,last_name,email,linkedin_url,organization,title,city,state,phone,cell_phone,last_enriched_at,roles');
+
+  // Must have an identifier
+  if (requireField === 'email') query = query.not('email', 'is', null);
+  else if (requireField === 'linkedin_url') query = query.not('linkedin_url', 'is', null);
+
+  // Missing field filter
+  if (missingField === 'phone_any') {
+    query = query.is('phone', null).is('cell_phone', null);
+  } else if (missingField) {
+    query = query.is(missingField, null);
+  }
+
+  // Grad year range
+  if (yearFrom) query = query.gte('grad_year', parseInt(yearFrom));
+  if (yearTo) query = query.lte('grad_year', parseInt(yearTo));
+
+  // Role filter
+  if (roleFilter) query = query.contains('roles', [roleFilter]);
+
+  // Skip recently enriched (90 days)
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  query = query.or(`last_enriched_at.is.null,last_enriched_at.lt.${ninetyDaysAgo}`);
+
+  query = query.order('name').limit(limit);
+
+  const { data, error } = await query;
+  if (error) { alert('Query error: ' + error.message); return; }
+
+  enrichPreviewContacts = data || [];
+  const countEl = document.getElementById('enrichPreviewCount');
+  const listEl = document.getElementById('enrichPreviewList');
+  const runSection = document.getElementById('enrichRunSection');
+
+  countEl.textContent = `${enrichPreviewContacts.length} contacts found`;
+
+  if (enrichPreviewContacts.length === 0) {
+    listEl.style.display = 'none';
+    runSection.style.display = 'none';
+    return;
+  }
+
+  listEl.style.display = 'block';
+  listEl.innerHTML = enrichPreviewContacts.map(c => `
+    <div class="enrich-preview-row">
+      <div>
+        <strong style="font-size:12px;">${esc(c.name)}</strong>
+        <span style="font-size:11px;color:var(--text-muted);margin-left:6px;">${esc(c.email || 'no email')}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);">
+        ${c.organization ? esc(c.organization) : '<span style="color:#c0392b;">no org</span>'}
+        ${c.linkedin_url ? ' · LI ✓' : ''}
+      </div>
+    </div>
+  `).join('');
+
+  runSection.style.display = 'block';
+  document.getElementById('enrichCreditEstimate').textContent =
+    `Estimated credit usage: up to ${enrichPreviewContacts.length} of your 100 free monthly credits`;
+}
+
+// ─── Run Enrichment Batch ───────────────────────────────────
+async function runEnrichmentBatch() {
+  if (!enrichPreviewContacts.length) return;
+  const btn = document.getElementById('enrichRunBtn');
+  const progress = document.getElementById('enrichProgress');
+  const bar = document.getElementById('enrichProgressBar');
+  const text = document.getElementById('enrichProgressText');
+
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+  progress.style.display = 'block';
+
+  let matched = 0, noMatch = 0, errors = 0;
+  const total = enrichPreviewContacts.length;
+
+  for (let i = 0; i < total; i++) {
+    const c = enrichPreviewContacts[i];
+    bar.style.width = `${((i + 1) / total) * 100}%`;
+    text.textContent = `Processing ${i + 1}/${total}: ${c.name}... (${matched} matched, ${noMatch} no match)`;
+
+    const result = await enrichAndQueue(c);
+    if (result.matched) matched++;
+    else noMatch++;
+
+    // Rate limit: ~1 req/sec
+    if (i < total - 1) await new Promise(r => setTimeout(r, 900));
+  }
+
+  text.textContent = `✅ Complete — ${matched} matched, ${noMatch} no match out of ${total} contacts`;
+  btn.textContent = '✅ Complete';
+
+  // Auto-switch to queue if we got results
+  if (matched > 0) {
+    setTimeout(() => {
+      switchResearchTab('queue');
+      btn.disabled = false;
+      btn.textContent = '🔍 Run Enrichment';
+      progress.style.display = 'none';
+    }, 2000);
+  } else {
+    btn.disabled = false;
+    btn.textContent = '🔍 Run Enrichment';
+  }
+}
+
+// ─── Single Contact Enrichment ──────────────────────────────
+async function searchEnrichSingle() {
+  const query = document.getElementById('enrichSingleSearch').value.trim().toLowerCase();
+  const resultsEl = document.getElementById('enrichSingleResults');
+  const btn = document.getElementById('enrichSingleBtn');
+  selectedEnrichSingleId = null;
+  btn.disabled = true;
+
+  if (query.length < 2) { resultsEl.innerHTML = ''; return; }
+
+  // Search from already-loaded contacts
+  const matches = (window._allContacts || []).filter(c => {
+    const hay = [c.name, c.email, c.organization].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(query);
+  }).slice(0, 8);
+
+  if (!matches.length) {
+    resultsEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted);padding:4px;">No contacts found</p>';
+    return;
+  }
+
+  resultsEl.innerHTML = matches.map(c => `
+    <div onclick="selectEnrichSingle(${c.contact_id})" id="esr-${c.contact_id}"
+         style="padding:6px 10px;cursor:pointer;border-bottom:1px solid var(--border-light);font-size:12px;transition:background 0.1s;"
+         onmouseover="this.style.background='rgba(0,0,0,0.03)'" onmouseout="this.style.background=''">
+      <strong>${esc(c.name)}</strong>
+      <span style="color:var(--text-muted);margin-left:6px;">${esc(c.email || 'no email')}</span>
+      <span style="color:var(--text-muted);margin-left:4px;">${c.organization ? '· ' + esc(c.organization) : ''}</span>
+    </div>
+  `).join('');
+}
+
+function selectEnrichSingle(contactId) {
+  selectedEnrichSingleId = contactId;
+  document.getElementById('enrichSingleBtn').disabled = false;
+  document.querySelectorAll('[id^="esr-"]').forEach(el => el.style.background = '');
+  const sel = document.getElementById('esr-' + contactId);
+  if (sel) sel.style.background = 'rgba(51,6,98,0.08)';
+}
+
+async function runSingleEnrich() {
+  if (!selectedEnrichSingleId) return;
+  const statusEl = document.getElementById('enrichSingleStatus');
+  const btn = document.getElementById('enrichSingleBtn');
+  btn.disabled = true;
+  btn.textContent = 'Enriching...';
+  statusEl.innerHTML = '<span style="color:var(--text-muted);">Calling PDL...</span>';
+
+  const contact = (window._allContacts || []).find(c => c.contact_id === selectedEnrichSingleId);
+  if (!contact) { statusEl.innerHTML = '<span style="color:var(--red);">Contact not found in loaded data.</span>'; btn.disabled = false; btn.textContent = 'Enrich'; return; }
+
+  const result = await enrichAndQueue(contact);
+  if (result.matched) {
+    statusEl.innerHTML = `<span style="color:#2d8a4e;">✅ Match found (confidence: ${result.confidence}/10, likelihood: ${Math.round(result.likelihood * 100)}%). Check the Review Queue to approve.</span>`;
+  } else {
+    statusEl.innerHTML = `<span style="color:#c0392b;">❌ No match found: ${esc(result.reason)}</span>`;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Enrich';
+}
+
+// ─── Enrichment History ─────────────────────────────────────
+async function loadEnrichmentHistory() {
+  const container = document.getElementById('enrichmentHistoryContent');
+  container.innerHTML = '<p style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">Loading...</p>';
+  try {
+    const { data: history, error } = await db.from('enrichment_queue')
+      .select('*').in('status', ['approved','rejected','partial']).order('reviewed_at', { ascending: false }).limit(100);
+    if (error) throw error;
+
+    if (!history || !history.length) {
+      container.innerHTML = '<p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">No enrichment history yet.</p>';
+      return;
+    }
+
+    // Get contact names
+    const contactIds = [...new Set(history.map(h => h.contact_id))];
+    const { data: contacts } = await db.from('contacts').select('contact_id,name').in('contact_id', contactIds);
+    const cMap = {};
+    (contacts || []).forEach(c => cMap[c.contact_id] = c.name);
+
+    // Summary stats
+    const approved = history.filter(h => h.status === 'approved' || h.status === 'partial').length;
+    const rejected = history.filter(h => h.status === 'rejected').length;
+    const avgConf = history.length > 0 ? (history.reduce((s, h) => s + (h.confidence || 0), 0) / history.length).toFixed(1) : 0;
+
+    let html = `<div style="padding:16px;">
+      <div class="enrich-stat-grid">
+        <div class="enrich-stat"><div class="es-num" style="color:var(--accent);">${history.length}</div><div class="es-label">Total Processed</div></div>
+        <div class="enrich-stat"><div class="es-num" style="color:#2d8a4e;">${approved}</div><div class="es-label">Approved</div></div>
+        <div class="enrich-stat"><div class="es-num" style="color:#c0392b;">${rejected}</div><div class="es-label">Rejected</div></div>
+        <div class="enrich-stat"><div class="es-num" style="color:var(--gold);">${avgConf}</div><div class="es-label">Avg Confidence</div></div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <tr style="border-bottom:2px solid var(--border-light);">
+          <th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Contact</th>
+          <th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Status</th>
+          <th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Confidence</th>
+          <th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Fields Applied</th>
+          <th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Reviewed By</th>
+          <th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Date</th>
+        </tr>`;
+
+    for (const h of history) {
+      const statusClass = h.status === 'rejected' ? 'ec-rejected' : h.status === 'partial' ? 'ec-partial' : 'ec-approved';
+      const date = h.reviewed_at ? new Date(h.reviewed_at).toLocaleDateString() : '—';
+      const fieldsStr = (h.applied_fields || []).join(', ') || '—';
+      html += `<tr style="border-bottom:1px solid var(--border-light);">
+        <td style="padding:8px;font-weight:500;">${esc(cMap[h.contact_id] || 'ID:' + h.contact_id)}</td>
+        <td style="padding:8px;"><span class="ec-badge ${statusClass}">${h.status}</span></td>
+        <td style="padding:8px;">${h.confidence || '—'}/10</td>
+        <td style="padding:8px;font-size:11px;color:var(--text-muted);">${esc(fieldsStr)}</td>
+        <td style="padding:8px;">${esc(h.reviewed_by || '—')}</td>
+        <td style="padding:8px;color:var(--text-muted);">${date}</td>
+      </tr>`;
+    }
+    html += '</table></div>';
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = `<p style="padding:20px;text-align:center;color:var(--red);font-size:12px;">Error: ${esc(e.message)}</p>`;
   }
 }
 </script>
