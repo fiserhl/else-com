@@ -2495,38 +2495,73 @@ async function callPDL(contact) {
   return { status: resp.status, data: await resp.json() };
 }
 
+// ─── State abbreviation mapping ─────────────────────────────
+const STATE_ABBREVS = {
+  'alabama':'AL','alaska':'AK','arizona':'AZ','arkansas':'AR','california':'CA','colorado':'CO',
+  'connecticut':'CT','delaware':'DE','florida':'FL','georgia':'GA','hawaii':'HI','idaho':'ID',
+  'illinois':'IL','indiana':'IN','iowa':'IA','kansas':'KS','kentucky':'KY','louisiana':'LA',
+  'maine':'ME','maryland':'MD','massachusetts':'MA','michigan':'MI','minnesota':'MN',
+  'mississippi':'MS','missouri':'MO','montana':'MT','nebraska':'NE','nevada':'NV',
+  'new hampshire':'NH','new jersey':'NJ','new mexico':'NM','new york':'NY',
+  'north carolina':'NC','north dakota':'ND','ohio':'OH','oklahoma':'OK','oregon':'OR',
+  'pennsylvania':'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD',
+  'tennessee':'TN','texas':'TX','utah':'UT','vermont':'VT','virginia':'VA',
+  'washington':'WA','west virginia':'WV','wisconsin':'WI','wyoming':'WY',
+  'district of columbia':'DC'
+};
+function normalizeState(val) {
+  if (!val || typeof val !== 'string') return '';
+  const v = val.trim();
+  if (v.length === 2) return v.toUpperCase();
+  return STATE_ABBREVS[v.toLowerCase()] || v;
+}
+
+// ─── LinkedIn URL normalization ─────────────────────────────
+function normalizeLinkedIn(url) {
+  if (!url || typeof url !== 'string') return '';
+  return url.toLowerCase().replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+}
+
 // ─── Confidence Scoring ─────────────────────────────────────
 function computeEnrichConfidence(contact, pdl) {
   let pts = 0, max = 0, details = {};
+  // Helper: get string value, treating booleans/nulls as empty
+  const safeStr = (v) => (v && typeof v === 'string') ? v.toLowerCase().trim() : '';
   // Name
   max += 2;
-  const pdlLast = (pdl.last_name || '').toLowerCase();
-  const ourLast = (contact.last_name || '').toLowerCase();
+  const pdlLast = safeStr(pdl.last_name);
+  const ourLast = safeStr(contact.last_name);
   if (pdlLast && ourLast && pdlLast === ourLast) { pts += 2; details.name = 'match'; }
   else if (pdlLast && ourLast && (pdlLast.includes(ourLast) || ourLast.includes(pdlLast))) { pts += 1; details.name = 'partial'; }
   else { details.name = 'mismatch'; }
   // City
   if (contact.city) {
     max += 1;
-    const pdlCity = (pdl.location_locality || '').toLowerCase();
-    if (pdlCity && pdlCity === contact.city.toLowerCase()) { pts += 1; details.city = 'match'; }
+    const pdlCity = safeStr(pdl.location_locality);
+    if (pdlCity && pdlCity === contact.city.toLowerCase().trim()) { pts += 1; details.city = 'match'; }
     else { details.city = 'different'; }
   }
   // Org
   if (contact.organization) {
     max += 1;
-    const pdlOrg = (pdl.job_company_name || '').toLowerCase();
+    const pdlOrg = safeStr(pdl.job_company_name);
     const ourOrg = contact.organization.toLowerCase();
     if (pdlOrg && (pdlOrg.includes(ourOrg) || ourOrg.includes(pdlOrg))) { pts += 1; details.org = 'match'; }
     else { details.org = 'different'; }
   }
-  // LinkedIn
-  if (contact.linkedin_url && pdl.linkedin_url) {
+  // LinkedIn (use normalized comparison)
+  if (contact.linkedin_url && pdl.linkedin_url && typeof pdl.linkedin_url === 'string') {
     max += 2;
-    if (contact.linkedin_url.replace(/\/$/,'').toLowerCase().includes(pdl.linkedin_url.replace(/\/$/,'').toLowerCase()) ||
-        pdl.linkedin_url.replace(/\/$/,'').toLowerCase().includes(contact.linkedin_url.replace(/\/$/,'').toLowerCase())) {
+    if (normalizeLinkedIn(contact.linkedin_url) === normalizeLinkedIn(pdl.linkedin_url)) {
       pts += 2; details.linkedin = 'match';
     } else { details.linkedin = 'different'; }
+  }
+  // State (use normalized comparison)
+  if (contact.state && pdl.location_region && typeof pdl.location_region === 'string') {
+    max += 1;
+    if (normalizeState(contact.state) === normalizeState(pdl.location_region)) {
+      pts += 1; details.state = 'match';
+    } else { details.state = 'different'; }
   }
   const score = max > 0 ? Math.round((pts / max) * 10 * 10) / 10 : 5;
   return { score, details };
@@ -2535,30 +2570,62 @@ function computeEnrichConfidence(contact, pdl) {
 // ─── Parse PDL into suggested updates ───────────────────────
 function parsePDLSuggestions(contact, pdl) {
   const suggestions = {};
-  const fields = [
+  // Build fields with special handling for state and linkedin
+  const rawFields = [
     ['organization', pdl.job_company_name],
     ['title', pdl.job_title],
-    ['linkedin_url', pdl.linkedin_url ? (pdl.linkedin_url.startsWith('http') ? pdl.linkedin_url : 'https://' + pdl.linkedin_url) : null],
+    ['linkedin_url', pdl.linkedin_url],
     ['city', pdl.location_locality],
     ['state', pdl.location_region],
   ];
-  for (const [key, val] of fields) {
-    if (val && String(val).trim()) {
-      const current = contact[key] || '';
-      if (!current.trim() || current.trim().toLowerCase() !== String(val).trim().toLowerCase()) {
-        suggestions[key] = String(val).trim();
+  for (const [key, rawVal] of rawFields) {
+    // Skip null, undefined, booleans, empty strings, and literal "true"/"false"
+    if (rawVal === null || rawVal === undefined || rawVal === true || rawVal === false) continue;
+    let strVal = String(rawVal).trim();
+    if (!strVal || strVal === 'true' || strVal === 'false' || strVal === 'null' || strVal === 'undefined') continue;
+
+    // Normalize specific fields
+    if (key === 'state') {
+      strVal = normalizeState(strVal);
+      const currentNorm = normalizeState(contact[key]);
+      if (!currentNorm || currentNorm !== strVal) {
+        suggestions[key] = strVal;
       }
+      continue;
+    }
+    if (key === 'linkedin_url') {
+      // Ensure full URL format
+      if (!strVal.startsWith('http')) strVal = 'https://' + strVal;
+      // Compare normalized
+      const currentNorm = normalizeLinkedIn(contact[key]);
+      const pdlNorm = normalizeLinkedIn(strVal);
+      if (!currentNorm || currentNorm !== pdlNorm) {
+        if (!contact[key]) {
+          suggestions[key] = strVal; // New — add it
+        }
+        // If we already have one and they normalize to different profiles, suggest update
+        else if (currentNorm !== pdlNorm) {
+          suggestions[key] = strVal;
+        }
+      }
+      continue;
+    }
+
+    // Default comparison for other fields
+    const current = contact[key] || '';
+    if (!current.trim() || current.trim().toLowerCase() !== strVal.toLowerCase()) {
+      suggestions[key] = strVal;
     }
   }
   // Also capture extra data for display but not direct field mapping
   suggestions._extra = {};
-  if (pdl.personal_emails && pdl.personal_emails.length) suggestions._extra.personal_emails = pdl.personal_emails;
-  if (pdl.work_email) suggestions._extra.work_email = pdl.work_email;
-  if (pdl.phone_numbers && pdl.phone_numbers.length) suggestions._extra.phone_numbers = pdl.phone_numbers;
-  if (pdl.mobile_phone) suggestions._extra.mobile_phone = pdl.mobile_phone;
-  if (pdl.industry) suggestions._extra.industry = pdl.industry;
-  if (pdl.education && pdl.education.length) {
-    suggestions._extra.education = pdl.education.filter(e => e.school && e.school.name).map(e => ({
+  if (Array.isArray(pdl.personal_emails) && pdl.personal_emails.length) suggestions._extra.personal_emails = pdl.personal_emails.filter(e => typeof e === 'string');
+  if (pdl.work_email && typeof pdl.work_email === 'string') suggestions._extra.work_email = pdl.work_email;
+  if (Array.isArray(pdl.phone_numbers) && pdl.phone_numbers.length) suggestions._extra.phone_numbers = pdl.phone_numbers.filter(p => typeof p === 'string');
+  if (pdl.mobile_phone && typeof pdl.mobile_phone === 'string') suggestions._extra.mobile_phone = pdl.mobile_phone;
+  if (pdl.industry && typeof pdl.industry === 'string') suggestions._extra.industry = pdl.industry;
+  if (Array.isArray(pdl.education) && pdl.education.length) {
+    suggestions._extra.education = pdl.education.filter(e => e.school && e.school.name && typeof e.school.name === 'string').map(e => ({
       school: e.school.name, degrees: e.degrees || [], majors: e.majors || [], end_date: e.end_date
     }));
   }
@@ -2568,14 +2635,32 @@ function parsePDLSuggestions(contact, pdl) {
 // ─── Enrich one contact and write to queue ──────────────────
 async function enrichAndQueue(contact) {
   try {
+    // Duplicate check: skip if already enriched in last 24 hours
+    const { data: existing } = await db.from('enrichment_queue')
+      .select('id, status, created_at')
+      .eq('contact_id', contact.contact_id)
+      .eq('source', 'pdl')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (existing && existing.length > 0) {
+      const hoursSince = (Date.now() - new Date(existing[0].created_at).getTime()) / (1000 * 60 * 60);
+      if (hoursSince < 24) {
+        return { matched: false, reason: 'Already enriched in last 24 hours', skipped: true };
+      }
+    }
+
     const { status, data } = await callPDL(contact);
+
+    // Handle specific PDL error codes
+    if (status === 429) return { matched: false, reason: 'Rate limited by PDL', rateLimited: true };
+    if (status === 402) return { matched: false, reason: 'PDL credits exhausted for this month', creditsExhausted: true };
+
     if (status === 200 && data.data) {
       const pdl = data.data;
       const conf = computeEnrichConfidence(contact, pdl);
       const suggestions = parsePDLSuggestions(contact, pdl);
       const matchedOn = contact.email ? 'email' : contact.linkedin_url ? 'linkedin' : 'name';
       const hasSuggestions = Object.keys(suggestions).filter(k => k !== '_extra').length > 0;
-      // Write to enrichment_queue — pending if updates available, confirmed if already up-to-date
       const { error } = await db.from('enrichment_queue').insert({
         contact_id: contact.contact_id,
         source: 'pdl',
@@ -2589,7 +2674,6 @@ async function enrichAndQueue(contact) {
         reviewed_at: hasSuggestions ? null : new Date().toISOString()
       });
       if (error) throw error;
-      // Update last_enriched_at even for confirmed (we did check them)
       await db.from('contacts').update({ last_enriched_at: new Date().toISOString() }).eq('contact_id', contact.contact_id);
       return { matched: true, hasUpdates: hasSuggestions, confidence: conf.score, likelihood: data.likelihood };
     } else {
@@ -2743,9 +2827,14 @@ async function loadEnrichmentQueue() {
 // ─── Approve Enrichment ─────────────────────────────────────
 async function approveEnrichment(queueId, contactId, selectedOnly) {
   try {
-    // Get the queue record
+    // Race condition check: verify record is still pending
     const { data: qRec, error: qErr } = await db.from('enrichment_queue').select('*').eq('id', queueId).single();
     if (qErr) throw qErr;
+    if (qRec.status !== 'pending') {
+      alert(`This record was already ${qRec.status} by ${qRec.reviewed_by || 'another user'}. Refreshing queue.`);
+      await loadEnrichmentQueue();
+      return;
+    }
     const suggestions = qRec.suggested_updates || {};
 
     // Determine which fields to apply
@@ -2753,7 +2842,6 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
     let appliedFieldNames = [];
 
     if (selectedOnly) {
-      // Only checked boxes
       const checks = document.querySelectorAll(`input.enrich-check[data-qid="${queueId}"]:checked`);
       checks.forEach(cb => {
         const field = cb.dataset.field;
@@ -2764,7 +2852,6 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
       });
       if (appliedFieldNames.length === 0) { alert('No fields selected. Check the boxes next to the fields you want to apply.'); return; }
     } else {
-      // All non-extra fields
       for (const [k, v] of Object.entries(suggestions)) {
         if (k !== '_extra' && v) {
           fieldsToApply[k] = v;
@@ -2777,8 +2864,9 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
 
     // Get current contact for diff logging
     const { data: oldContact } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
+    const contactName = oldContact ? oldContact.name : 'Contact';
 
-    // Apply updates to contacts table
+    // Apply updates
     fieldsToApply.updated_at = new Date().toISOString();
     fieldsToApply.last_enriched_at = new Date().toISOString();
     const { error: updErr } = await db.from('contacts').update(fieldsToApply).eq('contact_id', contactId);
@@ -2792,7 +2880,6 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
       return `${fieldLabels[f] || f}: "${oldVal}" → "${newVal}"`;
     });
 
-    // Log to contact_history
     await logContactHistory(contactId, 'updated', diffs.join('\n'), sessionStorage.getItem('else_user') || 'system', 'PDL Enrichment');
 
     // Update queue record
@@ -2804,6 +2891,9 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
       reviewed_at: new Date().toISOString(),
       applied_fields: appliedFieldNames
     }).eq('id', queueId);
+
+    // Show success feedback briefly
+    showEnrichToast(`✅ ${contactName} — ${appliedFieldNames.length} field${appliedFieldNames.length !== 1 ? 's' : ''} updated`);
 
     // Refresh
     await loadEnrichmentQueue();
@@ -2817,15 +2907,37 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
 // ─── Reject Enrichment ──────────────────────────────────────
 async function rejectEnrichment(queueId) {
   try {
+    // Race condition check
+    const { data: qRec } = await db.from('enrichment_queue').select('status,reviewed_by').eq('id', queueId).single();
+    if (qRec && qRec.status !== 'pending') {
+      alert(`This record was already ${qRec.status} by ${qRec.reviewed_by || 'another user'}. Refreshing queue.`);
+      await loadEnrichmentQueue();
+      return;
+    }
     await db.from('enrichment_queue').update({
       status: 'rejected',
       reviewed_by: sessionStorage.getItem('else_user') || 'unknown',
       reviewed_at: new Date().toISOString()
     }).eq('id', queueId);
+    showEnrichToast('❌ Enrichment rejected');
     await loadEnrichmentQueue();
   } catch(e) {
     alert('Error rejecting: ' + e.message);
   }
+}
+
+// ─── Toast notification ─────────────────────────────────────
+function showEnrichToast(msg) {
+  let toast = document.getElementById('enrichToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'enrichToast';
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--accent);color:white;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:10000;opacity:0;transition:opacity 0.3s;font-family:var(--sans);box-shadow:0 4px 12px rgba(0,0,0,0.2);';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  setTimeout(() => { toast.style.opacity = '0'; }, 3000);
 }
 
 // ─── Preview Enrichment Batch ───────────────────────────────
@@ -2899,8 +3011,11 @@ async function previewEnrichmentBatch() {
 }
 
 // ─── Run Enrichment Batch ───────────────────────────────────
+let _enrichCancelled = false;
+
 async function runEnrichmentBatch() {
   if (!enrichPreviewContacts.length) return;
+  _enrichCancelled = false;
   const btn = document.getElementById('enrichRunBtn');
   const progress = document.getElementById('enrichProgress');
   const bar = document.getElementById('enrichProgressBar');
@@ -2908,40 +3023,85 @@ async function runEnrichmentBatch() {
 
   btn.disabled = true;
   btn.textContent = 'Running...';
+  btn.onclick = null;
   progress.style.display = 'block';
 
-  let withUpdates = 0, confirmed = 0, noMatch = 0;
+  // Show cancel button
+  let cancelBtn = document.getElementById('enrichCancelBtn');
+  if (!cancelBtn) {
+    cancelBtn = document.createElement('button');
+    cancelBtn.id = 'enrichCancelBtn';
+    cancelBtn.className = 'btn';
+    cancelBtn.style.cssText = 'font-size:12px;padding:6px 14px;background:#fdecea;color:#c0392b;margin-left:10px;';
+    cancelBtn.textContent = '⏹ Cancel';
+    btn.parentNode.insertBefore(cancelBtn, btn.nextSibling);
+  }
+  cancelBtn.style.display = 'inline-block';
+  cancelBtn.onclick = () => { _enrichCancelled = true; cancelBtn.textContent = 'Cancelling...'; cancelBtn.disabled = true; };
+
+  let withUpdates = 0, confirmed = 0, noMatch = 0, skipped = 0;
   const total = enrichPreviewContacts.length;
 
   for (let i = 0; i < total; i++) {
+    if (_enrichCancelled) {
+      text.textContent = `⏹ Cancelled at ${i}/${total} — ${withUpdates} with updates, ${confirmed} confirmed, ${noMatch} no match, ${skipped} skipped`;
+      break;
+    }
+
     const c = enrichPreviewContacts[i];
     bar.style.width = `${((i + 1) / total) * 100}%`;
-    text.textContent = `Processing ${i + 1}/${total}: ${c.name}... (${withUpdates} with updates, ${confirmed} confirmed, ${noMatch} no match)`;
+    text.textContent = `Processing ${i + 1}/${total}: ${c.name}... (${withUpdates} updates, ${confirmed} confirmed, ${noMatch} no match${skipped ? ', ' + skipped + ' skipped' : ''})`;
 
     const result = await enrichAndQueue(c);
-    if (result.matched && result.hasUpdates) withUpdates++;
+
+    if (result.creditsExhausted) {
+      text.textContent = `⚠️ Stopped at ${i + 1}/${total} — PDL credits exhausted. ${withUpdates} with updates, ${confirmed} confirmed.`;
+      break;
+    }
+    if (result.rateLimited) {
+      // Wait 10 seconds and retry
+      text.textContent = `⏳ Rate limited — pausing 10 seconds... (${i + 1}/${total})`;
+      await new Promise(r => setTimeout(r, 10000));
+      const retry = await enrichAndQueue(c);
+      if (retry.matched && retry.hasUpdates) withUpdates++;
+      else if (retry.matched) confirmed++;
+      else if (retry.skipped) skipped++;
+      else noMatch++;
+    } else if (result.matched && result.hasUpdates) withUpdates++;
     else if (result.matched) confirmed++;
+    else if (result.skipped) skipped++;
     else noMatch++;
 
     // Rate limit: ~1 req/sec
-    if (i < total - 1) await new Promise(r => setTimeout(r, 900));
+    if (i < total - 1 && !_enrichCancelled) await new Promise(r => setTimeout(r, 900));
   }
 
-  text.textContent = `✅ Complete — ${withUpdates} with updates (pending review), ${confirmed} verified up-to-date, ${noMatch} no match`;
+  if (!_enrichCancelled) {
+    text.textContent = `✅ Complete — ${withUpdates} with updates (pending review), ${confirmed} verified up-to-date, ${noMatch} no match${skipped ? ', ' + skipped + ' skipped (already recent)' : ''}`;
+  }
   btn.textContent = '✅ Complete';
+  cancelBtn.style.display = 'none';
 
   // Auto-switch to queue if we got actionable results
   if (withUpdates > 0) {
     setTimeout(() => {
       switchResearchTab('queue');
-      btn.disabled = false;
-      btn.textContent = '🔍 Run Enrichment';
-      progress.style.display = 'none';
+      resetBatchUI();
     }, 2000);
   } else {
-    btn.disabled = false;
-    btn.textContent = '🔍 Run Enrichment';
+    resetBatchUI();
   }
+}
+
+function resetBatchUI() {
+  const btn = document.getElementById('enrichRunBtn');
+  btn.disabled = false;
+  btn.textContent = '🔍 Run Enrichment';
+  btn.onclick = runEnrichmentBatch;
+  const progress = document.getElementById('enrichProgress');
+  const bar = document.getElementById('enrichProgressBar');
+  progress.style.display = 'none';
+  bar.style.width = '0%';
 }
 
 // ─── Single Contact Enrichment ──────────────────────────────
