@@ -1926,15 +1926,19 @@ function openGroupTextSelector() {
   html += `</div></div>
     <div class="group-email-panel" style="margin-top:10px;">
       <h3>Compose Message</h3>
-      <textarea id="textMessageBody" style="width:100%;min-height:80px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);resize:vertical;" placeholder="Type your text message here..."></textarea>
-      <p style="font-size:10px;color:var(--text-muted);margin-top:4px;">Standard message and data rates apply. Recipients can reply STOP to opt out.</p>
+      <textarea id="textMessageBody" style="width:100%;min-height:80px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);resize:vertical;" placeholder="Type your text message here... Use {name} to personalize." oninput="updateSmsCharCount()"></textarea>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;">
+        <p style="font-size:10px;color:var(--text-muted);">Standard message and data rates apply. Recipients can reply STOP to opt out.</p>
+        <span id="smsCharCount" style="font-size:10px;color:var(--text-muted);white-space:nowrap;"></span>
+      </div>
     </div>
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:12px;color:var(--text-muted);" id="textGroupCount">0 contacts with cell phone</span>
       <div style="display:flex;gap:8px;">
         <button class="btn" onclick="closeEmailModal()">Cancel</button>
         <button class="btn" onclick="copyGroupTextNumbers()" title="Copy all cell numbers to clipboard">📋 Copy Numbers</button>
-        <button class="btn btn-text" onclick="composeGroupText()">Open SMS →</button>
+        <button class="btn btn-text" onclick="composeGroupText()">📱 Open Messages</button>
+        <button class="btn btn-primary" onclick="sendViaTwilio()" title="Send through Twilio from the web app">📤 Send via Twilio</button>
       </div>
     </div></div>`;
 
@@ -1986,7 +1990,128 @@ function textSingleContact(contactId) {
   if (!c || !c.cell_phone) return;
   const digits = c.cell_phone.replace(/\D/g, '');
   const phone = digits.length === 10 ? '+1' + digits : '+' + digits;
-  window.location.href = `sms:${phone}`;
+  // Show choice: Messages app or Twilio
+  const overlay = document.getElementById('emailOverlay');
+  overlay.innerHTML = `<div class="modal" style="width:420px;">
+    <h2 style="font-family:var(--serif);font-size:18px;margin-bottom:12px;">💬 Text ${c.name}</h2>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">${phone}</p>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:600;">Message (for Twilio send)</label>
+      <textarea id="singleTextBody" style="width:100%;min-height:60px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--sans);resize:vertical;" placeholder="Type message... Use {name} to personalize."></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border-light);">
+      <button class="btn" onclick="closeEmailModal()">Cancel</button>
+      <button class="btn btn-text" onclick="window.location.href='sms:${phone}';closeEmailModal();">📱 Open Messages</button>
+      <button class="btn btn-primary" onclick="sendSingleTwilio('${phone}','${c.name.replace(/'/g, "\\'")}')">📤 Send via Twilio</button>
+    </div>
+  </div>`;
+  overlay.classList.add('open');
+}
+
+async function sendSingleTwilio(phone, name) {
+  const body = (document.getElementById('singleTextBody') || {}).value || '';
+  if (!body.trim()) { alert('Please type a message to send via Twilio.'); return; }
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    const res = await fetch(SUPABASE_URL + '/functions/v1/send-sms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-app-secret': 'd316cb840036aeffc93a26863b73ee1d39bb675722a682a07c642c219bbd33bc' },
+      body: JSON.stringify({ recipients: [{ phone, name }], message: body })
+    });
+    const data = await res.json();
+    if (data.error) { alert('Error: ' + data.error); btn.disabled = false; btn.textContent = '📤 Send via Twilio'; return; }
+    if (data.sent > 0) {
+      alert('Text sent successfully to ' + name + '!');
+      closeEmailModal();
+    } else {
+      alert('Failed to send: ' + (data.results?.[0]?.error || 'Unknown error'));
+      btn.disabled = false; btn.textContent = '📤 Send via Twilio';
+    }
+  } catch (err) {
+    alert('Network error: ' + err.message);
+    btn.disabled = false; btn.textContent = '📤 Send via Twilio';
+  }
+}
+
+async function sendViaTwilio() {
+  const selectedRoles = [...document.querySelectorAll('.group-text-role-cb:checked')].map(cb => cb.value);
+  const selectedStatuses = [...document.querySelectorAll('.group-text-status-cb:checked')].map(cb => cb.value);
+  if (selectedRoles.length === 0 && selectedStatuses.length === 0) { alert('Please select at least one group.'); return; }
+  const body = (document.getElementById('textMessageBody') || {}).value || '';
+  if (!body.trim()) { alert('Please type a message to send via Twilio.'); return; }
+  const matched = contacts.filter(c => {
+    const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
+    const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
+    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
+    return matchRole || matchStatus;
+  });
+  const withPhone = matched.filter(c => c.cell_phone && c.cell_phone.trim());
+  if (withPhone.length === 0) { alert('No contacts in the selected groups have cell phone numbers.'); return; }
+  if (!confirm('Send this text to ' + withPhone.length + ' recipient(s) via Twilio?')) return;
+
+  const recipients = withPhone.map(c => {
+    const digits = c.cell_phone.replace(/\D/g, '');
+    return { phone: digits.length === 10 ? '+1' + digits : '+' + digits, name: c.preferred_name || c.first_name || c.name };
+  });
+
+  // Show sending status
+  const overlay = document.getElementById('emailOverlay');
+  overlay.innerHTML = `<div class="modal" style="width:500px;">
+    <h2 style="font-family:var(--serif);font-size:18px;margin-bottom:12px;">📤 Sending Texts via Twilio...</h2>
+    <p style="font-size:13px;color:var(--text-muted);">Sending to ${recipients.length} recipient(s). Please wait...</p>
+    <div id="twilioProgress" style="margin-top:16px;"></div>
+  </div>`;
+
+  // Send in batches of 50
+  let totalSent = 0, totalFailed = 0;
+  const allResults = [];
+  for (let i = 0; i < recipients.length; i += 50) {
+    const batch = recipients.slice(i, i + 50);
+    try {
+      const res = await fetch(SUPABASE_URL + '/functions/v1/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-app-secret': 'd316cb840036aeffc93a26863b73ee1d39bb675722a682a07c642c219bbd33bc' },
+        body: JSON.stringify({ recipients: batch, message: body })
+      });
+      const data = await res.json();
+      if (data.error) { alert('Twilio error: ' + data.error); return; }
+      totalSent += data.sent || 0;
+      totalFailed += data.failed || 0;
+      if (data.results) allResults.push(...data.results);
+    } catch (err) {
+      alert('Network error on batch: ' + err.message);
+      totalFailed += batch.length;
+    }
+  }
+
+  // Show results
+  let resultHtml = `<div class="modal" style="width:540px;max-height:80vh;overflow-y:auto;">
+    <h2 style="font-family:var(--serif);font-size:18px;margin-bottom:8px;">📤 Twilio Send Results</h2>
+    <p style="font-size:14px;margin-bottom:12px;">
+      <span style="color:#16a34a;font-weight:600;">✅ ${totalSent} sent</span>
+      ${totalFailed > 0 ? `<span style="color:#dc2626;font-weight:600;margin-left:12px;">❌ ${totalFailed} failed</span>` : ''}
+    </p>`;
+  if (totalFailed > 0) {
+    resultHtml += '<div style="margin-top:8px;"><h3 style="font-size:13px;font-weight:600;margin-bottom:6px;">Failed:</h3>';
+    allResults.filter(r => r.status === 'failed').forEach(r => {
+      resultHtml += `<p style="font-size:12px;color:#dc2626;margin:2px 0;">${r.name || r.phone}: ${r.error}</p>`;
+    });
+    resultHtml += '</div>';
+  }
+  resultHtml += `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-light);text-align:right;">
+    <button class="btn btn-primary" onclick="closeEmailModal()">Done</button></div></div>`;
+  overlay.innerHTML = resultHtml;
+}
+
+function updateSmsCharCount() {
+  const el = document.getElementById('smsCharCount');
+  const ta = document.getElementById('textMessageBody');
+  if (!el || !ta) return;
+  const len = ta.value.length;
+  const segments = len <= 160 ? 1 : Math.ceil(len / 153);
+  el.textContent = len + ' chars · ' + segments + ' segment' + (segments !== 1 ? 's' : '');
+  el.style.color = len > 160 ? '#d97706' : 'var(--text-muted)';
 }
 
 function copyGroupTextNumbers() {
