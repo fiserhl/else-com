@@ -327,6 +327,20 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .enrich-stat { background:var(--surface); border:1px solid var(--border-light); border-radius:var(--radius); padding:14px; text-align:center; }
 .enrich-stat .es-num { font-family:var(--serif); font-size:28px; font-weight:600; line-height:1; }
 .enrich-stat .es-label { font-size:10px; color:var(--text-muted); margin-top:3px; text-transform:uppercase; letter-spacing:0.5px; }
+/* Dashboard */
+.edash { display:grid; gap:12px; }
+.edash-row { display:grid; gap:12px; }
+.edash-card { background:var(--surface); border:1px solid var(--border-light); border-radius:var(--radius-lg); padding:16px; box-shadow:var(--shadow-sm); }
+.edash-card h4 { font-family:var(--serif); font-size:14px; font-weight:500; color:var(--accent); margin-bottom:12px; }
+.edash-bar-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.edash-bar-label { font-size:11px; font-weight:600; width:80px; text-align:right; color:var(--text-muted); }
+.edash-bar-track { flex:1; height:14px; background:var(--border-light); border-radius:7px; overflow:hidden; position:relative; }
+.edash-bar-fill { height:100%; border-radius:7px; transition:width 0.6s ease; }
+.edash-bar-pct { font-size:11px; font-weight:600; width:40px; }
+.edash-bar-count { font-size:10px; color:var(--text-muted); width:60px; text-align:right; }
+.edash-kpi { text-align:center; padding:12px 8px; }
+.edash-kpi-num { font-family:var(--serif); font-size:26px; font-weight:600; line-height:1; }
+.edash-kpi-label { font-size:9px; color:var(--text-muted); margin-top:4px; text-transform:uppercase; letter-spacing:0.5px; line-height:1.3; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -537,6 +551,11 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
           <span id="pdlCreditInfo" style="font-size:11px;color:var(--text-muted);"></span>
           <button class="btn" onclick="loadEnrichmentQueue()">↻ Refresh</button>
         </div>
+      </div>
+
+      <!-- Enrichment Dashboard -->
+      <div id="enrichDashboard" style="margin-bottom:16px;">
+        <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">Loading dashboard...</div>
       </div>
 
       <!-- Sub-tabs for Research -->
@@ -926,7 +945,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     const target = document.getElementById(tabMap[tabName]);
     if (target) target.classList.add('active');
     if (tabName === 'audit') loadAuditLog();
-    if (tabName === 'research') loadEnrichmentQueue();
+    if (tabName === 'research') { loadEnrichDashboard(); loadEnrichmentQueue(); }
   });
 });
 
@@ -2468,6 +2487,99 @@ const PDL_ENRICH_URL = 'https://api.peopledatalabs.com/v5/person/enrich';
 let enrichPreviewContacts = [];
 let selectedEnrichSingleId = null;
 
+// ─── Enrichment Dashboard ───────────────────────────────────
+async function loadEnrichDashboard() {
+  const el = document.getElementById('enrichDashboard');
+  try {
+    // Query 1: Database completeness
+    const { data: stats } = await db.rpc('', {}).catch(() => null) || {};
+    // Use raw query via contacts table
+    const { data: allC } = await db.from('contacts')
+      .select('email,linkedin_url,organization,title,city,state,phone,cell_phone,last_enriched_at')
+      .range(0, 9999);
+    const c = allC || [];
+    const total = c.length;
+    const hasEmail = c.filter(r => r.email).length;
+    const hasLinkedin = c.filter(r => r.linkedin_url).length;
+    const hasOrg = c.filter(r => r.organization).length;
+    const hasTitle = c.filter(r => r.title).length;
+    const hasCity = c.filter(r => r.city).length;
+    const hasPhone = c.filter(r => r.phone || r.cell_phone).length;
+    const everEnriched = c.filter(r => r.last_enriched_at).length;
+    const noIdentifier = c.filter(r => !r.email && !r.linkedin_url).length;
+    const readyToEnrich = c.filter(r => r.email && !r.organization && !r.last_enriched_at).length;
+
+    // Query 2: Enrichment queue stats
+    const { data: queueAll } = await db.from('enrichment_queue').select('status, created_at');
+    const qa = queueAll || [];
+    const pending = qa.filter(r => r.status === 'pending').length;
+    const approved = qa.filter(r => r.status === 'approved' || r.status === 'partial').length;
+    const confirmed = qa.filter(r => r.status === 'confirmed').length;
+    const rejected = qa.filter(r => r.status === 'rejected').length;
+    const totalLookups = qa.length;
+
+    // Build dashboard
+    function pct(n) { return total > 0 ? Math.round(n / total * 100) : 0; }
+    function barColor(p) {
+      if (p >= 75) return 'var(--green, #2d8a4e)';
+      if (p >= 40) return 'var(--gold, #C49A6C)';
+      return '#c0392b';
+    }
+    function bar(label, count) {
+      const p = pct(count);
+      return `<div class="edash-bar-row">
+        <span class="edash-bar-label">${label}</span>
+        <div class="edash-bar-track"><div class="edash-bar-fill" style="width:${p}%;background:${barColor(p)};"></div></div>
+        <span class="edash-bar-pct" style="color:${barColor(p)};">${p}%</span>
+        <span class="edash-bar-count">${count.toLocaleString()} / ${total.toLocaleString()}</span>
+      </div>`;
+    }
+    function kpi(num, label, color) {
+      return `<div class="edash-kpi"><div class="edash-kpi-num" style="color:${color};">${num.toLocaleString()}</div><div class="edash-kpi-label">${label}</div></div>`;
+    }
+
+    el.innerHTML = `<div class="edash">
+      <div class="edash-row" style="grid-template-columns:1fr 1fr;">
+        <div class="edash-card">
+          <h4>📊 Database Completeness</h4>
+          ${bar('Email', hasEmail)}
+          ${bar('City', hasCity)}
+          ${bar('Phone', hasPhone)}
+          ${bar('LinkedIn', hasLinkedin)}
+          ${bar('Organization', hasOrg)}
+          ${bar('Title', hasTitle)}
+        </div>
+        <div style="display:grid;grid-template-rows:1fr 1fr;gap:12px;">
+          <div class="edash-card">
+            <h4>🎯 Enrichment Opportunity</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
+              ${kpi(readyToEnrich, 'Ready to Enrich', 'var(--accent)')}
+              ${kpi(everEnriched, 'Already Enriched', 'var(--green, #2d8a4e)')}
+              ${kpi(noIdentifier, 'No Email/LinkedIn', '#c0392b')}
+            </div>
+            <div style="margin-top:8px;font-size:11px;color:var(--text-muted);text-align:center;">
+              ${readyToEnrich > 0 ? `<strong>${readyToEnrich.toLocaleString()}</strong> contacts have email but no organization — run enrichment to fill the gaps` : 'All enrichable contacts have been processed'}
+            </div>
+          </div>
+          <div class="edash-card">
+            <h4>⚡ Enrichment Activity</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:4px;">
+              ${kpi(totalLookups, 'Total Lookups', 'var(--accent)')}
+              ${kpi(approved, 'Updates Applied', 'var(--green, #2d8a4e)')}
+              ${kpi(confirmed, 'Confirmed', '#1565c0')}
+              ${kpi(rejected, 'Rejected', '#c0392b')}
+              ${kpi(pending, 'Pending Review', pending > 0 ? '#f57f17' : 'var(--text-muted)')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  } catch(e) {
+    el.innerHTML = `<div style="padding:12px;font-size:12px;color:var(--red);">Dashboard error: ${esc(e.message)}</div>`;
+    console.error('Dashboard error:', e);
+  }
+}
+
 function switchResearchTab(tab) {
   document.querySelectorAll('.research-subtab').forEach(b => b.classList.remove('active'));
   document.querySelector(`.research-subtab[data-subtab="${tab}"]`).classList.add('active');
@@ -2476,6 +2588,7 @@ function switchResearchTab(tab) {
   document.getElementById(panelMap[tab]).style.display = 'block';
   if (tab === 'queue') loadEnrichmentQueue();
   if (tab === 'history') loadEnrichmentHistory();
+  loadEnrichDashboard();
 }
 
 // ─── PDL API Call ───────────────────────────────────────────
@@ -2898,6 +3011,7 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
     // Refresh
     await loadEnrichmentQueue();
     await loadContacts();
+    loadEnrichDashboard();
   } catch(e) {
     alert('Error applying enrichment: ' + e.message);
     console.error('Approve error:', e);
@@ -2921,6 +3035,7 @@ async function rejectEnrichment(queueId) {
     }).eq('id', queueId);
     showEnrichToast('❌ Enrichment rejected');
     await loadEnrichmentQueue();
+    loadEnrichDashboard();
   } catch(e) {
     alert('Error rejecting: ' + e.message);
   }
