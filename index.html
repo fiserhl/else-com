@@ -2574,19 +2574,24 @@ async function enrichAndQueue(contact) {
       const conf = computeEnrichConfidence(contact, pdl);
       const suggestions = parsePDLSuggestions(contact, pdl);
       const matchedOn = contact.email ? 'email' : contact.linkedin_url ? 'linkedin' : 'name';
-      // Write to enrichment_queue
+      const hasSuggestions = Object.keys(suggestions).filter(k => k !== '_extra').length > 0;
+      // Write to enrichment_queue — pending if updates available, confirmed if already up-to-date
       const { error } = await db.from('enrichment_queue').insert({
         contact_id: contact.contact_id,
         source: 'pdl',
-        status: 'pending',
+        status: hasSuggestions ? 'pending' : 'confirmed',
         pdl_response: data.data,
         suggested_updates: suggestions,
         matched_on: matchedOn,
         confidence: conf.score,
-        confidence_details: conf.details
+        confidence_details: conf.details,
+        reviewed_by: hasSuggestions ? null : 'auto',
+        reviewed_at: hasSuggestions ? null : new Date().toISOString()
       });
       if (error) throw error;
-      return { matched: true, confidence: conf.score, likelihood: data.likelihood };
+      // Update last_enriched_at even for confirmed (we did check them)
+      await db.from('contacts').update({ last_enriched_at: new Date().toISOString() }).eq('contact_id', contact.contact_id);
+      return { matched: true, hasUpdates: hasSuggestions, confidence: conf.score, likelihood: data.likelihood };
     } else {
       return { matched: false, reason: data.error ? data.error.message : `HTTP ${status}` };
     }
@@ -2601,17 +2606,40 @@ async function loadEnrichmentQueue() {
   const container = document.getElementById('enrichmentQueueContent');
   container.innerHTML = '<p style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">Loading...</p>';
   try {
+    // Load pending items
     const { data: queue, error } = await db.from('enrichment_queue')
       .select('*').eq('status', 'pending').order('created_at', { ascending: false });
     if (error) throw error;
+
+    // Also get recent confirmed count (last 24 hours)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentAll } = await db.from('enrichment_queue')
+      .select('status, contact_id').gte('created_at', oneDayAgo);
+    const recentConfirmed = (recentAll || []).filter(r => r.status === 'confirmed').length;
+    const recentApproved = (recentAll || []).filter(r => r.status === 'approved' || r.status === 'partial').length;
+    const recentRejected = (recentAll || []).filter(r => r.status === 'rejected').length;
+    const recentPending = (recentAll || []).filter(r => r.status === 'pending').length;
 
     // Update badge
     const badge = document.getElementById('queueBadge');
     if (queue.length > 0) { badge.textContent = queue.length; badge.style.display = 'inline'; }
     else { badge.style.display = 'none'; }
 
+    // Summary banner (always show if any recent activity)
+    let html = '';
+    if (recentAll && recentAll.length > 0) {
+      html += `<div style="display:flex;gap:16px;padding:14px 16px;background:linear-gradient(135deg,#f8f6f3,#f0ede8);border-bottom:1px solid var(--border-light);font-size:12px;flex-wrap:wrap;align-items:center;">
+        <span style="font-weight:600;color:var(--accent);">Last 24 hours:</span>
+        ${recentPending > 0 ? `<span style="color:#f57f17;">⏳ ${recentPending} pending review</span>` : ''}
+        ${recentConfirmed > 0 ? `<span style="color:#2d8a4e;">✅ ${recentConfirmed} verified up-to-date</span>` : ''}
+        ${recentApproved > 0 ? `<span style="color:#2d8a4e;">📝 ${recentApproved} approved</span>` : ''}
+        ${recentRejected > 0 ? `<span style="color:#c0392b;">❌ ${recentRejected} rejected</span>` : ''}
+      </div>`;
+    }
+
     if (!queue.length) {
-      container.innerHTML = '<p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">No pending enrichment results to review. Go to "Run Enrichment" to get started.</p>';
+      html += '<p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">No pending enrichment results to review. Go to "Run Enrichment" to get started.</p>';
+      container.innerHTML = html;
       return;
     }
 
@@ -2620,8 +2648,6 @@ async function loadEnrichmentQueue() {
     const { data: contacts } = await db.from('contacts').select('contact_id,name,first_name,last_name,email,organization,title,linkedin_url,city,state,phone,cell_phone').in('contact_id', contactIds);
     const contactMap = {};
     (contacts || []).forEach(c => contactMap[c.contact_id] = c);
-
-    let html = '';
     for (const q of queue) {
       const c = contactMap[q.contact_id] || {};
       const suggestions = q.suggested_updates || {};
@@ -2884,27 +2910,28 @@ async function runEnrichmentBatch() {
   btn.textContent = 'Running...';
   progress.style.display = 'block';
 
-  let matched = 0, noMatch = 0, errors = 0;
+  let withUpdates = 0, confirmed = 0, noMatch = 0;
   const total = enrichPreviewContacts.length;
 
   for (let i = 0; i < total; i++) {
     const c = enrichPreviewContacts[i];
     bar.style.width = `${((i + 1) / total) * 100}%`;
-    text.textContent = `Processing ${i + 1}/${total}: ${c.name}... (${matched} matched, ${noMatch} no match)`;
+    text.textContent = `Processing ${i + 1}/${total}: ${c.name}... (${withUpdates} with updates, ${confirmed} confirmed, ${noMatch} no match)`;
 
     const result = await enrichAndQueue(c);
-    if (result.matched) matched++;
+    if (result.matched && result.hasUpdates) withUpdates++;
+    else if (result.matched) confirmed++;
     else noMatch++;
 
     // Rate limit: ~1 req/sec
     if (i < total - 1) await new Promise(r => setTimeout(r, 900));
   }
 
-  text.textContent = `✅ Complete — ${matched} matched, ${noMatch} no match out of ${total} contacts`;
+  text.textContent = `✅ Complete — ${withUpdates} with updates (pending review), ${confirmed} verified up-to-date, ${noMatch} no match`;
   btn.textContent = '✅ Complete';
 
-  // Auto-switch to queue if we got results
-  if (matched > 0) {
+  // Auto-switch to queue if we got actionable results
+  if (withUpdates > 0) {
     setTimeout(() => {
       switchResearchTab('queue');
       btn.disabled = false;
@@ -2969,8 +2996,10 @@ async function runSingleEnrich() {
   if (!contact) { statusEl.innerHTML = '<span style="color:var(--red);">Contact not found in loaded data.</span>'; btn.disabled = false; btn.textContent = 'Enrich'; return; }
 
   const result = await enrichAndQueue(contact);
-  if (result.matched) {
-    statusEl.innerHTML = `<span style="color:#2d8a4e;">✅ Match found (confidence: ${result.confidence}/10, likelihood: ${Math.round(result.likelihood * 100)}%). Check the Review Queue to approve.</span>`;
+  if (result.matched && result.hasUpdates) {
+    statusEl.innerHTML = `<span style="color:#2d8a4e;">✅ Match found with updates (confidence: ${result.confidence}/10). Check the Review Queue to approve.</span>`;
+  } else if (result.matched) {
+    statusEl.innerHTML = `<span style="color:#1565c0;">✅ Match found — already up-to-date (confidence: ${result.confidence}/10). No changes needed.</span>`;
   } else {
     statusEl.innerHTML = `<span style="color:#c0392b;">❌ No match found: ${esc(result.reason)}</span>`;
   }
@@ -2984,7 +3013,7 @@ async function loadEnrichmentHistory() {
   container.innerHTML = '<p style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">Loading...</p>';
   try {
     const { data: history, error } = await db.from('enrichment_queue')
-      .select('*').in('status', ['approved','rejected','partial']).order('reviewed_at', { ascending: false }).limit(100);
+      .select('*').in('status', ['approved','rejected','partial','confirmed']).order('reviewed_at', { ascending: false }).limit(100);
     if (error) throw error;
 
     if (!history || !history.length) {
@@ -3001,12 +3030,14 @@ async function loadEnrichmentHistory() {
     // Summary stats
     const approved = history.filter(h => h.status === 'approved' || h.status === 'partial').length;
     const rejected = history.filter(h => h.status === 'rejected').length;
+    const confirmed = history.filter(h => h.status === 'confirmed').length;
     const avgConf = history.length > 0 ? (history.reduce((s, h) => s + (h.confidence || 0), 0) / history.length).toFixed(1) : 0;
 
     let html = `<div style="padding:16px;">
-      <div class="enrich-stat-grid">
+      <div class="enrich-stat-grid" style="grid-template-columns:repeat(5,1fr);">
         <div class="enrich-stat"><div class="es-num" style="color:var(--accent);">${history.length}</div><div class="es-label">Total Processed</div></div>
         <div class="enrich-stat"><div class="es-num" style="color:#2d8a4e;">${approved}</div><div class="es-label">Approved</div></div>
+        <div class="enrich-stat"><div class="es-num" style="color:#1565c0;">${confirmed}</div><div class="es-label">Confirmed</div></div>
         <div class="enrich-stat"><div class="es-num" style="color:#c0392b;">${rejected}</div><div class="es-label">Rejected</div></div>
         <div class="enrich-stat"><div class="es-num" style="color:var(--gold);">${avgConf}</div><div class="es-label">Avg Confidence</div></div>
       </div>
@@ -3021,12 +3052,13 @@ async function loadEnrichmentHistory() {
         </tr>`;
 
     for (const h of history) {
-      const statusClass = h.status === 'rejected' ? 'ec-rejected' : h.status === 'partial' ? 'ec-partial' : 'ec-approved';
+      const statusClass = h.status === 'rejected' ? 'ec-rejected' : h.status === 'partial' ? 'ec-partial' : h.status === 'confirmed' ? 'ec-match' : 'ec-approved';
+      const statusLabel = h.status === 'confirmed' ? '✅ up-to-date' : h.status;
       const date = h.reviewed_at ? new Date(h.reviewed_at).toLocaleDateString() : '—';
-      const fieldsStr = (h.applied_fields || []).join(', ') || '—';
+      const fieldsStr = h.status === 'confirmed' ? 'no changes needed' : (h.applied_fields || []).join(', ') || '—';
       html += `<tr style="border-bottom:1px solid var(--border-light);">
         <td style="padding:8px;font-weight:500;">${esc(cMap[h.contact_id] || 'ID:' + h.contact_id)}</td>
-        <td style="padding:8px;"><span class="ec-badge ${statusClass}">${h.status}</span></td>
+        <td style="padding:8px;"><span class="ec-badge ${statusClass}">${statusLabel}</span></td>
         <td style="padding:8px;">${h.confidence || '—'}/10</td>
         <td style="padding:8px;font-size:11px;color:var(--text-muted);">${esc(fieldsStr)}</td>
         <td style="padding:8px;">${esc(h.reviewed_by || '—')}</td>
