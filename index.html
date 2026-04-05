@@ -2491,11 +2491,9 @@ let selectedEnrichSingleId = null;
 async function loadEnrichDashboard() {
   const el = document.getElementById('enrichDashboard');
   try {
-    // Query 1: Database completeness
-    const { data: allC } = await db.from('contacts')
-      .select('email,linkedin_url,organization,title,city,state,phone,cell_phone,last_enriched_at')
-      .range(0, 9999);
-    const c = allC || [];
+    // Use already-loaded contacts data instead of re-querying 4400 rows
+    const c = window._allContacts || [];
+    if (!c.length) { el.innerHTML = ''; return; } // contacts not loaded yet, skip
     const total = c.length;
     const hasEmail = c.filter(r => r.email).length;
     const hasLinkedin = c.filter(r => r.linkedin_url).length;
@@ -2507,8 +2505,8 @@ async function loadEnrichDashboard() {
     const noIdentifier = c.filter(r => !r.email && !r.linkedin_url).length;
     const readyToEnrich = c.filter(r => r.email && !r.organization && !r.last_enriched_at).length;
 
-    // Query 2: Enrichment queue stats
-    const { data: queueAll } = await db.from('enrichment_queue').select('status, created_at');
+    // Only query needed: enrichment queue stats (lightweight)
+    const { data: queueAll } = await db.from('enrichment_queue').select('status');
     const qa = queueAll || [];
     const pending = qa.filter(r => r.status === 'pending').length;
     const approved = qa.filter(r => r.status === 'approved' || r.status === 'partial').length;
@@ -3006,36 +3004,44 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
     // Show success feedback briefly
     showEnrichToast(`✅ ${contactName} — ${appliedFieldNames.length} field${appliedFieldNames.length !== 1 ? 's' : ''} updated`);
 
-    // Refresh
+    // Refresh (sequential, with error resilience)
     await loadEnrichmentQueue();
     await loadContacts();
-    loadEnrichDashboard();
+    try { loadEnrichDashboard(); } catch(e) { /* non-fatal */ }
   } catch(e) {
     alert('Error applying enrichment: ' + e.message);
     console.error('Approve error:', e);
+    try { await loadEnrichmentQueue(); } catch(e2) { /* give up */ }
   }
 }
 
 // ─── Reject Enrichment ──────────────────────────────────────
 async function rejectEnrichment(queueId) {
   try {
-    // Race condition check
-    const { data: qRec } = await db.from('enrichment_queue').select('status,reviewed_by').eq('id', queueId).single();
-    if (qRec && qRec.status !== 'pending') {
-      alert(`This record was already ${qRec.status} by ${qRec.reviewed_by || 'another user'}. Refreshing queue.`);
-      await loadEnrichmentQueue();
-      return;
-    }
-    await db.from('enrichment_queue').update({
+    // Race condition check (non-fatal if it fails)
+    try {
+      const { data: qRec } = await db.from('enrichment_queue').select('status,reviewed_by').eq('id', queueId).single();
+      if (qRec && qRec.status !== 'pending') {
+        alert(`This record was already ${qRec.status} by ${qRec.reviewed_by || 'another user'}. Refreshing queue.`);
+        await loadEnrichmentQueue();
+        return;
+      }
+    } catch(raceErr) { /* proceed with rejection anyway */ }
+
+    const { error } = await db.from('enrichment_queue').update({
       status: 'rejected',
       reviewed_by: sessionStorage.getItem('else_user') || 'unknown',
       reviewed_at: new Date().toISOString()
     }).eq('id', queueId);
+    if (error) throw error;
+
     showEnrichToast('❌ Enrichment rejected');
     await loadEnrichmentQueue();
-    loadEnrichDashboard();
+    try { loadEnrichDashboard(); } catch(e) { /* non-fatal */ }
   } catch(e) {
     alert('Error rejecting: ' + e.message);
+    // Still try to reload queue even on error
+    try { await loadEnrichmentQueue(); } catch(e2) { /* give up */ }
   }
 }
 
