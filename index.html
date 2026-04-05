@@ -2607,6 +2607,7 @@ async function loadEnrichDashboard() {
     const approved = qa.filter(r => r.status === 'approved' || r.status === 'partial').length;
     const confirmed = qa.filter(r => r.status === 'confirmed').length;
     const rejected = qa.filter(r => r.status === 'rejected').length;
+    const undone = qa.filter(r => r.status === 'undone').length;
     const totalLookups = qa.length;
 
     // Build dashboard
@@ -2654,11 +2655,12 @@ async function loadEnrichDashboard() {
           </div>
           <div class="edash-card">
             <h4>⚡ Enrichment Activity</h4>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:4px;">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:4px;">
               ${kpi(totalLookups, 'Total Lookups', 'var(--accent)')}
               ${kpi(approved, 'Updates Applied', 'var(--green, #2d8a4e)')}
               ${kpi(confirmed, 'Confirmed', '#1565c0')}
               ${kpi(rejected, 'Rejected', '#c0392b')}
+              ${undone > 0 ? kpi(undone, 'Undone', '#f57f17') : ''}
               ${kpi(pending, 'Pending Review', pending > 0 ? '#f57f17' : 'var(--text-muted)')}
             </div>
           </div>
@@ -2991,6 +2993,19 @@ async function loadEnrichmentQueue() {
     const { data: contacts } = await db.from('contacts').select('contact_id,name,first_name,last_name,email,organization,title,linkedin_url,city,state,phone,cell_phone').in('contact_id', contactIds);
     const contactMap = {};
     (contacts || []).forEach(c => contactMap[c.contact_id] = c);
+
+    // Batch action toolbar
+    html += `<div id="batchToolbar" style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border-light);position:sticky;top:0;z-index:5;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;">
+        <input type="checkbox" id="batchSelectAll" onchange="toggleBatchSelectAll(this.checked)"> Select All
+      </label>
+      <span id="batchCount" style="font-size:12px;color:var(--text-muted);">0 selected</span>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn" onclick="batchApproveAll()" id="batchApproveBtn" style="display:none;font-size:12px;padding:5px 14px;background:#e8f5e9;color:#2d8a4e;font-weight:600;">✅ Approve All Selected</button>
+        <button class="btn" onclick="batchRejectAll()" id="batchRejectBtn" style="display:none;font-size:12px;padding:5px 14px;background:#fdecea;color:#c0392b;font-weight:600;">❌ Reject All Selected</button>
+      </div>
+    </div>`;
+
     for (const q of queue) {
       const c = contactMap[q.contact_id] || {};
       const suggestions = q.suggested_updates || {};
@@ -2999,14 +3014,15 @@ async function loadEnrichmentQueue() {
       const extra = suggestions._extra || {};
 
       html += `<div class="enrich-card" id="eq-${q.id}">
-        <div class="enrich-card-header" onclick="document.getElementById('eq-${q.id}').classList.toggle('expanded')">
+        <div class="enrich-card-header">
           <div style="display:flex;align-items:center;gap:8px;">
-            <span class="ec-arrow">▸</span>
-            <span class="ec-name">${esc(c.name || 'Unknown')}</span>
+            <input type="checkbox" class="batch-card-check" data-qid="${q.id}" data-cid="${q.contact_id}" onchange="updateBatchCount()" onclick="event.stopPropagation()">
+            <span class="ec-arrow" onclick="document.getElementById('eq-${q.id}').classList.toggle('expanded')" style="cursor:pointer;">▸</span>
+            <span class="ec-name" onclick="document.getElementById('eq-${q.id}').classList.toggle('expanded')" style="cursor:pointer;">${esc(c.name || 'Unknown')}</span>
             <span style="font-size:11px;color:var(--text-muted);">ID:${q.contact_id}</span>
             <span style="font-size:10px;color:var(--text-muted);background:var(--border-light);padding:1px 6px;border-radius:4px;">matched on ${esc(q.matched_on || '?')}</span>
           </div>
-          <div style="display:flex;align-items:center;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="document.getElementById('eq-${q.id}').classList.toggle('expanded')">
             <span class="ec-conf ${confClass}">${q.confidence}/10</span>
             <span style="font-size:11px;color:var(--text-muted);">${suggestionKeys.length} update${suggestionKeys.length!==1?'s':''}</span>
             <span class="ec-badge ec-pending">Pending</span>
@@ -3084,7 +3100,7 @@ async function loadEnrichmentQueue() {
 }
 
 // ─── Approve Enrichment ─────────────────────────────────────
-async function approveEnrichment(queueId, contactId, selectedOnly) {
+async function approveEnrichment(queueId, contactId, selectedOnly, skipRefresh) {
   try {
     // Race condition check: verify record is still pending
     const { data: qRec, error: qErr } = await db.from('enrichment_queue').select('*').eq('id', queueId).single();
@@ -3124,6 +3140,12 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
     // Get current contact for diff logging
     const { data: oldContact } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
     const contactName = oldContact ? oldContact.name : 'Contact';
+
+    // Capture pre-change snapshot of fields being changed (for undo capability)
+    const preChangeSnapshot = {};
+    for (const f of appliedFieldNames) {
+      preChangeSnapshot[f] = oldContact[f] || null;
+    }
 
     // Apply updates
     fieldsToApply.updated_at = new Date().toISOString();
@@ -3242,6 +3264,12 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
 
     // Apply mined updates if any
     if (Object.keys(minedUpdates).length > 0) {
+      // Capture pre-change snapshot for mined fields too
+      for (const f of Object.keys(minedUpdates)) {
+        if (f !== 'updated_at' && !(f in preChangeSnapshot)) {
+          preChangeSnapshot[f] = oldContact[f] || null;
+        }
+      }
       minedUpdates.updated_at = new Date().toISOString();
       const { error: mineErr } = await db.from('contacts').update(minedUpdates).eq('contact_id', contactId);
       if (!mineErr && minedLog.length) {
@@ -3249,29 +3277,31 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
       }
     }
 
-    // Update queue record
+    // Update queue record (include pre-change snapshot for undo)
     const allSuggestionKeys = Object.keys(suggestions).filter(k => k !== '_extra');
     const newStatus = appliedFieldNames.length >= allSuggestionKeys.length ? 'approved' : 'partial';
     await db.from('enrichment_queue').update({
       status: newStatus,
       reviewed_by: sessionStorage.getItem('else_user') || 'unknown',
       reviewed_at: new Date().toISOString(),
-      applied_fields: appliedFieldNames
+      applied_fields: appliedFieldNames,
+      pre_change_snapshot: preChangeSnapshot
     }).eq('id', queueId);
 
-    // Show success feedback briefly
-    const minedCount = Object.keys(minedUpdates).filter(k => k !== 'updated_at').length;
-    const minedMsg = minedCount > 0 ? ` + ${minedCount} auto-mined` : '';
-    showEnrichToast(`✅ ${contactName} — ${appliedFieldNames.length} field${appliedFieldNames.length !== 1 ? 's' : ''} updated${minedMsg}`);
-
-    // Refresh (sequential, with error resilience)
-    await loadEnrichmentQueue();
-    await loadContacts();
-    try { loadEnrichDashboard(); } catch(e) { /* non-fatal */ }
+    // Show success feedback and refresh (skip during batch operations)
+    if (!skipRefresh) {
+      const minedCount = Object.keys(minedUpdates).filter(k => k !== 'updated_at').length;
+      const minedMsg = minedCount > 0 ? ` + ${minedCount} auto-mined` : '';
+      showEnrichToast(`✅ ${contactName} — ${appliedFieldNames.length} field${appliedFieldNames.length !== 1 ? 's' : ''} updated${minedMsg}`);
+      await loadEnrichmentQueue();
+      await loadContacts();
+      try { loadEnrichDashboard(); } catch(e) { /* non-fatal */ }
+    }
   } catch(e) {
-    alert('Error applying enrichment: ' + e.message);
+    if (!skipRefresh) alert('Error applying enrichment: ' + e.message);
     console.error('Approve error:', e);
-    try { await loadEnrichmentQueue(); } catch(e2) { /* give up */ }
+    if (!skipRefresh) try { await loadEnrichmentQueue(); } catch(e2) { /* give up */ }
+    if (skipRefresh) throw e; // Re-throw so batch can count errors
   }
 }
 
@@ -3303,6 +3333,128 @@ async function rejectEnrichment(queueId) {
     // Still try to reload queue even on error
     try { await loadEnrichmentQueue(); } catch(e2) { /* give up */ }
   }
+}
+
+// ─── Batch Queue Controls ──────────────────────────────────
+function toggleBatchSelectAll(checked) {
+  document.querySelectorAll('.batch-card-check').forEach(cb => cb.checked = checked);
+  updateBatchCount();
+}
+
+function updateBatchCount() {
+  const checked = document.querySelectorAll('.batch-card-check:checked');
+  const countEl = document.getElementById('batchCount');
+  const approveBtn = document.getElementById('batchApproveBtn');
+  const rejectBtn = document.getElementById('batchRejectBtn');
+  const selectAll = document.getElementById('batchSelectAll');
+  const allChecks = document.querySelectorAll('.batch-card-check');
+
+  countEl.textContent = `${checked.length} selected`;
+
+  if (checked.length > 0) {
+    approveBtn.style.display = 'inline-block';
+    rejectBtn.style.display = 'inline-block';
+  } else {
+    approveBtn.style.display = 'none';
+    rejectBtn.style.display = 'none';
+  }
+
+  // Update select-all state
+  if (allChecks.length > 0 && checked.length === allChecks.length) {
+    selectAll.checked = true;
+    selectAll.indeterminate = false;
+  } else if (checked.length > 0) {
+    selectAll.checked = false;
+    selectAll.indeterminate = true;
+  } else {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+  }
+}
+
+async function batchApproveAll() {
+  const checked = document.querySelectorAll('.batch-card-check:checked');
+  if (checked.length === 0) return;
+
+  const count = checked.length;
+  if (!confirm(`Approve all fields for ${count} contact${count !== 1 ? 's' : ''}?\n\nThis will apply all PDL suggestions (org, title, LinkedIn, phone, city, state) for each selected contact, plus auto-mine grad year, major, alt email, and role subcategories.`)) return;
+
+  // Disable buttons during processing
+  const approveBtn = document.getElementById('batchApproveBtn');
+  const rejectBtn = document.getElementById('batchRejectBtn');
+  approveBtn.disabled = true;
+  rejectBtn.disabled = true;
+  approveBtn.textContent = `⏳ Processing 0/${count}...`;
+
+  let success = 0;
+  let errors = 0;
+
+  for (let i = 0; i < checked.length; i++) {
+    const cb = checked[i];
+    const queueId = parseInt(cb.dataset.qid);
+    const contactId = parseInt(cb.dataset.cid);
+    approveBtn.textContent = `⏳ Processing ${i + 1}/${count}...`;
+
+    try {
+      await approveEnrichment(queueId, contactId, false, true);
+      success++;
+    } catch(e) {
+      console.error(`Batch approve error for queue ${queueId}:`, e);
+      errors++;
+    }
+  }
+
+  showEnrichToast(`✅ Batch complete — ${success} approved${errors > 0 ? `, ${errors} errors` : ''}`);
+  approveBtn.disabled = false;
+  rejectBtn.disabled = false;
+  approveBtn.textContent = '✅ Approve All Selected';
+
+  // Final reload
+  await loadEnrichmentQueue();
+  await loadContacts();
+  try { loadEnrichDashboard(); } catch(e) { /* non-fatal */ }
+}
+
+async function batchRejectAll() {
+  const checked = document.querySelectorAll('.batch-card-check:checked');
+  if (checked.length === 0) return;
+
+  const count = checked.length;
+  if (!confirm(`Reject ${count} enrichment result${count !== 1 ? 's' : ''}? The PDL data will be preserved in the history for future re-review.`)) return;
+
+  const rejectBtn = document.getElementById('batchRejectBtn');
+  const approveBtn = document.getElementById('batchApproveBtn');
+  rejectBtn.disabled = true;
+  approveBtn.disabled = true;
+  rejectBtn.textContent = `⏳ Rejecting 0/${count}...`;
+
+  let success = 0;
+  let errors = 0;
+  const user = sessionStorage.getItem('else_user') || 'unknown';
+  const now = new Date().toISOString();
+
+  for (let i = 0; i < checked.length; i++) {
+    const queueId = parseInt(checked[i].dataset.qid);
+    rejectBtn.textContent = `⏳ Rejecting ${i + 1}/${count}...`;
+    try {
+      const { error } = await db.from('enrichment_queue').update({
+        status: 'rejected', reviewed_by: user, reviewed_at: now
+      }).eq('id', queueId);
+      if (error) throw error;
+      success++;
+    } catch(e) {
+      console.error(`Batch reject error for queue ${queueId}:`, e);
+      errors++;
+    }
+  }
+
+  showEnrichToast(`❌ Batch complete — ${success} rejected${errors > 0 ? `, ${errors} errors` : ''}`);
+  rejectBtn.disabled = false;
+  approveBtn.disabled = false;
+  rejectBtn.textContent = '❌ Reject All Selected';
+
+  await loadEnrichmentQueue();
+  try { loadEnrichDashboard(); } catch(e) { /* non-fatal */ }
 }
 
 // ─── Toast notification ─────────────────────────────────────
@@ -3567,7 +3719,7 @@ async function loadEnrichmentHistory() {
   container.innerHTML = '<p style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">Loading...</p>';
   try {
     const { data: history, error } = await db.from('enrichment_queue')
-      .select('*').in('status', ['approved','rejected','partial','confirmed']).order('reviewed_at', { ascending: false }).limit(100);
+      .select('*').in('status', ['approved','rejected','partial','confirmed','undone']).order('reviewed_at', { ascending: false }).limit(100);
     if (error) throw error;
 
     if (!history || !history.length) {
@@ -3575,54 +3727,224 @@ async function loadEnrichmentHistory() {
       return;
     }
 
-    // Get contact names
+    // Get contact details
     const contactIds = [...new Set(history.map(h => h.contact_id))];
-    const { data: contacts } = await db.from('contacts').select('contact_id,name').in('contact_id', contactIds);
+    const { data: contacts } = await db.from('contacts').select('contact_id,name,email,organization,title,linkedin_url,city,state,phone,cell_phone').in('contact_id', contactIds);
     const cMap = {};
-    (contacts || []).forEach(c => cMap[c.contact_id] = c.name);
+    (contacts || []).forEach(c => cMap[c.contact_id] = c);
 
     // Summary stats
     const approved = history.filter(h => h.status === 'approved' || h.status === 'partial').length;
     const rejected = history.filter(h => h.status === 'rejected').length;
     const confirmed = history.filter(h => h.status === 'confirmed').length;
+    const undone = history.filter(h => h.status === 'undone').length;
     const avgConf = history.length > 0 ? (history.reduce((s, h) => s + (h.confidence || 0), 0) / history.length).toFixed(1) : 0;
 
     let html = `<div style="padding:16px;">
-      <div class="enrich-stat-grid" style="grid-template-columns:repeat(5,1fr);">
-        <div class="enrich-stat"><div class="es-num" style="color:var(--accent);">${history.length}</div><div class="es-label">Total Processed</div></div>
+      <div class="enrich-stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(100px,1fr));">
+        <div class="enrich-stat"><div class="es-num" style="color:var(--accent);">${history.length}</div><div class="es-label">Total</div></div>
         <div class="enrich-stat"><div class="es-num" style="color:#2d8a4e;">${approved}</div><div class="es-label">Approved</div></div>
         <div class="enrich-stat"><div class="es-num" style="color:#1565c0;">${confirmed}</div><div class="es-label">Confirmed</div></div>
         <div class="enrich-stat"><div class="es-num" style="color:#c0392b;">${rejected}</div><div class="es-label">Rejected</div></div>
-        <div class="enrich-stat"><div class="es-num" style="color:var(--gold);">${avgConf}</div><div class="es-label">Avg Confidence</div></div>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <tr style="border-bottom:2px solid var(--border-light);">
-          <th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Contact</th>
-          <th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Status</th>
-          <th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Confidence</th>
-          <th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Fields Applied</th>
-          <th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Reviewed By</th>
-          <th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Date</th>
-        </tr>`;
+        ${undone > 0 ? `<div class="enrich-stat"><div class="es-num" style="color:#f57f17;">${undone}</div><div class="es-label">Undone</div></div>` : ''}
+        <div class="enrich-stat"><div class="es-num" style="color:var(--gold);">${avgConf}</div><div class="es-label">Avg Conf.</div></div>
+      </div>`;
 
     for (const h of history) {
-      const statusClass = h.status === 'rejected' ? 'ec-rejected' : h.status === 'partial' ? 'ec-partial' : h.status === 'confirmed' ? 'ec-match' : 'ec-approved';
-      const statusLabel = h.status === 'confirmed' ? '✅ up-to-date' : h.status;
+      const c = cMap[h.contact_id] || {};
+      const suggestions = h.suggested_updates || {};
+      const extra = suggestions._extra || {};
+      const statusClass = h.status === 'rejected' ? 'ec-rejected' : h.status === 'partial' ? 'ec-partial' : h.status === 'confirmed' ? 'ec-match' : h.status === 'undone' ? 'ec-rejected' : 'ec-approved';
+      const statusLabel = h.status === 'confirmed' ? '✅ up-to-date' : h.status === 'undone' ? '↩️ undone' : h.status;
       const date = h.reviewed_at ? new Date(h.reviewed_at).toLocaleDateString() : '—';
-      const fieldsStr = h.status === 'confirmed' ? 'no changes needed' : (h.applied_fields || []).join(', ') || '—';
-      html += `<tr style="border-bottom:1px solid var(--border-light);">
-        <td style="padding:8px;font-weight:500;">${esc(cMap[h.contact_id] || 'ID:' + h.contact_id)}</td>
-        <td style="padding:8px;"><span class="ec-badge ${statusClass}">${statusLabel}</span></td>
-        <td style="padding:8px;">${h.confidence || '—'}/10</td>
-        <td style="padding:8px;font-size:11px;color:var(--text-muted);">${esc(fieldsStr)}</td>
-        <td style="padding:8px;">${esc(h.reviewed_by || '—')}</td>
-        <td style="padding:8px;color:var(--text-muted);">${date}</td>
-      </tr>`;
+      const fieldsArr = h.applied_fields || [];
+      const suggestionKeys = Object.keys(suggestions).filter(k => k !== '_extra');
+      const hasApplied = (h.status === 'approved' || h.status === 'partial') && fieldsArr.length > 0;
+      const hasSnapshot = h.pre_change_snapshot && Object.keys(h.pre_change_snapshot).length > 0;
+      const canUndo = hasApplied && hasSnapshot;
+      const canReopen = h.status !== 'confirmed';
+
+      html += `<div class="enrich-card" id="eh-${h.id}" style="margin-bottom:8px;">
+        <div class="enrich-card-header" onclick="document.getElementById('eh-${h.id}').classList.toggle('expanded')">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="ec-arrow">▸</span>
+            <span class="ec-name">${esc(c.name || 'ID:' + h.contact_id)}</span>
+            <span style="font-size:10px;color:var(--text-muted);">ID:${h.contact_id}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="ec-conf ${h.confidence >= 7 ? 'ec-conf-high' : h.confidence >= 4 ? 'ec-conf-med' : 'ec-conf-low'}">${h.confidence || '—'}/10</span>
+            <span class="ec-badge ${statusClass}">${statusLabel}</span>
+            <span style="font-size:11px;color:var(--text-muted);">${esc(h.reviewed_by || '—')} · ${date}</span>
+          </div>
+        </div>
+        <div class="enrich-card-body">`;
+
+      // Show comparison table for non-confirmed items
+      if (h.status !== 'confirmed') {
+        html += `<table class="enrich-compare">
+          <tr><th style="width:25%;">Field</th><th style="width:25%;">Value at Time</th><th style="width:25%;">PDL Suggestion</th><th style="width:25%;">Action Taken</th></tr>`;
+
+        const compareFields = [
+          ['Organization', 'organization'], ['Title', 'title'], ['LinkedIn', 'linkedin_url'],
+          ['Cell Phone', 'cell_phone'], ['Phone', 'phone'], ['City', 'city'], ['State', 'state']
+        ];
+
+        const snapshot = h.pre_change_snapshot || {};
+
+        for (const [label, key] of compareFields) {
+          const suggested = suggestions[key] || '';
+          const wasApplied = fieldsArr.includes(key);
+          // Show the pre-change value if we have snapshot, otherwise show current
+          const oldVal = snapshot[key] || c[key] || '';
+
+          if (!suggested) continue; // Skip fields with no PDL suggestion
+
+          let actionHtml;
+          if (wasApplied) {
+            actionHtml = '<span style="color:#2d8a4e;font-weight:500;">✅ Applied</span>';
+          } else if (h.status === 'rejected') {
+            actionHtml = '<span style="color:#c0392b;">❌ Rejected</span>';
+          } else if (h.status === 'undone') {
+            actionHtml = '<span style="color:#f57f17;">↩️ Reverted</span>';
+          } else {
+            actionHtml = '<span style="color:var(--text-muted);">— skipped</span>';
+          }
+
+          html += `<tr>
+            <td class="ec-field">${label}</td>
+            <td>${oldVal ? esc(oldVal) : '<span class="ec-empty">empty</span>'}</td>
+            <td>${esc(suggested)}</td>
+            <td>${actionHtml}</td>
+          </tr>`;
+        }
+        html += '</table>';
+
+        // Show extra data if present
+        const extraParts = [];
+        if (extra.personal_emails && extra.personal_emails.length) {
+          extraParts.push(`📧 ${extra.personal_emails.join(', ')}`);
+        }
+        if (extra.work_email) extraParts.push(`💼 ${extra.work_email}`);
+        if (extra.mobile_phone || (extra.phone_numbers && extra.phone_numbers.length)) {
+          const phones = [];
+          if (extra.mobile_phone) phones.push(extra.mobile_phone + ' (mobile)');
+          if (extra.phone_numbers) phones.push(...extra.phone_numbers);
+          extraParts.push(`📱 ${[...new Set(phones)].join(', ')}`);
+        }
+        if (extra.education && extra.education.length) {
+          extraParts.push(`🎓 ${extra.education.map(e => e.school + (e.majors.length ? ' — ' + e.majors.join(', ') : '')).join('; ')}`);
+        }
+        if (extraParts.length) {
+          html += `<div style="margin-top:10px;padding:10px 12px;background:var(--surface);border-radius:6px;font-size:11px;color:var(--text-muted);line-height:1.8;">${extraParts.join('<br>')}</div>`;
+        }
+      } else {
+        html += `<p style="font-size:12px;color:var(--text-muted);padding:8px 0;">Contact data was already up-to-date. No changes were needed.</p>`;
+      }
+
+      // Action buttons
+      html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-light);display:flex;gap:8px;">`;
+      if (canReopen) {
+        html += `<button class="btn" onclick="reopenEnrichment(${h.id})" style="font-size:11px;padding:5px 12px;background:#fff3e0;color:#e65100;">🔄 Re-review</button>`;
+      }
+      if (canUndo) {
+        html += `<button class="btn" onclick="undoEnrichment(${h.id}, ${h.contact_id})" style="font-size:11px;padding:5px 12px;background:#fce4ec;color:#c62828;">↩️ Undo Changes</button>`;
+      }
+      if (!canReopen && !canUndo) {
+        html += `<span style="font-size:11px;color:var(--text-muted);">No actions available for confirmed matches.</span>`;
+      }
+      html += `</div></div></div>`;
     }
-    html += '</table></div>';
+
+    html += '</div>';
     container.innerHTML = html;
   } catch(e) {
     container.innerHTML = `<p style="padding:20px;text-align:center;color:var(--red);font-size:12px;">Error: ${esc(e.message)}</p>`;
+  }
+}
+
+// ─── Reopen Enrichment (send back to review queue) ──────────
+async function reopenEnrichment(queueId) {
+  if (!confirm('Re-open this record for review? It will appear in the pending queue.')) return;
+  try {
+    await db.from('enrichment_queue').update({
+      status: 'pending',
+      reviewed_by: null,
+      reviewed_at: null,
+      applied_fields: null,
+      pre_change_snapshot: null
+    }).eq('id', queueId);
+
+    showEnrichToast('🔄 Record reopened — check the Review Queue');
+    await loadEnrichmentHistory();
+    await loadEnrichmentQueue();
+    try { loadEnrichDashboard(); } catch(e) { /* non-fatal */ }
+  } catch(e) {
+    alert('Error reopening: ' + e.message);
+  }
+}
+
+// ─── Undo Enrichment (revert applied changes) ──────────────
+async function undoEnrichment(queueId, contactId) {
+  try {
+    // Load the queue record to get the snapshot
+    const { data: qRec, error: qErr } = await db.from('enrichment_queue').select('*').eq('id', queueId).single();
+    if (qErr) throw qErr;
+
+    const snapshot = qRec.pre_change_snapshot;
+    if (!snapshot || Object.keys(snapshot).length === 0) {
+      alert('No pre-change snapshot available for this record. It may have been approved before undo was enabled.');
+      return;
+    }
+
+    const appliedFields = qRec.applied_fields || [];
+    if (appliedFields.length === 0) {
+      alert('No fields were applied to undo.');
+      return;
+    }
+
+    // Build confirmation message
+    const fieldLabels = { organization:'Organization', title:'Title', linkedin_url:'LinkedIn', cell_phone:'Cell Phone', phone:'Phone', city:'City', state:'State', grad_year:'Grad Year', alum_major:'Major', roles:'Roles', notes:'Notes' };
+    const revertDetails = Object.entries(snapshot)
+      .filter(([k]) => k !== 'updated_at')
+      .map(([k, v]) => `  ${fieldLabels[k] || k}: revert to "${v || '(empty)'}"`)
+      .join('\n');
+
+    if (!confirm(`Undo these changes?\n\n${revertDetails}\n\nThis will restore the contact to their pre-enrichment values.`)) return;
+
+    // Get current contact for logging
+    const { data: currentContact } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
+
+    // Build revert updates — only revert the enrichment fields (not roles/notes from mining unless in snapshot)
+    const revertUpdates = {};
+    for (const [key, val] of Object.entries(snapshot)) {
+      revertUpdates[key] = val;
+    }
+    revertUpdates.updated_at = new Date().toISOString();
+
+    const { error: updErr } = await db.from('contacts').update(revertUpdates).eq('contact_id', contactId);
+    if (updErr) throw updErr;
+
+    // Log the undo
+    const undoLog = Object.entries(snapshot)
+      .filter(([k]) => k !== 'updated_at')
+      .map(([k, v]) => `${fieldLabels[k] || k}: reverted to "${v || '(empty)'}"`)
+      .join('\n');
+    await logContactHistory(contactId, 'updated', 'Undo enrichment:\n' + undoLog, sessionStorage.getItem('else_user') || 'system', 'PDL Undo');
+
+    // Mark queue record as undone
+    await db.from('enrichment_queue').update({
+      status: 'undone',
+      reviewed_by: sessionStorage.getItem('else_user') || 'unknown',
+      reviewed_at: new Date().toISOString()
+    }).eq('id', queueId);
+
+    showEnrichToast(`↩️ ${currentContact ? currentContact.name : 'Contact'} — enrichment changes reverted`);
+    await loadEnrichmentHistory();
+    await loadContacts();
+    try { loadEnrichDashboard(); } catch(e) { /* non-fatal */ }
+  } catch(e) {
+    alert('Error undoing enrichment: ' + e.message);
+    console.error('Undo error:', e);
   }
 }
 </script>
