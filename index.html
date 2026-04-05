@@ -2492,8 +2492,6 @@ async function loadEnrichDashboard() {
   const el = document.getElementById('enrichDashboard');
   try {
     // Query 1: Database completeness
-    const { data: stats } = await db.rpc('', {}).catch(() => null) || {};
-    // Use raw query via contacts table
     const { data: allC } = await db.from('contacts')
       .select('email,linkedin_url,organization,title,city,state,phone,cell_phone,last_enriched_at')
       .range(0, 9999);
