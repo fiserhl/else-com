@@ -2809,11 +2809,17 @@ function computeEnrichConfidence(contact, pdl) {
 // ─── Parse PDL into suggested updates ───────────────────────
 function parsePDLSuggestions(contact, pdl) {
   const suggestions = {};
-  // Build fields with special handling for state and linkedin
+  // Phone: mobile_phone is confirmed cell → cell_phone field
+  // phone_numbers are generic (could be landline/office) → phone field
+  const mobilePhone = pdl.mobile_phone || null;
+  const genericPhone = (!mobilePhone && Array.isArray(pdl.phone_numbers) && pdl.phone_numbers.length) ? pdl.phone_numbers[0] : null;
+  // Build fields with special handling for state, linkedin, and phone
   const rawFields = [
     ['organization', pdl.job_company_name],
     ['title', pdl.job_title],
     ['linkedin_url', pdl.linkedin_url],
+    ['cell_phone', mobilePhone],
+    ['phone', genericPhone],
     ['city', pdl.location_locality],
     ['state', pdl.location_region],
   ];
@@ -2846,6 +2852,20 @@ function parsePDLSuggestions(contact, pdl) {
         else if (currentNorm !== pdlNorm) {
           suggestions[key] = strVal;
         }
+      }
+      continue;
+    }
+    if (key === 'cell_phone') {
+      // Only suggest cell_phone if contact has no cell phone
+      if (!contact.cell_phone) {
+        suggestions[key] = strVal;
+      }
+      continue;
+    }
+    if (key === 'phone') {
+      // Only suggest phone if contact has no phone AND no cell (don't overwrite cell with generic)
+      if (!contact.phone && !contact.cell_phone) {
+        suggestions[key] = strVal;
       }
       continue;
     }
@@ -2999,7 +3019,7 @@ async function loadEnrichmentQueue() {
       // Show comparison for each enrichable field
       const compareFields = [
         ['Organization', 'organization'], ['Title', 'title'], ['LinkedIn', 'linkedin_url'],
-        ['City', 'city'], ['State', 'state']
+        ['Cell Phone', 'cell_phone'], ['Phone', 'phone'], ['City', 'city'], ['State', 'state']
       ];
       for (const [label, key] of compareFields) {
         const current = c[key] || '';
@@ -3112,7 +3132,7 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
     if (updErr) throw updErr;
 
     // Build diff string for audit log
-    const fieldLabels = { organization:'Organization', title:'Title', linkedin_url:'LinkedIn', city:'City', state:'State' };
+    const fieldLabels = { organization:'Organization', title:'Title', linkedin_url:'LinkedIn', cell_phone:'Cell Phone', phone:'Phone', city:'City', state:'State' };
     const diffs = appliedFieldNames.map(f => {
       const oldVal = oldContact[f] || '(empty)';
       const newVal = fieldsToApply[f];
@@ -3120,6 +3140,114 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
     });
 
     await logContactHistory(contactId, 'updated', diffs.join('\n'), sessionStorage.getItem('else_user') || 'system', 'PDL Enrichment');
+
+    // ─── Automatic PDL Data Mining (runs on every approval) ────
+    // Mine the _extra data for: Millsaps grad year/major → grad_year/alum_major,
+    // major/degree → role subcategory, alt email → notes
+    const extra = suggestions._extra || {};
+    const minedUpdates = {};
+    const minedLog = [];
+    let rolesToAdd = [];
+
+    // 1. Mine Millsaps education for grad_year, alum_major, and role subcategory
+    if (Array.isArray(extra.education) && extra.education.length) {
+      const millsapsEdu = extra.education.find(e =>
+        e.school && typeof e.school === 'string' &&
+        e.school.toLowerCase().includes('millsaps')
+      );
+      if (millsapsEdu) {
+        // Extract grad year from end_date (format: "2015" or "2015-05")
+        if (!oldContact.grad_year && millsapsEdu.end_date) {
+          const yearMatch = millsapsEdu.end_date.match(/(\d{4})/);
+          if (yearMatch) {
+            minedUpdates.grad_year = parseInt(yearMatch[1]);
+            minedLog.push(`Grad Year: (empty) → "${yearMatch[1]}" (mined from PDL education)`);
+          }
+        }
+        // Extract major text
+        if (!oldContact.alum_major && Array.isArray(millsapsEdu.majors) && millsapsEdu.majors.length) {
+          const major = millsapsEdu.majors.join(', ');
+          minedUpdates.alum_major = major;
+          minedLog.push(`Major: (empty) → "${major}" (mined from PDL education)`);
+        }
+
+        // Map degree + major → role subcategory
+        const degrees = (millsapsEdu.degrees || []).map(d => d.toLowerCase());
+        const majors = (millsapsEdu.majors || []).map(m => m.toLowerCase());
+        const allText = [...degrees, ...majors].join(' ');
+        const currentRoles = oldContact.roles || [];
+
+        const isGrad = degrees.some(d => d.includes('master') || d.includes('mba'));
+        const hasAccounting = allText.includes('accounting') || allText.includes('accountancy');
+        const hasBusiness = allText.includes('business administration') || allText.includes('business');
+        const hasEcon = allText.includes('economics') || allText.includes('econ');
+        const hasDataAnalytics = allText.includes('data analytics');
+        const isExecMBA = degrees.some(d => d.includes('executive') && (d.includes('mba') || d.includes('master')));
+
+        if (isExecMBA) {
+          if (!currentRoles.includes('emba')) rolesToAdd.push('emba');
+        } else if (isGrad && hasAccounting) {
+          // Master's + accounting = MACC
+          if (!currentRoles.includes('macc')) rolesToAdd.push('macc');
+        } else if (isGrad && (hasBusiness || degrees.some(d => d.includes('mba') || d.includes('master of business')))) {
+          // Master's + business (not accounting) = MBA
+          if (!currentRoles.includes('mba')) rolesToAdd.push('mba');
+        } else if (!isGrad && hasAccounting) {
+          // Undergrad + accounting = Acct (even if also says "business administration")
+          if (!currentRoles.includes('acct')) rolesToAdd.push('acct');
+        } else if (!isGrad && hasBusiness && !hasAccounting) {
+          // Undergrad + business admin WITHOUT accounting = BBA
+          if (!currentRoles.includes('bus_admin')) rolesToAdd.push('bus_admin');
+        } else if (hasEcon) {
+          if (!currentRoles.includes('econ')) rolesToAdd.push('econ');
+        } else if (hasDataAnalytics) {
+          if (!currentRoles.includes('data_analytics')) rolesToAdd.push('data_analytics');
+        }
+
+        // Ensure parent role else_alum is present if we're adding a subcategory
+        if (rolesToAdd.length > 0 && !currentRoles.includes('else_alum')) {
+          rolesToAdd.unshift('else_alum');
+        }
+
+        if (rolesToAdd.length > 0) {
+          // Filter out any roles already present
+          rolesToAdd = rolesToAdd.filter(r => !currentRoles.includes(r));
+          if (rolesToAdd.length > 0) {
+            minedUpdates.roles = [...currentRoles, ...rolesToAdd];
+            minedLog.push(`Roles added: ${rolesToAdd.join(', ')} (mined from PDL education)`);
+          }
+        }
+      }
+    }
+
+    // 2. Mine one alternate email → append to notes
+    // Strategy: if contact has a work-ish email, grab a personal one (or vice versa)
+    const contactEmail = (oldContact.email || '').toLowerCase();
+    let altEmail = null;
+    if (extra.personal_emails && extra.personal_emails.length) {
+      altEmail = extra.personal_emails.find(e => e.toLowerCase() !== contactEmail);
+    }
+    if (!altEmail && extra.work_email && extra.work_email.toLowerCase() !== contactEmail) {
+      altEmail = extra.work_email;
+    }
+    if (altEmail) {
+      // Only add if not already in notes
+      const currentNotes = oldContact.notes || '';
+      if (!currentNotes.toLowerCase().includes(altEmail.toLowerCase())) {
+        const newNotes = currentNotes ? currentNotes + ' | Alt email: ' + altEmail : 'Alt email: ' + altEmail;
+        minedUpdates.notes = newNotes;
+        minedLog.push(`Alt email added to notes: ${altEmail}`);
+      }
+    }
+
+    // Apply mined updates if any
+    if (Object.keys(minedUpdates).length > 0) {
+      minedUpdates.updated_at = new Date().toISOString();
+      const { error: mineErr } = await db.from('contacts').update(minedUpdates).eq('contact_id', contactId);
+      if (!mineErr && minedLog.length) {
+        await logContactHistory(contactId, 'updated', 'Auto-mined from PDL:\n' + minedLog.join('\n'), 'system', 'PDL Mining');
+      }
+    }
 
     // Update queue record
     const allSuggestionKeys = Object.keys(suggestions).filter(k => k !== '_extra');
@@ -3132,7 +3260,9 @@ async function approveEnrichment(queueId, contactId, selectedOnly) {
     }).eq('id', queueId);
 
     // Show success feedback briefly
-    showEnrichToast(`✅ ${contactName} — ${appliedFieldNames.length} field${appliedFieldNames.length !== 1 ? 's' : ''} updated`);
+    const minedCount = Object.keys(minedUpdates).filter(k => k !== 'updated_at').length;
+    const minedMsg = minedCount > 0 ? ` + ${minedCount} auto-mined` : '';
+    showEnrichToast(`✅ ${contactName} — ${appliedFieldNames.length} field${appliedFieldNames.length !== 1 ? 's' : ''} updated${minedMsg}`);
 
     // Refresh (sequential, with error resilience)
     await loadEnrichmentQueue();
