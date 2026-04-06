@@ -395,6 +395,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
     <button class="tab" data-tab="compliance">Compliance</button>
     <button class="tab" data-tab="audit">Audit Log</button>
     <button class="tab" data-tab="research">🔍 Research</button>
+    <button class="tab" data-tab="alumni">📋 Alumni Import</button>
   </div>
 
   <!-- ═══════════ CONTACTS TAB ═══════════ -->
@@ -779,6 +780,36 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
     </div>
   </div>
 
+  <!-- ═══════════ ALUMNI IMPORT TAB ═══════════ -->
+  <div class="tab-content" id="tabAlumni">
+    <div style="max-width:1100px;margin:0 auto;">
+      <!-- Dashboard -->
+      <div id="alumniDashboard" style="margin-bottom:16px;"></div>
+
+      <!-- Filter bar -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Filter:</span>
+        <button class="btn alumni-filter active" data-filter="all" onclick="filterAlumniQueue('all')" style="font-size:11px;padding:4px 10px;border-radius:12px;">All</button>
+        <button class="btn alumni-filter" data-filter="fill" onclick="filterAlumniQueue('fill')" style="font-size:11px;padding:4px 10px;border-radius:12px;background:#e8f5e9;color:#2d8a4e;">🆕 Fills</button>
+        <button class="btn alumni-filter" data-filter="update" onclick="filterAlumniQueue('update')" style="font-size:11px;padding:4px 10px;border-radius:12px;background:#fff8e1;color:#f57f17;">⚠️ Updates</button>
+        <button class="btn alumni-filter" data-filter="tag" onclick="filterAlumniQueue('tag')" style="font-size:11px;padding:4px 10px;border-radius:12px;background:#e3f2fd;color:#1565c0;">🏷 Sport Tags</button>
+        <span style="margin-left:8px;font-size:11px;font-weight:600;color:var(--text-muted);">Confidence:</span>
+        <button class="btn alumni-conf-filter active" data-conf="all" onclick="filterAlumniConf('all')" style="font-size:11px;padding:4px 10px;border-radius:12px;">All</button>
+        <button class="btn alumni-conf-filter" data-conf="high" onclick="filterAlumniConf('high')" style="font-size:11px;padding:4px 10px;border-radius:12px;color:#2d8a4e;">High (6+)</button>
+        <button class="btn alumni-conf-filter" data-conf="med" onclick="filterAlumniConf('med')" style="font-size:11px;padding:4px 10px;border-radius:12px;color:#f57f17;">Med (3-5)</button>
+        <button class="btn alumni-conf-filter" data-conf="low" onclick="filterAlumniConf('low')" style="font-size:11px;padding:4px 10px;border-radius:12px;color:#c0392b;">Low (1-2)</button>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button class="btn" onclick="loadAlumniQueue()" style="font-size:11px;padding:4px 10px;">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Queue content -->
+      <div id="alumniQueueContent" style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
+        <p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">Loading alumni import queue...</p>
+      </div>
+    </div>
+  </div>
+
   <div class="footer">
     <strong>Else School of Management</strong> — Corporate Outreach &amp; Contact Database — Millsaps College, Jackson MS
     <br>
@@ -1036,11 +1067,12 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.add('active');
     const tabName = tab.dataset.tab;
     document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-    const tabMap = { contacts:'tabContacts', tasks:'tabTasks', campaigns:'tabCampaigns', mailings:'tabMailings', compliance:'tabCompliance', audit:'tabAudit', research:'tabResearch' };
+    const tabMap = { contacts:'tabContacts', tasks:'tabTasks', campaigns:'tabCampaigns', mailings:'tabMailings', compliance:'tabCompliance', audit:'tabAudit', research:'tabResearch', alumni:'tabAlumni' };
     const target = document.getElementById(tabMap[tabName]);
     if (target) target.classList.add('active');
     if (tabName === 'audit') loadAuditLog();
     if (tabName === 'research') { loadEnrichDashboard(); loadEnrichmentQueue(); }
+    if (tabName === 'alumni') { loadAlumniDashboard(); loadAlumniQueue(); }
   });
 });
 
@@ -3946,6 +3978,386 @@ async function undoEnrichment(queueId, contactId) {
     alert('Error undoing enrichment: ' + e.message);
     console.error('Undo error:', e);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ALUMNI SPREADSHEET IMPORT — Review Tab
+// ═══════════════════════════════════════════════════════════════
+let alumniFilterType = 'all';
+let alumniFilterConf = 'all';
+
+async function loadAlumniDashboard() {
+  const el = document.getElementById('alumniDashboard');
+  try {
+    const { data: all } = await db.from('alumni_spreadsheet_queue').select('status,change_type,field,confidence');
+    const a = all || [];
+    const pending = a.filter(r => r.status === 'pending');
+    const approved = a.filter(r => r.status === 'approved');
+    const rejected = a.filter(r => r.status === 'rejected');
+
+    const fills = pending.filter(r => r.change_type === 'fill').length;
+    const updates = pending.filter(r => r.change_type === 'update').length;
+    const tags = pending.filter(r => r.change_type === 'tag').length;
+    const highConf = pending.filter(r => r.confidence >= 6).length;
+    const medConf = pending.filter(r => r.confidence >= 3 && r.confidence <= 5).length;
+    const lowConf = pending.filter(r => r.confidence <= 2).length;
+
+    function kpi(num, label, color) {
+      return `<div class="edash-kpi"><div class="edash-kpi-num" style="color:${color};">${num}</div><div class="edash-kpi-label">${label}</div></div>`;
+    }
+
+    el.innerHTML = `<div class="edash">
+      <div class="edash-row" style="grid-template-columns:1fr 1fr;">
+        <div class="edash-card">
+          <h4>📋 Alumni Spreadsheet Review</h4>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+            Data from an alumni professor's spreadsheet, matched against the existing database. Review each proposed change and approve or reject.
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+            ${kpi(pending.length, 'Pending Review', pending.length > 0 ? '#f57f17' : 'var(--text-muted)')}
+            ${kpi(approved.length, 'Approved', 'var(--green, #2d8a4e)')}
+            ${kpi(rejected.length, 'Rejected', '#c0392b')}
+          </div>
+        </div>
+        <div style="display:grid;grid-template-rows:1fr 1fr;gap:12px;">
+          <div class="edash-card">
+            <h4>📊 Pending by Type</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
+              ${kpi(fills, '🆕 Fills', '#2d8a4e')}
+              ${kpi(updates, '⚠️ Updates', '#f57f17')}
+              ${kpi(tags, '🏷 Sport Tags', '#1565c0')}
+            </div>
+          </div>
+          <div class="edash-card">
+            <h4>🎯 Confidence Distribution</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
+              ${kpi(highConf, 'High (6-7)', '#2d8a4e')}
+              ${kpi(medConf, 'Medium (3-5)', '#f57f17')}
+              ${kpi(lowConf, 'Low (1-2)', '#c0392b')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  } catch(e) {
+    el.innerHTML = `<div style="padding:12px;font-size:12px;color:var(--red);">Dashboard error: ${esc(e.message)}</div>`;
+  }
+}
+
+function filterAlumniQueue(type) {
+  alumniFilterType = type;
+  document.querySelectorAll('.alumni-filter').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.alumni-filter[data-filter="${type}"]`).classList.add('active');
+  applyAlumniFilters();
+}
+
+function filterAlumniConf(level) {
+  alumniFilterConf = level;
+  document.querySelectorAll('.alumni-conf-filter').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.alumni-conf-filter[data-conf="${level}"]`).classList.add('active');
+  applyAlumniFilters();
+}
+
+function applyAlumniFilters() {
+  document.querySelectorAll('.alumni-card').forEach(card => {
+    const ct = card.dataset.changetype;
+    const conf = parseInt(card.dataset.confidence);
+    let show = true;
+    if (alumniFilterType !== 'all' && ct !== alumniFilterType) show = false;
+    if (alumniFilterConf === 'high' && conf < 6) show = false;
+    if (alumniFilterConf === 'med' && (conf < 3 || conf > 5)) show = false;
+    if (alumniFilterConf === 'low' && conf > 2) show = false;
+    card.style.display = show ? '' : 'none';
+  });
+  // Update visible count
+  const visible = document.querySelectorAll('.alumni-card:not([style*="display: none"])').length;
+  const countEl = document.getElementById('alumniVisibleCount');
+  if (countEl) countEl.textContent = `Showing ${visible} items`;
+}
+
+async function loadAlumniQueue() {
+  const container = document.getElementById('alumniQueueContent');
+  container.innerHTML = '<p style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">Loading...</p>';
+  try {
+    const { data: queue, error } = await db.from('alumni_spreadsheet_queue')
+      .select('*').eq('status', 'pending').order('confidence', { ascending: false });
+    if (error) throw error;
+
+    if (!queue || !queue.length) {
+      container.innerHTML = '<p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">No pending alumni import items to review. All done! 🎉</p>';
+      return;
+    }
+
+    // Get contact details for each queue item
+    const contactIds = [...new Set(queue.map(q => q.contact_id))];
+    // Fetch in chunks of 50
+    let contacts = [];
+    for (let i = 0; i < contactIds.length; i += 50) {
+      const chunk = contactIds.slice(i, i + 50);
+      const { data: c } = await db.from('contacts').select('contact_id,name,first_name,last_name,email,organization,title,city,state,phone,cell_phone,grad_year,roles').in('contact_id', chunk);
+      if (c) contacts.push(...c);
+    }
+    const contactMap = {};
+    contacts.forEach(c => contactMap[c.contact_id] = c);
+
+    // Group by contact_id for card display
+    const grouped = {};
+    for (const q of queue) {
+      if (!grouped[q.contact_id]) grouped[q.contact_id] = [];
+      grouped[q.contact_id].push(q);
+    }
+
+    // Batch toolbar
+    let html = `<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border-light);position:sticky;top:0;z-index:5;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;">
+        <input type="checkbox" id="alumniBatchSelectAll" onchange="toggleAlumniBatchAll(this.checked)"> Select All Visible
+      </label>
+      <span id="alumniBatchCount" style="font-size:12px;color:var(--text-muted);">0 selected</span>
+      <span id="alumniVisibleCount" style="font-size:12px;color:var(--text-muted);">Showing ${Object.keys(grouped).length} contacts</span>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn" onclick="batchAlumniApprove()" id="alumniBatchApproveBtn" style="display:none;font-size:12px;padding:5px 14px;background:#e8f5e9;color:#2d8a4e;font-weight:600;">✅ Approve Selected</button>
+        <button class="btn" onclick="batchAlumniReject()" id="alumniBatchRejectBtn" style="display:none;font-size:12px;padding:5px 14px;background:#fdecea;color:#c0392b;font-weight:600;">❌ Reject Selected</button>
+      </div>
+    </div>`;
+
+    // Render one card per contact with all their proposed changes
+    for (const [cidStr, items] of Object.entries(grouped)) {
+      const cid = parseInt(cidStr);
+      const c = contactMap[cid] || {};
+      const firstItem = items[0];
+      const conf = firstItem.confidence || 5;
+      const confClass = conf >= 6 ? 'ec-conf-high' : conf >= 3 ? 'ec-conf-med' : 'ec-conf-low';
+      const matchDetails = firstItem.match_details || 'name match';
+      const sourceName = firstItem.source_name || '';
+
+      // Determine dominant change type for filtering
+      const types = items.map(i => i.change_type);
+      const dominantType = types.includes('fill') ? 'fill' : types.includes('update') ? 'update' : 'tag';
+
+      // Type badges
+      const typeCounts = {};
+      items.forEach(i => { typeCounts[i.change_type] = (typeCounts[i.change_type] || 0) + 1; });
+      let typeBadges = '';
+      if (typeCounts.fill) typeBadges += `<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#e8f5e9;color:#2d8a4e;font-weight:600;">🆕 ${typeCounts.fill} fill${typeCounts.fill>1?'s':''}</span> `;
+      if (typeCounts.update) typeBadges += `<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#fff8e1;color:#f57f17;font-weight:600;">⚠️ ${typeCounts.update} update${typeCounts.update>1?'s':''}</span> `;
+      if (typeCounts.tag) typeBadges += `<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#e3f2fd;color:#1565c0;font-weight:600;">🏷 ${typeCounts.tag} tag${typeCounts.tag>1?'s':''}</span>`;
+
+      html += `<div class="enrich-card alumni-card" id="aq-${cid}" data-changetype="${dominantType}" data-confidence="${conf}">
+        <div class="enrich-card-header">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" class="alumni-batch-check" data-cid="${cid}" onchange="updateAlumniBatchCount()" onclick="event.stopPropagation()">
+            <span class="ec-arrow" onclick="document.getElementById('aq-${cid}').classList.toggle('expanded')" style="cursor:pointer;">▸</span>
+            <span class="ec-name" onclick="document.getElementById('aq-${cid}').classList.toggle('expanded')" style="cursor:pointer;">${esc(c.name || 'Unknown')}</span>
+            <span style="font-size:11px;color:var(--text-muted);">ID:${cid}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="document.getElementById('aq-${cid}').classList.toggle('expanded')">
+            <span class="ec-conf ${confClass}">${conf}/7</span>
+            ${typeBadges}
+          </div>
+        </div>
+        <div class="enrich-card-body">
+          <!-- Match details -->
+          <div style="margin-bottom:12px;padding:8px 12px;background:rgba(0,0,0,0.02);border-radius:var(--radius);font-size:11px;">
+            <strong style="color:var(--accent);">Match basis:</strong> ${esc(matchDetails)}
+            ${sourceName && sourceName !== c.name ? `<br><strong style="color:var(--accent);">Spreadsheet name:</strong> ${esc(sourceName)}` : ''}
+            ${c.grad_year ? `<br><strong style="color:var(--accent);">DB Grad Year:</strong> ${c.grad_year}` : ''}
+            ${c.email ? `<br><strong style="color:var(--accent);">Email:</strong> ${esc(c.email)}` : ''}
+          </div>
+          <table class="enrich-compare">
+            <tr><th style="width:22%;">Field</th><th style="width:28%;">Current Value</th><th style="width:28%;">Proposed</th><th style="width:22%;">Type</th></tr>`;
+
+      for (const item of items) {
+        const fieldLabel = {city:'City',state:'State',organization:'Organization',title:'Title',cell_phone:'Cell Phone',phone:'Phone',email:'Email',grad_year:'Grad Year',sport_tag:'Sport Tag'}[item.field] || item.field;
+        const current = item.current_value;
+        const proposed = item.proposed_value;
+        let currentHtml, proposedHtml, typeHtml;
+
+        if (item.change_type === 'fill') {
+          currentHtml = '<span class="ec-empty">empty</span>';
+          proposedHtml = `<label style="cursor:pointer;"><input type="checkbox" class="alumni-field-check" data-qid="${item.id}" checked> <span class="ec-new">${esc(proposed)} 🆕</span></label>`;
+          typeHtml = '<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#e8f5e9;color:#2d8a4e;font-weight:600;">Fill blank</span>';
+        } else if (item.change_type === 'update') {
+          currentHtml = esc(current || '');
+          proposedHtml = `<label style="cursor:pointer;"><input type="checkbox" class="alumni-field-check" data-qid="${item.id}"> <span class="ec-diff">${esc(proposed)} ⚠️</span></label>`;
+          typeHtml = '<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#fff8e1;color:#f57f17;font-weight:600;">Change</span>';
+        } else {
+          currentHtml = '<span class="ec-empty">no sport tag</span>';
+          proposedHtml = `<label style="cursor:pointer;"><input type="checkbox" class="alumni-field-check" data-qid="${item.id}" checked> <span style="color:#1565c0;font-weight:500;">${esc(proposed)} 🏷</span></label>`;
+          typeHtml = '<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#e3f2fd;color:#1565c0;font-weight:600;">Sport tag</span>';
+        }
+        html += `<tr><td class="ec-field">${fieldLabel}</td><td>${currentHtml}</td><td>${proposedHtml}</td><td>${typeHtml}</td></tr>`;
+      }
+
+      html += `</table>
+          <div class="enrich-actions">
+            <button class="btn btn-primary" onclick="approveAlumniContact(${cid}, true)" style="font-size:12px;padding:6px 14px;">✅ Approve Selected</button>
+            <button class="btn" onclick="approveAlumniContact(${cid}, false)" style="font-size:12px;padding:6px 14px;background:#e8f5e9;color:#2d8a4e;">✅ Approve All</button>
+            <button class="btn" onclick="rejectAlumniContact(${cid})" style="font-size:12px;padding:6px 14px;background:#fdecea;color:#c0392b;">❌ Reject All</button>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    container.innerHTML = html;
+    applyAlumniFilters();
+  } catch(e) {
+    container.innerHTML = `<p style="padding:20px;text-align:center;color:var(--red);font-size:12px;">Error loading queue: ${esc(e.message)}</p>`;
+    console.error('Alumni queue load error:', e);
+  }
+}
+
+async function approveAlumniContact(contactId, selectedOnly, skipRefresh) {
+  try {
+    // Get all pending items for this contact
+    const { data: items } = await db.from('alumni_spreadsheet_queue')
+      .select('*').eq('contact_id', contactId).eq('status', 'pending');
+    if (!items || !items.length) { if (!skipRefresh) alert('No pending items found.'); return; }
+
+    // Determine which to apply
+    let toApply = [];
+    if (selectedOnly) {
+      const checks = document.querySelectorAll(`input.alumni-field-check[data-qid]:checked`);
+      const checkedIds = new Set();
+      checks.forEach(cb => checkedIds.add(parseInt(cb.dataset.qid)));
+      toApply = items.filter(i => checkedIds.has(i.id));
+      if (!toApply.length) { alert('No fields selected. Check the boxes next to the fields you want to apply.'); return; }
+    } else {
+      toApply = items;
+    }
+
+    // Get current contact
+    const { data: oldContact } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
+    const contactName = oldContact ? oldContact.name : 'Contact';
+
+    // Build update object
+    const updateObj = {};
+    const diffs = [];
+    const appliedIds = [];
+    const sportTags = [];
+
+    for (const item of toApply) {
+      appliedIds.push(item.id);
+      if (item.field === 'sport_tag') {
+        sportTags.push(item.proposed_value);
+        diffs.push(`Sport tag: added "${item.proposed_value}"`);
+      } else if (item.field === 'grad_year') {
+        updateObj.grad_year = parseInt(item.proposed_value);
+        diffs.push(`Grad Year: "${item.current_value || '(empty)'}" → "${item.proposed_value}"`);
+      } else {
+        updateObj[item.field] = item.proposed_value;
+        const oldVal = item.current_value || '(empty)';
+        diffs.push(`${item.field}: "${oldVal}" → "${item.proposed_value}"`);
+      }
+    }
+
+    // Apply field updates
+    if (Object.keys(updateObj).length > 0) {
+      updateObj.updated_at = new Date().toISOString();
+      const { error: updErr } = await db.from('contacts').update(updateObj).eq('contact_id', contactId);
+      if (updErr) throw updErr;
+    }
+
+    // Apply sport tags to notes (since we don't have athlete roles yet)
+    if (sportTags.length > 0) {
+      const currentNotes = oldContact.notes || '';
+      const sportStr = 'Sport: ' + sportTags.join(', ');
+      if (!currentNotes.toLowerCase().includes('sport:')) {
+        const newNotes = currentNotes ? currentNotes + ' | ' + sportStr : sportStr;
+        await db.from('contacts').update({ notes: newNotes, updated_at: new Date().toISOString() }).eq('contact_id', contactId);
+      }
+    }
+
+    // Log to contact_history
+    await logContactHistory(contactId, 'updated', diffs.join('\n'), sessionStorage.getItem('else_user') || 'system', 'Alumni Spreadsheet Import');
+
+    // Mark queue items as approved
+    for (const id of appliedIds) {
+      await db.from('alumni_spreadsheet_queue').update({
+        status: 'approved',
+        reviewed_at: new Date().toISOString()
+      }).eq('id', id);
+    }
+
+    // Mark any remaining items for this contact as rejected if we did "Approve All"
+    if (!selectedOnly) {
+      const remainingIds = items.filter(i => !appliedIds.includes(i.id)).map(i => i.id);
+      // All were included in toApply when !selectedOnly, so nothing to reject
+    }
+
+    if (!skipRefresh) {
+      showEnrichToast(`✅ ${contactName} — ${diffs.length} change${diffs.length !== 1 ? 's' : ''} applied`);
+      await loadAlumniQueue();
+      await loadContacts();
+      try { loadAlumniDashboard(); } catch(e) {}
+    }
+  } catch(e) {
+    if (!skipRefresh) alert('Error approving: ' + e.message);
+    console.error('Alumni approve error:', e);
+    if (skipRefresh) throw e;
+  }
+}
+
+async function rejectAlumniContact(contactId) {
+  try {
+    const { error } = await db.from('alumni_spreadsheet_queue').update({
+      status: 'rejected',
+      reviewed_at: new Date().toISOString()
+    }).eq('contact_id', contactId).eq('status', 'pending');
+    if (error) throw error;
+
+    showEnrichToast('❌ Alumni import rejected');
+    await loadAlumniQueue();
+    try { loadAlumniDashboard(); } catch(e) {}
+  } catch(e) {
+    alert('Error rejecting: ' + e.message);
+  }
+}
+
+// Batch controls
+function toggleAlumniBatchAll(checked) {
+  document.querySelectorAll('.alumni-batch-check').forEach(cb => {
+    const card = cb.closest('.alumni-card');
+    if (card && card.style.display !== 'none') cb.checked = checked;
+  });
+  updateAlumniBatchCount();
+}
+
+function updateAlumniBatchCount() {
+  const checked = document.querySelectorAll('.alumni-batch-check:checked');
+  const count = checked.length;
+  document.getElementById('alumniBatchCount').textContent = `${count} selected`;
+  document.getElementById('alumniBatchApproveBtn').style.display = count > 0 ? '' : 'none';
+  document.getElementById('alumniBatchRejectBtn').style.display = count > 0 ? '' : 'none';
+}
+
+async function batchAlumniApprove() {
+  const checked = document.querySelectorAll('.alumni-batch-check:checked');
+  if (!checked.length) return;
+  if (!confirm(`Approve all changes for ${checked.length} contacts?`)) return;
+
+  let ok = 0, fail = 0;
+  for (const cb of checked) {
+    try {
+      await approveAlumniContact(parseInt(cb.dataset.cid), false, true);
+      ok++;
+    } catch(e) { fail++; }
+  }
+  showEnrichToast(`✅ Batch: ${ok} approved${fail > 0 ? `, ${fail} failed` : ''}`);
+  await loadAlumniQueue();
+  await loadContacts();
+  try { loadAlumniDashboard(); } catch(e) {}
+}
+
+async function batchAlumniReject() {
+  const checked = document.querySelectorAll('.alumni-batch-check:checked');
+  if (!checked.length) return;
+  if (!confirm(`Reject all changes for ${checked.length} contacts?`)) return;
+
+  for (const cb of checked) {
+    try { await rejectAlumniContact(parseInt(cb.dataset.cid)); } catch(e) {}
+  }
+  await loadAlumniQueue();
+  try { loadAlumniDashboard(); } catch(e) {}
 }
 </script>
 </body>
