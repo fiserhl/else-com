@@ -2308,8 +2308,9 @@ function composeGroupText() {
     return digits.length === 10 ? '+1' + digits : '+' + digits;
   }).join(',');
   // Use location.href — the only method that reliably opens Messages on macOS/iOS from a browser
-  window.location.href = `sms:${phones}${body ? '?&body=' + encodeURIComponent(body) : ''}`;
-  closeEmailModal();
+  // Apple Messages uses &body= (not ?body=) after the number list
+  window.location.href = `sms:${phones}${body ? '&body=' + encodeURIComponent(body) : ''}`;
+  setTimeout(closeEmailModal, 300);
 }
 
 function textSingleContact(contactId) {
@@ -2328,7 +2329,7 @@ function textSingleContact(contactId) {
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border-light);">
       <button class="btn" onclick="closeEmailModal()">Cancel</button>
-      <button class="btn btn-text" onclick="window.location.href='sms:${phone}';closeEmailModal();">📱 Open Messages</button>
+      <button class="btn btn-text" onclick="window.location.href='sms:${phone}';setTimeout(closeEmailModal,300);">📱 Open Messages</button>
       <button class="btn btn-primary" onclick="sendSingleTwilio('${phone}','${c.name.replace(/'/g, "\\'")}')">📤 Send via Twilio</button>
     </div>
   </div>`;
