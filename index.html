@@ -1508,8 +1508,33 @@ function renderRoleFilters() {
   const subContainer = document.getElementById('subChipsContainer');
   container.innerHTML = '<span class="filter-group-label">Roles &amp; Relationships <span class="clear-link" onclick="clearAllRoleFilters()">Clear all</span></span>';
   subContainer.innerHTML = '';
+
+  // Single-pass: count all role keys across all contacts
+  const roleCounts = {};
+  for (const c of contacts) {
+    const roles = c.roles || [];
+    for (const rk of roles) {
+      roleCounts[rk] = (roleCounts[rk] || 0) + 1;
+    }
+  }
+  // Compute parent counts (parent key directly + any child key)
+  const parentCounts = {};
   ROLES.forEach(r => {
-    const count = contacts.filter(c => contactHasParentRole(c, r.key)).length;
+    let count = roleCounts[r.key] || 0;
+    if (r.children) {
+      const contactsWithChild = new Set();
+      for (const c of contacts) {
+        const roles = c.roles || [];
+        if (roles.includes(r.key)) { contactsWithChild.add(c.contact_id); continue; }
+        for (const ch of r.children) { if (roles.includes(ch.key)) { contactsWithChild.add(c.contact_id); break; } }
+      }
+      count = contactsWithChild.size;
+    }
+    parentCounts[r.key] = count;
+  });
+
+  ROLES.forEach(r => {
+    const count = parentCounts[r.key];
     const isActive = activeRoleFilters.includes(r.key);
     const hasSubs = r.children && r.children.length > 0;
     const isExpanded = expandedFilterParents.has(r.key);
@@ -1520,10 +1545,9 @@ function renderRoleFilters() {
     if (hasSubs) {
       let subHtml = `<div class="sub-chips ${isExpanded ? 'open' : ''}" id="subChips_${r.key}">`;
       r.children.forEach(ch => {
-        const subKey = ch.key;
-        const subCount = contacts.filter(c => (c.roles || []).includes(subKey)).length;
-        const subActive = activeRoleFilters.includes(subKey);
-        subHtml += `<span class="filter-chip sub ${subActive ? 'active' : ''}" onclick="toggleRoleFilter('${subKey}')">${ch.label}<span class="chip-count">${subCount}</span></span>`;
+        const subCount = roleCounts[ch.key] || 0;
+        const subActive = activeRoleFilters.includes(ch.key);
+        subHtml += `<span class="filter-chip sub ${subActive ? 'active' : ''}" onclick="toggleRoleFilter('${ch.key}')">${ch.label}<span class="chip-count">${subCount}</span></span>`;
       });
       subHtml += '</div>';
       subContainer.innerHTML += subHtml;
