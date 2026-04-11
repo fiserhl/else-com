@@ -654,12 +654,38 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
               <label>Role filter</label>
               <select id="enrichRoleFilter">
                 <option value="">Any role</option>
-                <option value="else_alum">Else Alumni</option>
-                <option value="advisory">Advisory Board</option>
-                <option value="corporate">Corporate Partner</option>
-                <option value="exec_ed_alumni">Exec Ed Alumni</option>
-                <option value="donor">Donor / Friend</option>
-                <option value="mentor">Mentor</option>
+                <optgroup label="Primary Roles">
+                  <option value="advisory">Advisory Board</option>
+                  <option value="corporate">Corporate Partner</option>
+                  <option value="else_alum">Else Alumni</option>
+                  <option value="exec_ed_alumni">Exec Ed Alumni</option>
+                  <option value="exec_prospect">Exec Ed Prospect</option>
+                  <option value="community">Community Partner</option>
+                  <option value="donor">Donor / Friend</option>
+                  <option value="faculty">Faculty / Staff</option>
+                  <option value="former_faculty">Former Faculty / Staff</option>
+                  <option value="mentor">Mentor</option>
+                  <option value="millsaps_alum">Millsaps Alumni (Non-Else)</option>
+                  <option value="millsaps_board">Millsaps Board</option>
+                </optgroup>
+                <optgroup label="Degree Programs">
+                  <option value="mba">MBA</option>
+                  <option value="emba">EMBA</option>
+                  <option value="macc">MACC</option>
+                  <option value="acct">Accounting</option>
+                  <option value="econ">Economics</option>
+                  <option value="bus_admin">Business Administration</option>
+                  <option value="data_analytics">Data Analytics</option>
+                </optgroup>
+                <optgroup label="Exec Ed Programs">
+                  <option value="exec_ed_aalp">AALP</option>
+                  <option value="exec_ed_bap">BAP</option>
+                </optgroup>
+                <optgroup label="Trips / Experiences">
+                  <option value="trips_experiences">Any Trip / Experience</option>
+                  <option value="trip_europe">Europe Study Abroad</option>
+                  <option value="trip_elseworks">ELSEWORKS</option>
+                </optgroup>
               </select>
             </div>
             <div class="form-group">
