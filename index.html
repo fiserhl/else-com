@@ -449,7 +449,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
       <select id="filterStatus"><option value="all">All statuses</option></select>
       <select id="filterTeam"><option value="all">Assigned to…</option></select>
       <select id="filterTier"><option value="all">All mailing tiers</option></select>
-      <select id="sortBy" onchange="renderList()" style="min-width:130px;">
+      <select id="sortBy" onchange="_renderCurrentLimit = _renderPageSize; renderList()" style="min-width:130px;">
         <option value="last_name">Sort: Last Name</option>
         <option value="first_name">Sort: First Name</option>
         <option value="organization">Sort: Organization</option>
@@ -1095,7 +1095,7 @@ function resetSessionTimer() {
 }
 
 // Reset timer on any user interaction
-['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach(evt => {
+['click', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
   document.addEventListener(evt, resetSessionTimer, { passive: true });
 });
 
@@ -1352,6 +1352,17 @@ const ROLES = [
 const TIER_LABELS = { '1': 'T1', '2': 'T2', '3': 'T3', '4': 'T4', '5': 'T5' };
 const TIER_LABELS_FULL = { '1': 'Tier 1 — Inner Circle', '2': 'Tier 2 — Engaged', '3': 'Tier 3 — Exec Ed', '4': 'Tier 4 — Informed', '5': 'Tier 5 — Minimal' };
 
+// Pre-built role lookup map for O(1) display resolution
+const ROLE_DISPLAY_MAP = {};
+ROLES.forEach(r => {
+  ROLE_DISPLAY_MAP[r.key] = { label: r.label, tagClass: r.tagClass };
+  if (r.children) {
+    r.children.forEach(ch => {
+      ROLE_DISPLAY_MAP[ch.key] = { label: ch.label, parentLabel: r.label, tagClass: r.tagClass };
+    });
+  }
+});
+
 function contactHasParentRole(c, parentKey) {
   const roles = c.roles || [];
   // Check if the contact has this parent role key directly
@@ -1365,17 +1376,7 @@ function contactHasParentRole(c, parentKey) {
 }
 
 function resolveRoleDisplay(roleKey) {
-  // Check if it's a parent role
-  const parentMatch = ROLES.find(r => r.key === roleKey);
-  if (parentMatch) return { label: parentMatch.label, tagClass: parentMatch.tagClass };
-  // Check if it's a child role of any parent
-  for (const parent of ROLES) {
-    if (parent.children) {
-      const childMatch = parent.children.find(ch => ch.key === roleKey);
-      if (childMatch) return { label: childMatch.label, parentLabel: parent.label, tagClass: parent.tagClass };
-    }
-  }
-  return { label: roleKey, tagClass: '' };
+  return ROLE_DISPLAY_MAP[roleKey] || { label: roleKey, tagClass: '' };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1386,10 +1387,18 @@ let editingId = null;
 let activeRoleFilters = [];
 let expandedFilterParents = new Set();
 let selectedContactIds = new Set();
+let _renderPageSize = 100;
+let _renderCurrentLimit = 100;
+
+function debounce(fn, ms) {
+  let t;
+  return function(...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); };
+}
+const debouncedRenderList = debounce(renderList, 250);
 
 async function loadContacts() {
   try {
-    const { data, error } = await db.from('contacts').select('*, first_name, last_name, preferred_name, correspondence_name_mode, address, city, state, zip, formal_salutation, spouse_name, grad_year, alum_major, alum_status, alumni_id, donor_id, exec_ed_other_specify').order('name').range(0, 9999);
+    const { data, error } = await db.from('contacts').select('*').order('name').range(0, 9999);
     if (data) {
       contacts = data;
       window._allContacts = data;
@@ -1434,15 +1443,18 @@ function getFiltered() {
 // ═══════════════════════════════════════════════════════════════
 // RENDERING
 // ═══════════════════════════════════════════════════════════════
-function renderAll() { renderStats(); renderDropdowns(); renderRoleFilters(); renderList(); renderRoleCheckboxes(); updateTextPermissions(); }
+function renderAll() { _renderCurrentLimit = _renderPageSize; renderStats(); renderDropdowns(); renderRoleFilters(); renderList(); renderRoleCheckboxes(); updateTextPermissions(); }
 
 function renderStats() {
   const total = contacts.length;
-  const active = contacts.filter(c => c.pipeline_status === 'Active Pipeline').length;
-  const inDev = contacts.filter(c => c.pipeline_status === 'In-Development').length;
+  let active = 0, inDev = 0, overdue = 0, tagged = 0;
   const today = new Date();
-  const overdue = contacts.filter(c => c.follow_up_date && new Date(c.follow_up_date) < today).length;
-  const tagged = contacts.filter(c => (c.roles || []).length > 0).length;
+  for (const c of contacts) {
+    if (c.pipeline_status === 'Active Pipeline') active++;
+    else if (c.pipeline_status === 'In-Development') inDev++;
+    if (c.follow_up_date && new Date(c.follow_up_date) < today) overdue++;
+    if ((c.roles || []).length > 0) tagged++;
+  }
   document.getElementById('statsRow').innerHTML = `
     <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${total}</div></div>
     <div class="stat-card"><div class="stat-label">Active Pipeline</div><div class="stat-value">${active}</div></div>
@@ -1453,21 +1465,34 @@ function renderStats() {
 
 function renderDropdowns() {
   const statuses = ['Prospective','In-Development','Active Pipeline','Closed Won','Closed Lost','Low ROI','Dormant','Unassigned'];
+  // Single-pass counting
+  const statusCounts = {};
+  const teamCounts = {};
+  const tierCounts = {};
+  let unassignedTeam = 0, noTier = 0;
+  const teams = ['Fiser, Harvey','Pickering, Steve','McCaa, Meg','Freeman, Naomi','Fender, Peyton'];
+  statuses.forEach(s => statusCounts[s] = 0);
+  teams.forEach(t => teamCounts[t] = 0);
+  ['1','2','3','4','5'].forEach(t => tierCounts[t] = 0);
+  for (const c of contacts) {
+    if (c.pipeline_status && statusCounts[c.pipeline_status] !== undefined) statusCounts[c.pipeline_status]++;
+    if (c.assigned_to) { for (const tm of teams) { if (c.assigned_to.includes(tm)) teamCounts[tm]++; } } else { unassignedTeam++; }
+    if (c.mailing_tier && tierCounts[c.mailing_tier] !== undefined) tierCounts[c.mailing_tier]++; else noTier++;
+  }
+
   const statusSel = document.getElementById('filterStatus');
   statusSel.innerHTML = '<option value="all">All statuses</option>';
-  statuses.forEach(s => { statusSel.innerHTML += `<option value="${s}">${s} (${contacts.filter(c => c.pipeline_status === s).length})</option>`; });
+  statuses.forEach(s => { statusSel.innerHTML += `<option value="${s}">${s} (${statusCounts[s]})</option>`; });
 
   const teamSel = document.getElementById('filterTeam');
   teamSel.innerHTML = '<option value="all">Assigned to…</option>';
-  ['Fiser, Harvey','Pickering, Steve','McCaa, Meg','Freeman, Naomi','Fender, Peyton'].forEach(tm => {
-    teamSel.innerHTML += `<option value="${tm}">${tm.split(',')[0]} (${contacts.filter(c => c.assigned_to && c.assigned_to.includes(tm)).length})</option>`;
-  });
-  teamSel.innerHTML += `<option value="none">Unassigned (${contacts.filter(c => !c.assigned_to).length})</option>`;
+  teams.forEach(tm => { teamSel.innerHTML += `<option value="${tm}">${tm.split(',')[0]} (${teamCounts[tm]})</option>`; });
+  teamSel.innerHTML += `<option value="none">Unassigned (${unassignedTeam})</option>`;
 
   const tierSel = document.getElementById('filterTier');
   tierSel.innerHTML = '<option value="all">All mailing tiers</option>';
-  ['1','2','3','4','5'].forEach(t => { tierSel.innerHTML += `<option value="${t}">${TIER_LABELS_FULL[t]} (${contacts.filter(c => c.mailing_tier === t).length})</option>`; });
-  tierSel.innerHTML += `<option value="none">No tier (${contacts.filter(c => !c.mailing_tier).length})</option>`;
+  ['1','2','3','4','5'].forEach(t => { tierSel.innerHTML += `<option value="${t}">${TIER_LABELS_FULL[t]} (${tierCounts[t]})</option>`; });
+  tierSel.innerHTML += `<option value="none">No tier (${noTier})</option>`;
 }
 
 function toggleFilterPanel() { document.getElementById('roleFilters').classList.toggle('open'); }
@@ -1513,6 +1538,7 @@ function renderRoleFilters() {
 function toggleRoleFilter(key) {
   const idx = activeRoleFilters.indexOf(key);
   if (idx >= 0) activeRoleFilters.splice(idx, 1); else activeRoleFilters.push(key);
+  _renderCurrentLimit = _renderPageSize;
   renderRoleFilters(); renderList();
 }
 function toggleExpandFilter(parentKey) {
@@ -1531,7 +1557,7 @@ function renderList() {
   const container = document.getElementById('contactList');
   if (filtered.length === 0) { container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">No contacts match your filters.</div>'; return; }
 
-  container.innerHTML = filtered.sort((a, b) => {
+  const sorted = filtered.sort((a, b) => {
     const sortKey = document.getElementById('sortBy').value;
     let va = '', vb = '';
     if (sortKey === 'last_name') { va = a.last_name || a.name || ''; vb = b.last_name || b.name || ''; }
@@ -1544,17 +1570,21 @@ function renderList() {
     else if (sortKey === 'assigned_to') { va = a.assigned_to || 'zzz'; vb = b.assigned_to || 'zzz'; }
     else { va = a.name || ''; vb = b.name || ''; }
     const cmp = va.localeCompare(vb);
-    // Secondary sort by last name when primary is equal
     if (cmp !== 0) return cmp;
     return (a.last_name || a.name || '').localeCompare(b.last_name || b.name || '');
-  }).map(c => {
+  });
+
+  const visible = sorted.slice(0, _renderCurrentLimit);
+  const remaining = filtered.length - visible.length;
+  const today = new Date();
+
+  container.innerHTML = visible.map(c => {
     const roleKeys = c.roles || [];
     const tagHtml = roleKeys.map(rk => {
       const d = resolveRoleDisplay(rk);
       return `<span class="tag ${d.tagClass}" title="${esc(d.parentLabel ? d.parentLabel + ' → ' + d.label : d.label)}">${esc(d.label)}</span>`;
     }).join('');
     const tierHtml = c.mailing_tier ? `<span class="mailing-tier tier-${esc(c.mailing_tier)}">${TIER_LABELS[c.mailing_tier] || ''}</span>` : '';
-    const today = new Date();
     let metaHtml = '';
     if (c.assigned_to) metaHtml += `<div class="assigned">→ ${esc(c.assigned_to)}</div>`;
     if (c.last_contact_date) metaHtml += `<div>Last: ${esc(c.last_contact_date)}</div>`;
@@ -1578,6 +1608,14 @@ function renderList() {
       </div>
     </div>`;
   }).join('');
+
+  if (remaining > 0) {
+    container.innerHTML += `<div style="text-align:center;padding:16px;">
+      <button class="btn" onclick="_renderCurrentLimit += _renderPageSize; renderList();" style="padding:10px 28px;font-size:13px;">
+        Load More (${remaining.toLocaleString()} remaining)
+      </button>
+    </div>`;
+  }
   updateTextPermissions();
 }
 
@@ -1791,7 +1829,8 @@ async function saveContact() {
       const oldContact = contacts.find(x => x.contact_id === editingId);
       const diffs = oldContact ? diffContactChanges(oldContact, record) : ['Record updated'];
       record.updated_at = new Date().toISOString();
-      await db.from('contacts').update(record).eq('contact_id', editingId);
+      const { error: updErr } = await db.from('contacts').update(record).eq('contact_id', editingId);
+      if (updErr) throw updErr;
       if (diffs.length > 0) {
         await logContactHistory(editingId, 'updated', diffs.join('\n'), currentUser, dataSource);
       }
@@ -2018,10 +2057,10 @@ function downloadFile(content, filename, mime) {
 // ═══════════════════════════════════════════════════════════════
 // EVENT LISTENERS
 // ═══════════════════════════════════════════════════════════════
-document.getElementById('searchInput').addEventListener('input', renderList);
-document.getElementById('filterStatus').addEventListener('change', renderList);
-document.getElementById('filterTeam').addEventListener('change', renderList);
-document.getElementById('filterTier').addEventListener('change', renderList);
+document.getElementById('searchInput').addEventListener('input', () => { _renderCurrentLimit = _renderPageSize; debouncedRenderList(); });
+document.getElementById('filterStatus').addEventListener('change', () => { _renderCurrentLimit = _renderPageSize; renderList(); });
+document.getElementById('filterTeam').addEventListener('change', () => { _renderCurrentLimit = _renderPageSize; renderList(); });
+document.getElementById('filterTier').addEventListener('change', () => { _renderCurrentLimit = _renderPageSize; renderList(); });
 document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === document.getElementById('modalOverlay')) closeModal(); });
 document.getElementById('settingsOverlay').addEventListener('click', e => { if (e.target === document.getElementById('settingsOverlay')) closeSettings(); });
 document.getElementById('emailOverlay').addEventListener('click', e => { if (e.target === document.getElementById('emailOverlay')) closeEmailModal(); });
