@@ -2766,8 +2766,38 @@ async function deleteRelationshipEvent(eventId) {
 // ═══════════════════════════════════════════════════════════════
 const PDL_API_KEY = '3cc4f68a09a7c2bde2396770550b2432d9c5c1125f8b14068e0a25013bb199d9';
 const PDL_ENRICH_URL = 'https://api.peopledatalabs.com/v5/person/enrich';
+
+// ─── PDL Credit Tracking (live from API headers) ────────────
+window._pdlCredits = null; // { remaining, used, limit, asOf }
 let enrichPreviewContacts = [];
 let selectedEnrichSingleId = null;
+
+// ─── PDL Credit Check (HEAD request — no credits consumed) ──
+function parsePDLCreditHeaders(resp) {
+  const remaining = resp.headers.get('x-totallimit-remaining');
+  const used = resp.headers.get('x-lifetime-used');
+  const purchasedRemaining = resp.headers.get('x-totallimit-purchased-remaining');
+  if (remaining !== null) {
+    window._pdlCredits = {
+      remaining: parseInt(remaining, 10),
+      used: used !== null ? parseInt(used, 10) : null,
+      purchased_remaining: purchasedRemaining !== null ? parseInt(purchasedRemaining, 10) : null,
+      asOf: new Date()
+    };
+  }
+}
+
+async function fetchPDLCredits() {
+  try {
+    const resp = await fetch(PDL_ENRICH_URL, {
+      method: 'HEAD',
+      headers: { 'X-Api-Key': PDL_API_KEY }
+    });
+    parsePDLCreditHeaders(resp);
+  } catch(e) {
+    console.warn('PDL credit check failed:', e.message);
+  }
+}
 
 // ─── Enrichment Dashboard ───────────────────────────────────
 async function loadEnrichDashboard() {
@@ -2787,9 +2817,12 @@ async function loadEnrichDashboard() {
     const noIdentifier = c.filter(r => !r.email && !r.linkedin_url).length;
     const readyToEnrich = c.filter(r => r.email && !r.organization && !r.last_enriched_at).length;
 
-    // Only query needed: enrichment queue stats (lightweight)
-    const { data: queueAll } = await db.from('enrichment_queue').select('status');
-    const qa = queueAll || [];
+    // Fetch queue stats + live PDL credits in parallel
+    const [queueResult] = await Promise.all([
+      db.from('enrichment_queue').select('status'),
+      fetchPDLCredits()
+    ]);
+    const qa = queueResult.data || [];
     const pending = qa.filter(r => r.status === 'pending').length;
     const approved = qa.filter(r => r.status === 'approved' || r.status === 'partial').length;
     const confirmed = qa.filter(r => r.status === 'confirmed').length;
@@ -2817,7 +2850,44 @@ async function loadEnrichDashboard() {
       return `<div class="edash-kpi"><div class="edash-kpi-num" style="color:${color};">${num.toLocaleString()}</div><div class="edash-kpi-label">${label}</div></div>`;
     }
 
+    // PDL Credits card (live from API)
+    const cr = window._pdlCredits;
+    let creditsCard = '';
+    if (cr) {
+      const rem = cr.remaining;
+      const prem = cr.purchased_remaining;
+      // Color the remaining count
+      let remColor = 'var(--green, #2d8a4e)';
+      if (rem <= 50) remColor = '#f57f17';
+      if (rem <= 10) remColor = '#c0392b';
+      const asOfStr = cr.asOf.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      creditsCard = `<div class="edash-card" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <h4 style="margin-bottom:0;">🔑 PDL Credits — Live</h4>
+          <span style="font-size:10px;color:var(--text-muted);">Updated ${asOfStr} · <a href="#" onclick="event.preventDefault();fetchPDLCredits().then(()=>loadEnrichDashboard());" style="color:var(--accent);text-decoration:underline;">refresh</a></span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:16px;margin-top:10px;flex-wrap:wrap;">
+          <div style="text-align:center;">
+            <div style="font-family:var(--serif);font-size:36px;font-weight:600;color:${remColor};line-height:1;">${rem.toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Credits Remaining</div>
+          </div>
+          ${cr.used !== null ? `<div style="text-align:center;">
+            <div style="font-family:var(--serif);font-size:36px;font-weight:600;color:var(--accent);line-height:1;">${cr.used.toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Lifetime Lookups</div>
+          </div>` : ''}
+        </div>
+      </div>`;
+    } else {
+      creditsCard = `<div class="edash-card" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <h4 style="margin-bottom:0;">🔑 PDL Credits</h4>
+          <span style="font-size:10px;color:var(--text-muted);">Run an enrichment to see live credit balance</span>
+        </div>
+      </div>`;
+    }
+
     el.innerHTML = `<div class="edash">
+      ${creditsCard}
       <div class="edash-row" style="grid-template-columns:1fr 1fr;">
         <div class="edash-card">
           <h4>📊 Database Completeness</h4>
@@ -2885,6 +2955,7 @@ async function callPDL(contact) {
   const resp = await fetch(`${PDL_ENRICH_URL}?${params}`, {
     headers: { 'X-Api-Key': PDL_API_KEY }
   });
+  parsePDLCreditHeaders(resp);
   return { status: resp.status, data: await resp.json() };
 }
 
@@ -3739,8 +3810,10 @@ async function previewEnrichmentBatch() {
   `).join('');
 
   runSection.style.display = 'block';
+  const crEst = window._pdlCredits;
+  const creditsLabel = crEst ? `${crEst.remaining.toLocaleString()} credits remaining` : 'credit balance unknown';
   document.getElementById('enrichCreditEstimate').textContent =
-    `Estimated credit usage: up to ${enrichPreviewContacts.length} of your 100 free monthly credits`;
+    `Estimated credit usage: up to ${enrichPreviewContacts.length} credits (${creditsLabel})`;
 }
 
 // ─── Run Enrichment Batch ───────────────────────────────────
