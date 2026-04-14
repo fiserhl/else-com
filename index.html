@@ -2772,7 +2772,7 @@ window._pdlCredits = null; // { remaining, used, limit, asOf }
 let enrichPreviewContacts = [];
 let selectedEnrichSingleId = null;
 
-// ─── PDL Credit Check (HEAD request — no credits consumed) ──
+// ─── PDL Credit Check (via Edge Function — bypasses CORS) ───
 function parsePDLCreditHeaders(resp) {
   const remaining = resp.headers.get('x-totallimit-remaining');
   const used = resp.headers.get('x-lifetime-used');
@@ -2789,11 +2789,19 @@ function parsePDLCreditHeaders(resp) {
 
 async function fetchPDLCredits() {
   try {
-    const resp = await fetch(PDL_ENRICH_URL, {
-      method: 'HEAD',
-      headers: { 'X-Api-Key': PDL_API_KEY }
+    const resp = await fetch(SUPABASE_URL + '/functions/v1/pdl-credits', {
+      headers: { 'x-app-secret': 'd316cb840036aeffc93a26863b73ee1d39bb675722a682a07c642c219bbd33bc' }
     });
-    parsePDLCreditHeaders(resp);
+    if (!resp.ok) throw new Error(`Edge function returned ${resp.status}`);
+    const data = await resp.json();
+    if (data.remaining !== null && data.remaining !== undefined) {
+      window._pdlCredits = {
+        remaining: parseInt(data.remaining, 10),
+        used: data.used !== null ? parseInt(data.used, 10) : null,
+        purchased_remaining: data.purchased_remaining !== null ? parseInt(data.purchased_remaining, 10) : null,
+        asOf: new Date()
+      };
+    }
   } catch(e) {
     console.warn('PDL credit check failed:', e.message);
   }
@@ -2852,6 +2860,16 @@ async function loadEnrichDashboard() {
 
     // PDL Credits card (live from API)
     const cr = window._pdlCredits;
+    // Calculate next renewal date (4th of each month)
+    const now = new Date();
+    let renewDate = new Date(now.getFullYear(), now.getMonth(), 4);
+    if (now >= renewDate) renewDate = new Date(now.getFullYear(), now.getMonth() + 1, 4);
+    const renewStr = renewDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const daysUntilRenew = Math.ceil((renewDate - now) / (1000 * 60 * 60 * 24));
+    const renewNote = daysUntilRenew <= 7
+      ? `<span style="color:var(--accent);font-weight:600;">Renews in ${daysUntilRenew} day${daysUntilRenew === 1 ? '' : 's'} · ${renewStr}</span>`
+      : `Renews ${renewStr}`;
+
     let creditsCard = '';
     if (cr) {
       const rem = cr.remaining;
@@ -2866,7 +2884,7 @@ async function loadEnrichDashboard() {
           <h4 style="margin-bottom:0;">🔑 PDL Credits — Live</h4>
           <span style="font-size:10px;color:var(--text-muted);">Updated ${asOfStr} · <a href="#" onclick="event.preventDefault();fetchPDLCredits().then(()=>loadEnrichDashboard());" style="color:var(--accent);text-decoration:underline;">refresh</a></span>
         </div>
-        <div style="display:flex;align-items:baseline;gap:16px;margin-top:10px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:baseline;gap:24px;margin-top:10px;flex-wrap:wrap;">
           <div style="text-align:center;">
             <div style="font-family:var(--serif);font-size:36px;font-weight:600;color:${remColor};line-height:1;">${rem.toLocaleString()}</div>
             <div style="font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Credits Remaining</div>
@@ -2875,13 +2893,18 @@ async function loadEnrichDashboard() {
             <div style="font-family:var(--serif);font-size:36px;font-weight:600;color:var(--accent);line-height:1;">${cr.used.toLocaleString()}</div>
             <div style="font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Lifetime Lookups</div>
           </div>` : ''}
+          <div style="text-align:center;">
+            <div style="font-family:var(--serif);font-size:36px;font-weight:600;color:var(--text-secondary);line-height:1;">${daysUntilRenew}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Days to Renewal</div>
+          </div>
         </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--text-muted);text-align:center;">${renewNote}</div>
       </div>`;
     } else {
       creditsCard = `<div class="edash-card" style="margin-bottom:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <h4 style="margin-bottom:0;">🔑 PDL Credits</h4>
-          <span style="font-size:10px;color:var(--text-muted);">Run an enrichment to see live credit balance</span>
+          <span style="font-size:10px;color:var(--text-muted);">Run an enrichment to see live credit balance · ${renewNote}</span>
         </div>
       </div>`;
     }
