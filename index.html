@@ -3288,6 +3288,66 @@ async function useExtraEmail(contactId, queueId, newEmail) {
   }
 }
 
+// ─── Inline Manual Edit from Review Queue ───────────────────
+function manualFieldEdit(cellId, contactId, queueId, field, currentVal) {
+  const cell = document.getElementById(cellId);
+  if (!cell || cell.querySelector('input.manual-edit-input')) return; // already editing
+  const escaped = (currentVal || '').replace(/"/g, '&quot;');
+  cell.innerHTML = `<div style="display:flex;align-items:center;gap:4px;">
+    <input class="manual-edit-input" type="text" value="${escaped}" style="flex:1;font-size:12px;padding:3px 6px;border:1px solid var(--accent);border-radius:4px;outline:none;min-width:0;" onkeydown="if(event.key==='Enter'){saveManualField('${cellId}',${contactId},${queueId},'${field}',this.value)}else if(event.key==='Escape'){loadEnrichmentQueue()}">
+    <button onclick="saveManualField('${cellId}',${contactId},${queueId},'${field}',this.previousElementSibling.value)" style="background:#2d8a4e;color:white;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;" title="Save">✓</button>
+    <button onclick="loadEnrichmentQueue()" style="background:var(--border-light);color:var(--text);border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;" title="Cancel">✕</button>
+  </div>`;
+  const inp = cell.querySelector('input.manual-edit-input');
+  inp.focus();
+  inp.select();
+}
+
+async function saveManualField(cellId, contactId, queueId, field, newValue) {
+  newValue = (newValue || '').trim();
+  if (!newValue && !confirm('Save an empty value? This will clear the field.')) return;
+  try {
+    const { data: contact } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
+    if (!contact) { alert('Contact not found.'); return; }
+    const oldValue = contact[field] || '';
+    if (oldValue === newValue) { showToast('No change made.'); await loadEnrichmentQueue(); return; }
+
+    const updateObj = { [field]: newValue || null, updated_at: new Date().toISOString() };
+
+    // Email-specific safety: uniqueness check + preserve old in notes
+    if (field === 'email' && newValue) {
+      const { data: emailCheck } = await db.from('contacts')
+        .select('contact_id, name').ilike('email', newValue).neq('contact_id', contactId).limit(1);
+      if (emailCheck && emailCheck.length > 0) {
+        alert(`Cannot use this email — "${newValue}" is already assigned to ${emailCheck[0].name} (ID:${emailCheck[0].contact_id}).`);
+        return;
+      }
+      if (oldValue && !oldValue.toLowerCase().includes('@millsaps.edu')) {
+        const notes = contact.notes || '';
+        if (!notes.toLowerCase().includes(oldValue.toLowerCase())) {
+          updateObj.notes = notes ? notes + ' | Previous email: ' + oldValue : 'Previous email: ' + oldValue;
+        }
+      }
+    }
+
+    await db.from('contacts').update(updateObj).eq('contact_id', contactId);
+
+    const fieldLabels = { email:'Email', organization:'Organization', title:'Title', linkedin_url:'LinkedIn', cell_phone:'Cell Phone', phone:'Phone', city:'City', state:'State' };
+    const label = fieldLabels[field] || field;
+    await logContactHistory(contactId, 'updated', `${label}: "${oldValue || '(empty)'}" → "${newValue || '(empty)'}" (manual edit during PDL review)`, sessionStorage.getItem('else_user') || 'unknown', 'Manual Edit');
+
+    // Auto-uncheck the PDL suggestion checkbox for this field
+    const checkbox = document.querySelector(`input.enrich-check[data-qid="${queueId}"][data-field="${field}"]`);
+    if (checkbox) checkbox.checked = false;
+
+    showToast(`${label} updated for ${contact.name}`);
+    await loadEnrichmentQueue();
+  } catch(e) {
+    alert('Error saving field: ' + e.message);
+    console.error('Manual field save error:', e);
+  }
+}
+
 async function loadEnrichmentQueue() {
   const container = document.getElementById('enrichmentQueueContent');
   container.innerHTML = '<p style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">Loading...</p>';
@@ -3382,21 +3442,24 @@ async function loadEnrichmentQueue() {
       for (const [label, key] of compareFields) {
         const current = c[key] || '';
         const suggested = suggestions[key] || '';
+        const cellId = `mc-${q.id}-${key}`;
+        const safeVal = (current || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        const editBtn = `<span onclick="manualFieldEdit('${cellId}',${q.contact_id},${q.id},'${key}',this.dataset.val);event.stopPropagation();" data-val="${safeVal}" style="cursor:pointer;opacity:0.4;margin-left:4px;font-size:11px;" title="Edit manually">✏️</span>`;
         let currentHtml, suggestedHtml;
         if (!current && suggested) {
-          currentHtml = '<span class="ec-empty">empty</span>';
+          currentHtml = `<span class="ec-empty">empty</span>${editBtn}`;
           suggestedHtml = `<label style="cursor:pointer;"><input type="checkbox" class="enrich-check" data-qid="${q.id}" data-field="${key}" checked> <span class="ec-new">${esc(suggested)} 🆕</span></label>`;
         } else if (current && suggested) {
-          currentHtml = esc(current);
+          currentHtml = `${esc(current)}${editBtn}`;
           suggestedHtml = `<label style="cursor:pointer;"><input type="checkbox" class="enrich-check" data-qid="${q.id}" data-field="${key}"> <span class="ec-diff">${esc(suggested)} ⚠️</span></label>`;
         } else if (current && !suggested) {
-          currentHtml = esc(current);
+          currentHtml = `${esc(current)}${editBtn}`;
           suggestedHtml = '<span class="ec-same">✅ no change</span>';
         } else {
-          currentHtml = '<span class="ec-empty">empty</span>';
+          currentHtml = `<span class="ec-empty">empty</span>${editBtn}`;
           suggestedHtml = '<span class="ec-empty">no data</span>';
         }
-        html += `<tr><td class="ec-field">${label}</td><td>${currentHtml}</td><td>${suggestedHtml}</td></tr>`;
+        html += `<tr><td class="ec-field">${label}</td><td id="${cellId}">${currentHtml}</td><td>${suggestedHtml}</td></tr>`;
       }
       html += '</table>';
 
