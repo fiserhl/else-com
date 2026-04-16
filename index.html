@@ -3851,9 +3851,10 @@ async function previewEnrichmentBatch() {
 
   let query = db.from('contacts').select('contact_id,name,first_name,last_name,email,linkedin_url,organization,title,city,state,phone,cell_phone,last_enriched_at,roles');
 
-  // Bounced emails filter — overrides some defaults since we specifically want to re-enrich these
+  // Bounced emails filter — matches contacts flagged with ⚠️ BOUNCE warning
+  // (only the 23 existing contacts, not the 73 new exec_prospect imports)
   if (bouncedOnly) {
-    query = query.ilike('notes', '%BOUNCE%');
+    query = query.ilike('notes', '%⚠️ BOUNCE%');
   }
 
   // Must have an identifier
