@@ -792,6 +792,10 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
               <input type="checkbox" id="enrichSkipComplete" checked style="accent-color:var(--purple);">
               <span>Skip contacts with complete profiles <span style="color:var(--text-muted);">(org + title + LinkedIn all filled)</span></span>
             </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;margin-top:8px;">
+              <input type="checkbox" id="enrichBouncedOnly" style="accent-color:#c0392b;">
+              <span>⚠️ Bounced emails only <span style="color:var(--text-muted);">(contacts flagged with email bounce)</span></span>
+            </label>
           </div>
 
           <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;">
@@ -3843,8 +3847,14 @@ async function previewEnrichmentBatch() {
   const yearTo = document.getElementById('enrichYearTo').value;
   const limit = parseInt(document.getElementById('enrichLimit').value);
   const skipComplete = document.getElementById('enrichSkipComplete').checked;
+  const bouncedOnly = document.getElementById('enrichBouncedOnly').checked;
 
   let query = db.from('contacts').select('contact_id,name,first_name,last_name,email,linkedin_url,organization,title,city,state,phone,cell_phone,last_enriched_at,roles');
+
+  // Bounced emails filter — overrides some defaults since we specifically want to re-enrich these
+  if (bouncedOnly) {
+    query = query.ilike('notes', '%BOUNCE%');
+  }
 
   // Must have an identifier
   if (requireField === 'email') query = query.not('email', 'is', null);
@@ -3864,9 +3874,11 @@ async function previewEnrichmentBatch() {
   // Role filter
   if (roleFilter) query = query.contains('roles', [roleFilter]);
 
-  // Skip recently enriched (90 days)
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-  query = query.or(`last_enriched_at.is.null,last_enriched_at.lt.${ninetyDaysAgo}`);
+  // Skip recently enriched (90 days) — unless bounced filter is on (re-enrich intentionally)
+  if (!bouncedOnly) {
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    query = query.or(`last_enriched_at.is.null,last_enriched_at.lt.${ninetyDaysAgo}`);
+  }
 
   // Completeness pre-check: skip contacts with org + title + linkedin all filled
   if (skipComplete) {
