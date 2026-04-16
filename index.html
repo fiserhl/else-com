@@ -3166,6 +3166,32 @@ function parsePDLSuggestions(contact, pdl) {
   if (Array.isArray(pdl.phone_numbers) && pdl.phone_numbers.length) suggestions._extra.phone_numbers = pdl.phone_numbers.filter(p => typeof p === 'string');
   if (pdl.mobile_phone && typeof pdl.mobile_phone === 'string') suggestions._extra.mobile_phone = pdl.mobile_phone;
   if (pdl.industry && typeof pdl.industry === 'string') suggestions._extra.industry = pdl.industry;
+
+  // Email suggestion: personal emails are more durable for relationship management
+  // Priority: personal email > work email (work emails die when people change jobs)
+  const currentEmail = (contact.email || '').toLowerCase().trim();
+  const isMsapsEdu = (e) => e.toLowerCase().trim().endsWith('@millsaps.edu') || e.toLowerCase().trim().endsWith('.millsaps.edu');
+  const personalDomains = ['gmail.com','yahoo.com','hotmail.com','outlook.com','icloud.com','aol.com','me.com','msn.com','att.net','bellsouth.net','comcast.net','live.com','sbcglobal.net','cox.net','charter.net','earthlink.net','mac.com','ymail.com','mail.com','protonmail.com'];
+  const isPersonalEmail = (e) => personalDomains.some(d => e.toLowerCase().trim().endsWith('@' + d));
+  const currentIsPersonal = currentEmail && isPersonalEmail(currentEmail);
+  let bestEmail = null;
+
+  // Priority 1: personal email from PDL (durable, long-term)
+  if (Array.isArray(pdl.personal_emails)) {
+    bestEmail = pdl.personal_emails.find(e => typeof e === 'string' && !isMsapsEdu(e) && e.toLowerCase().trim() !== currentEmail);
+    if (bestEmail) bestEmail = bestEmail.trim();
+  }
+  // Priority 2: work email — but ONLY if contact has no email or has a non-personal email
+  // Never suggest replacing an existing personal email with a work email
+  if (!bestEmail && pdl.work_email && typeof pdl.work_email === 'string' && !isMsapsEdu(pdl.work_email) && pdl.work_email.toLowerCase().trim() !== currentEmail) {
+    if (!currentIsPersonal) {
+      bestEmail = pdl.work_email.trim();
+    }
+    // If they already have a personal email, work email still captured in _extra for reference
+  }
+  if (bestEmail) {
+    suggestions.email = bestEmail;
+  }
   if (Array.isArray(pdl.education) && pdl.education.length) {
     suggestions._extra.education = pdl.education.filter(e => e.school && e.school.name && typeof e.school.name === 'string').map(e => ({
       school: e.school.name, degrees: e.degrees || [], majors: e.majors || [], end_date: e.end_date
@@ -3228,6 +3254,36 @@ async function enrichAndQueue(contact) {
 }
 
 // ─── Load Enrichment Queue ──────────────────────────────────
+// ─── Use Extra Email (from extras section) ──────────────────
+async function useExtraEmail(contactId, queueId, newEmail) {
+  if (!confirm(`Update email for this contact to:\n${newEmail}\n\nThe old email will be preserved in the notes field.`)) return;
+  try {
+    // Check for duplicate email
+    const { data: emailCheck } = await db.from('contacts')
+      .select('contact_id, name')
+      .ilike('email', newEmail)
+      .neq('contact_id', contactId)
+      .limit(1);
+    if (emailCheck && emailCheck.length > 0) {
+      alert(`Cannot use this email — "${newEmail}" is already assigned to ${emailCheck[0].name} (ID:${emailCheck[0].contact_id}).`);
+      return;
+    }
+    const { data: contact } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
+    const oldEmail = contact.email || '(empty)';
+    // Preserve old email in notes if not already there
+    let notesUpdate = contact.notes || '';
+    if (oldEmail !== '(empty)' && !notesUpdate.toLowerCase().includes(oldEmail.toLowerCase())) {
+      notesUpdate = notesUpdate ? notesUpdate + ' | Previous email: ' + oldEmail : 'Previous email: ' + oldEmail;
+    }
+    await db.from('contacts').update({ email: newEmail, notes: notesUpdate, updated_at: new Date().toISOString() }).eq('contact_id', contactId);
+    await logContactHistory(contactId, 'updated', `Email changed: ${oldEmail} → ${newEmail} (selected from PDL extras)`, sessionStorage.getItem('else_user') || 'unknown', 'PDL Enrichment');
+    showToast(`Email updated for ${contact.name}`);
+    await loadEnrichmentQueue();
+  } catch(e) {
+    alert('Error updating email: ' + e.message);
+  }
+}
+
 async function loadEnrichmentQueue() {
   const container = document.getElementById('enrichmentQueueContent');
   container.innerHTML = '<p style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">Loading...</p>';
@@ -3315,6 +3371,7 @@ async function loadEnrichmentQueue() {
 
       // Show comparison for each enrichable field
       const compareFields = [
+        ['Email', 'email'],
         ['Organization', 'organization'], ['Title', 'title'], ['LinkedIn', 'linkedin_url'],
         ['Cell Phone', 'cell_phone'], ['Phone', 'phone'], ['City', 'city'], ['State', 'state']
       ];
@@ -3342,10 +3399,13 @@ async function loadEnrichmentQueue() {
       // Extra data section
       const extraParts = [];
       if (extra.personal_emails && extra.personal_emails.length) {
-        extraParts.push(`<div><strong style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">📧 Personal Emails</strong><br>${extra.personal_emails.map(e => esc(e)).join(', ')}</div>`);
+        const emailLinks = extra.personal_emails.map(e =>
+          `${esc(e)} <a href="#" onclick="event.preventDefault();useExtraEmail(${q.contact_id},${q.id},'${e.replace(/'/g,"\\'")}')" style="font-size:10px;color:var(--accent);text-decoration:underline;margin-left:4px;">Use this →</a>`
+        ).join('<br>');
+        extraParts.push(`<div><strong style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">📧 Personal Emails</strong><br>${emailLinks}</div>`);
       }
       if (extra.work_email) {
-        extraParts.push(`<div><strong style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">💼 Work Email</strong><br>${esc(extra.work_email)}</div>`);
+        extraParts.push(`<div><strong style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">💼 Work Email</strong><br>${esc(extra.work_email)} <a href="#" onclick="event.preventDefault();useExtraEmail(${q.contact_id},${q.id},'${extra.work_email.replace(/'/g,"\\'")}')" style="font-size:10px;color:var(--accent);text-decoration:underline;margin-left:4px;">Use this →</a></div>`);
       }
       if (extra.mobile_phone || (extra.phone_numbers && extra.phone_numbers.length)) {
         const phones = [];
@@ -3428,6 +3488,28 @@ async function approveEnrichment(queueId, contactId, selectedOnly, skipRefresh) 
       preChangeSnapshot[f] = oldContact[f] || null;
     }
 
+    // Check for email uniqueness conflict before applying
+    if (fieldsToApply.email) {
+      const { data: emailCheck } = await db.from('contacts')
+        .select('contact_id, name')
+        .ilike('email', fieldsToApply.email)
+        .neq('contact_id', contactId)
+        .limit(1);
+      if (emailCheck && emailCheck.length > 0) {
+        alert(`Cannot update email — "${fieldsToApply.email}" is already used by ${emailCheck[0].name} (ID:${emailCheck[0].contact_id}). Remove it from that contact first, or reject this suggestion.`);
+        return;
+      }
+      // Preserve old email in notes if it's being replaced
+      if (oldContact.email && oldContact.email !== fieldsToApply.email) {
+        const currentNotes = oldContact.notes || '';
+        if (!currentNotes.toLowerCase().includes(oldContact.email.toLowerCase())) {
+          fieldsToApply.notes = currentNotes ? currentNotes + ' | Previous email: ' + oldContact.email : 'Previous email: ' + oldContact.email;
+          if (!appliedFieldNames.includes('notes')) appliedFieldNames.push('notes');
+          preChangeSnapshot.notes = currentNotes;
+        }
+      }
+    }
+
     // Apply updates
     fieldsToApply.updated_at = new Date().toISOString();
     fieldsToApply.last_enriched_at = new Date().toISOString();
@@ -3435,7 +3517,7 @@ async function approveEnrichment(queueId, contactId, selectedOnly, skipRefresh) 
     if (updErr) throw updErr;
 
     // Build diff string for audit log
-    const fieldLabels = { organization:'Organization', title:'Title', linkedin_url:'LinkedIn', cell_phone:'Cell Phone', phone:'Phone', city:'City', state:'State' };
+    const fieldLabels = { email:'Email', organization:'Organization', title:'Title', linkedin_url:'LinkedIn', cell_phone:'Cell Phone', phone:'Phone', city:'City', state:'State' };
     const diffs = appliedFieldNames.map(f => {
       const oldVal = oldContact[f] || '(empty)';
       const newVal = fieldsToApply[f];
@@ -4068,6 +4150,7 @@ async function loadEnrichmentHistory() {
           <tr><th style="width:25%;">Field</th><th style="width:25%;">Value at Time</th><th style="width:25%;">PDL Suggestion</th><th style="width:25%;">Action Taken</th></tr>`;
 
         const compareFields = [
+          ['Email', 'email'],
           ['Organization', 'organization'], ['Title', 'title'], ['LinkedIn', 'linkedin_url'],
           ['Cell Phone', 'cell_phone'], ['Phone', 'phone'], ['City', 'city'], ['State', 'state']
         ];
