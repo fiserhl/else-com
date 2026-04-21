@@ -460,6 +460,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
         <option value="assigned_to">Sort: Assigned To</option>
       </select>
       <button class="btn btn-filter" id="filterToggleBtn" onclick="toggleFilterPanel()">☷ Roles</button>
+      <button class="btn btn-filter" id="locationToggleBtn" onclick="toggleLocationPanel()">📍 Location</button>
       <div class="toolbar-right">
         <button class="btn btn-email" onclick="openGroupEmailSelector()">✉ Group Email</button>
         <button class="btn btn-text" id="groupTextBtn" onclick="openGroupTextSelector()">💬 Group Text</button>
@@ -477,6 +478,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 
     <div class="filter-group" id="roleFilters"></div>
     <div id="subChipsContainer"></div>
+    <div class="filter-group" id="locationFilters"></div>
 
     <div class="select-all-bar" id="selectionBar">
       <input type="checkbox" onchange="toggleSelectAll(this)" style="accent-color:var(--accent);">
@@ -1415,6 +1417,7 @@ function resolveRoleDisplay(roleKey) {
 let contacts = [];
 let editingId = null;
 let activeRoleFilters = [];
+let activeLocationFilters = [];
 let expandedFilterParents = new Set();
 let selectedContactIds = new Set();
 let _renderPageSize = 100;
@@ -1466,6 +1469,9 @@ function getFiltered() {
       });
       if (!match) return false;
     }
+    if (activeLocationFilters.length > 0) {
+      if (!activeLocationFilters.some(key => contactMatchesLocation(c, key))) return false;
+    }
     return true;
   });
 }
@@ -1473,7 +1479,7 @@ function getFiltered() {
 // ═══════════════════════════════════════════════════════════════
 // RENDERING
 // ═══════════════════════════════════════════════════════════════
-function renderAll() { _renderCurrentLimit = _renderPageSize; renderStats(); renderDropdowns(); renderRoleFilters(); renderList(); renderRoleCheckboxes(); updateTextPermissions(); }
+function renderAll() { _renderCurrentLimit = _renderPageSize; renderStats(); renderDropdowns(); renderRoleFilters(); renderLocationFilters(); renderList(); renderRoleCheckboxes(); updateTextPermissions(); }
 
 function renderStats() {
   const total = contacts.length;
@@ -1598,6 +1604,141 @@ function toggleRoleFilter(key) {
 function toggleExpandFilter(parentKey) {
   if (expandedFilterParents.has(parentKey)) expandedFilterParents.delete(parentKey); else expandedFilterParents.add(parentKey);
   renderRoleFilters();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOCATION FILTERING
+// ═══════════════════════════════════════════════════════════════
+// METRO_AREAS is defined later (around line ~3060). That constant is the
+// single source of truth for which cities belong to each metro — reused here
+// so we don't duplicate the city lists.
+//
+// Filter keys:
+//   'metro:<metroKey>'  — matches any city in METRO_AREAS[metroKey].cities
+//   'state:<XX>'        — matches contacts whose state normalizes to XX
+//   'nostate'           — matches NULL, empty, 'NONE', or any non-2-letter junk
+//
+// Multiple selections within the location filter combine with OR logic;
+// the location filter as a whole combines with the other filters via AND.
+
+// Cached city→metroKey map, built lazily on first use (METRO_AREAS may not be
+// defined when this file first parses depending on script order).
+let _metroCityMap = null;
+function getMetroCityMap() {
+  if (_metroCityMap) return _metroCityMap;
+  _metroCityMap = {};
+  if (typeof METRO_AREAS === 'undefined') return _metroCityMap;
+  for (const [metroKey, def] of Object.entries(METRO_AREAS)) {
+    for (const city of def.cities) _metroCityMap[city.toLowerCase().trim()] = metroKey;
+  }
+  return _metroCityMap;
+}
+
+function locNormalizeState(s) {
+  if (!s) return '';
+  const t = String(s).trim().toUpperCase();
+  if (!t || t === 'NONE') return '';
+  // Treat anything that's not a clean 2-letter code as no-state (catches
+  // junk like 'true', 'hesse', etc. — surfaces them for cleanup via the
+  // "No State" chip).
+  if (t.length !== 2) return '';
+  return t;
+}
+
+function contactMatchesLocation(c, key) {
+  if (key === 'nostate') return locNormalizeState(c.state) === '';
+  if (key.startsWith('state:')) {
+    return locNormalizeState(c.state) === key.slice(6);
+  }
+  if (key.startsWith('metro:')) {
+    const metroKey = key.slice(6);
+    const cityNorm = (c.city || '').toLowerCase().trim();
+    if (!cityNorm) return false;
+    return getMetroCityMap()[cityNorm] === metroKey;
+  }
+  return false;
+}
+
+function toggleLocationPanel() {
+  document.getElementById('locationFilters').classList.toggle('open');
+}
+
+function clearAllLocationFilters() {
+  activeLocationFilters = [];
+  _renderCurrentLimit = _renderPageSize;
+  renderLocationFilters();
+  renderList();
+}
+
+function toggleLocationFilter(key) {
+  const idx = activeLocationFilters.indexOf(key);
+  if (idx >= 0) activeLocationFilters.splice(idx, 1); else activeLocationFilters.push(key);
+  _renderCurrentLimit = _renderPageSize;
+  renderLocationFilters();
+  renderList();
+}
+
+function renderLocationFilters() {
+  const container = document.getElementById('locationFilters');
+  if (!container) return;
+  const isOpen = container.classList.contains('open');
+
+  // Single-pass counting across all contacts
+  const metroCounts = {};   // metroKey → count
+  const stateCounts = {};   // 2-letter → count
+  let noStateCount = 0;
+  const cityMap = getMetroCityMap();
+  if (typeof METRO_AREAS !== 'undefined') {
+    for (const mk of Object.keys(METRO_AREAS)) metroCounts[mk] = 0;
+  }
+  for (const c of contacts) {
+    const st = locNormalizeState(c.state);
+    if (!st) noStateCount++;
+    else stateCounts[st] = (stateCounts[st] || 0) + 1;
+    const cityNorm = (c.city || '').toLowerCase().trim();
+    if (cityNorm) {
+      const mk = cityMap[cityNorm];
+      if (mk) metroCounts[mk] = (metroCounts[mk] || 0) + 1;
+    }
+  }
+
+  let html = '<span class="filter-group-label">Location <span class="clear-link" onclick="clearAllLocationFilters()">Clear all</span></span>';
+
+  // Metros first (most-used lens for the Else School)
+  if (typeof METRO_AREAS !== 'undefined') {
+    for (const [metroKey, def] of Object.entries(METRO_AREAS)) {
+      const count = metroCounts[metroKey] || 0;
+      const key = 'metro:' + metroKey;
+      const isActive = activeLocationFilters.includes(key);
+      html += `<span class="filter-chip ${isActive ? 'active' : ''}" onclick="toggleLocationFilter('${key}')">${def.label}<span class="chip-count">${count}</span></span> `;
+    }
+  }
+
+  // Small visual separator
+  html += '<span style="width:1px;height:18px;background:var(--border);margin:0 4px;display:inline-block;vertical-align:middle;"></span>';
+
+  // States — only those with contacts, sorted by count desc so MS/LA/TX lead
+  const stateList = Object.entries(stateCounts).sort((a,b) => b[1] - a[1]);
+  for (const [st, count] of stateList) {
+    const key = 'state:' + st;
+    const isActive = activeLocationFilters.includes(key);
+    html += `<span class="filter-chip ${isActive ? 'active' : ''}" onclick="toggleLocationFilter('${key}')">${st}<span class="chip-count">${count}</span></span> `;
+  }
+
+  // "No State" — catches NULL, empty, 'NONE', and junk values (useful for cleanup/research)
+  if (noStateCount > 0) {
+    const isActive = activeLocationFilters.includes('nostate');
+    html += `<span class="filter-chip ${isActive ? 'active' : ''}" onclick="toggleLocationFilter('nostate')" title="Contacts with no state, blank state, 'NONE', or unrecognized state values">No State<span class="chip-count">${noStateCount}</span></span>`;
+  }
+
+  container.innerHTML = html;
+  if (isOpen) container.classList.add('open');
+
+  const btn = document.getElementById('locationToggleBtn');
+  if (btn) {
+    btn.textContent = activeLocationFilters.length > 0 ? `📍 Location (${activeLocationFilters.length})` : '📍 Location';
+    btn.classList.toggle('has-active', activeLocationFilters.length > 0);
+  }
 }
 
 function pipelineClass(status) {
