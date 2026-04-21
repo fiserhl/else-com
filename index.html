@@ -2380,6 +2380,17 @@ function composeGroupEmail() {
 // ═══════════════════════════════════════════════════════════════
 // 💬 GROUP TEXT / SMS (restricted to else & hfiser)
 // ═══════════════════════════════════════════════════════════════
+// Normalize raw cell_phone to E.164 (+1XXXXXXXXXX). Returns null if invalid.
+// Prevents malformed URLs like "sms:+" from crashing Apple Messages.
+function normalizeCellToE164(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 10) return '+1' + digits;                       // US 10-digit
+  if (digits.length === 11 && digits[0] === '1') return '+' + digits;   // US with leading 1
+  if (digits.length >= 11 && digits.length <= 15) return '+' + digits;  // E.164 international
+  return null;                                                           // too short / empty / garbage
+}
+
 function openGroupTextSelector() {
   // Permission check
   const currentUser = (sessionStorage.getItem('else_user') || '').toLowerCase();
@@ -2456,11 +2467,28 @@ function composeGroupText() {
   const withPhone = matched.filter(c => c.cell_phone && c.cell_phone.trim());
   if (withPhone.length === 0) { alert('No contacts in the selected groups have cell phone numbers.'); return; }
   const body = (document.getElementById('textMessageBody') || {}).value || '';
-  // Format numbers with +1 prefix for reliable macOS/iOS Messages routing
-  const phones = withPhone.map(c => {
-    const digits = c.cell_phone.replace(/\D/g, '');
-    return digits.length === 10 ? '+1' + digits : '+' + digits;
-  }).join(',');
+  // Normalize, dedupe, and validate each cell phone. Bad numbers cause Messages to crash.
+  const seen = new Set();
+  const valid = [];
+  const skipped = [];
+  withPhone.forEach(c => {
+    const e164 = normalizeCellToE164(c.cell_phone);
+    if (!e164) { skipped.push(c.name + ' — "' + c.cell_phone + '"'); return; }
+    if (seen.has(e164)) return;
+    seen.add(e164);
+    valid.push(e164);
+  });
+  if (valid.length === 0) {
+    alert('No valid cell phone numbers in this group.' + (skipped.length ? '\n\nSkipped invalid entries:\n' + skipped.join('\n') : ''));
+    return;
+  }
+  // Apple Messages reliably handles ~50 recipients per URL; larger lists can freeze or crash it.
+  if (valid.length > 50) {
+    const ok = confirm(valid.length + ' recipients is a lot — Apple Messages may freeze or crash with very large groups.\n\nClick OK to try anyway, or Cancel and split into smaller batches.');
+    if (!ok) return;
+  }
+  if (skipped.length > 0) console.warn('Skipped ' + skipped.length + ' invalid cell number(s):', skipped);
+  const phones = valid.join(',');
   // Use location.href — the only method that reliably opens Messages on macOS/iOS from a browser
   // Apple Messages uses &body= (not ?body=) after the number list
   window.location.href = `sms:${phones}${body ? '&body=' + encodeURIComponent(body) : ''}`;
@@ -2470,8 +2498,11 @@ function composeGroupText() {
 function textSingleContact(contactId) {
   const c = contacts.find(x => x.contact_id === contactId);
   if (!c || !c.cell_phone) return;
-  const digits = c.cell_phone.replace(/\D/g, '');
-  const phone = digits.length === 10 ? '+1' + digits : '+' + digits;
+  const phone = normalizeCellToE164(c.cell_phone);
+  if (!phone) {
+    alert('Cannot text ' + c.name + ' — the cell phone field doesn\'t contain a valid number:\n"' + c.cell_phone + '"\n\nPlease fix the contact\'s cell phone first.');
+    return;
+  }
   // Show choice: Messages app or Twilio
   const overlay = document.getElementById('emailOverlay');
   overlay.innerHTML = `<div class="modal" style="width:420px;">
@@ -2529,12 +2560,25 @@ async function sendViaTwilio() {
   });
   const withPhone = matched.filter(c => c.cell_phone && c.cell_phone.trim());
   if (withPhone.length === 0) { alert('No contacts in the selected groups have cell phone numbers.'); return; }
-  if (!confirm('Send this text to ' + withPhone.length + ' recipient(s) via Twilio?')) return;
 
-  const recipients = withPhone.map(c => {
-    const digits = c.cell_phone.replace(/\D/g, '');
-    return { phone: digits.length === 10 ? '+1' + digits : '+' + digits, name: c.preferred_name || c.first_name || c.name };
+  // Normalize, dedupe, and validate — Twilio rejects malformed numbers with 400 errors.
+  const seen = new Set();
+  const recipients = [];
+  const skipped = [];
+  withPhone.forEach(c => {
+    const e164 = normalizeCellToE164(c.cell_phone);
+    if (!e164) { skipped.push(c.name + ' — "' + c.cell_phone + '"'); return; }
+    if (seen.has(e164)) return;
+    seen.add(e164);
+    recipients.push({ phone: e164, name: c.preferred_name || c.first_name || c.name });
   });
+  if (recipients.length === 0) {
+    alert('No valid cell phone numbers in this group.' + (skipped.length ? '\n\nSkipped invalid entries:\n' + skipped.join('\n') : ''));
+    return;
+  }
+  const skipMsg = skipped.length ? '\n\n(' + skipped.length + ' invalid number(s) will be skipped — see console for details.)' : '';
+  if (!confirm('Send this text to ' + recipients.length + ' recipient(s) via Twilio?' + skipMsg)) return;
+  if (skipped.length > 0) console.warn('Skipped ' + skipped.length + ' invalid cell number(s):', skipped);
 
   // Show sending status
   const overlay = document.getElementById('emailOverlay');
