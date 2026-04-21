@@ -2358,8 +2358,7 @@ function updateGroupCount() {
     if (selectedRoles.length === 0 && selectedStatuses.length === 0) return false;
     const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
     const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
-    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
-    return matchRole || matchStatus;
+    return matchRole && matchStatus;
   });
   const withEmail = matched.filter(c => c.email && c.email.trim());
   const el = document.getElementById('groupSelectedCount');
@@ -2373,8 +2372,7 @@ function composeGroupEmail() {
   const matched = contacts.filter(c => {
     const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
     const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
-    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
-    return matchRole || matchStatus;
+    return matchRole && matchStatus;
   });
   openEmailModal(matched.map(c => ({ id: c.contact_id, name: c.name, email: c.email, org: c.organization })));
 }
@@ -2439,8 +2437,7 @@ function updateTextGroupCount() {
     if (selectedRoles.length === 0 && selectedStatuses.length === 0) return false;
     const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
     const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
-    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
-    return matchRole || matchStatus;
+    return matchRole && matchStatus;
   });
   const withPhone = matched.filter(c => c.cell_phone && c.cell_phone.trim());
   const el = document.getElementById('textGroupCount');
@@ -2454,8 +2451,7 @@ function composeGroupText() {
   const matched = contacts.filter(c => {
     const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
     const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
-    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
-    return matchRole || matchStatus;
+    return matchRole && matchStatus;
   });
   const withPhone = matched.filter(c => c.cell_phone && c.cell_phone.trim());
   if (withPhone.length === 0) { alert('No contacts in the selected groups have cell phone numbers.'); return; }
@@ -2529,8 +2525,7 @@ async function sendViaTwilio() {
   const matched = contacts.filter(c => {
     const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
     const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
-    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
-    return matchRole || matchStatus;
+    return matchRole && matchStatus;
   });
   const withPhone = matched.filter(c => c.cell_phone && c.cell_phone.trim());
   if (withPhone.length === 0) { alert('No contacts in the selected groups have cell phone numbers.'); return; }
@@ -2607,8 +2602,7 @@ function copyGroupTextNumbers() {
   const matched = contacts.filter(c => {
     const matchRole = selectedRoles.length === 0 || selectedRoles.some(r => contactHasParentRole(c, r));
     const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(c.pipeline_status);
-    if (selectedRoles.length > 0 && selectedStatuses.length > 0) return matchRole && matchStatus;
-    return matchRole || matchStatus;
+    return matchRole && matchStatus;
   });
   const withPhone = matched.filter(c => c.cell_phone && c.cell_phone.trim());
   if (withPhone.length === 0) { alert('No contacts in the selected groups have cell phone numbers.'); return; }
