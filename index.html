@@ -3460,7 +3460,7 @@ async function useExtraEmail(contactId, queueId, newEmail) {
     }
     await db.from('contacts').update({ email: newEmail, notes: notesUpdate, updated_at: new Date().toISOString() }).eq('contact_id', contactId);
     await logContactHistory(contactId, 'updated', `Email changed: ${oldEmail} → ${newEmail} (selected from PDL extras)`, sessionStorage.getItem('else_user') || 'unknown', 'PDL Enrichment');
-    showToast(`Email updated for ${contact.name}`);
+    showEnrichToast(`✅ Email updated for ${contact.name}`);
     await loadEnrichmentQueue();
   } catch(e) {
     alert('Error updating email: ' + e.message);
@@ -3489,7 +3489,7 @@ async function saveManualField(cellId, contactId, queueId, field, newValue) {
     const { data: contact } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
     if (!contact) { alert('Contact not found.'); return; }
     const oldValue = contact[field] || '';
-    if (oldValue === newValue) { showToast('No change made.'); await loadEnrichmentQueue(); return; }
+    if (oldValue === newValue) { showEnrichToast('ℹ️ No change made.'); await loadEnrichmentQueue(); return; }
 
     const updateObj = { [field]: newValue || null, updated_at: new Date().toISOString() };
 
@@ -3519,7 +3519,7 @@ async function saveManualField(cellId, contactId, queueId, field, newValue) {
     const checkbox = document.querySelector(`input.enrich-check[data-qid="${queueId}"][data-field="${field}"]`);
     if (checkbox) checkbox.checked = false;
 
-    showToast(`${label} updated for ${contact.name}`);
+    showEnrichToast(`✅ ${label} updated for ${contact.name}`);
     await loadEnrichmentQueue();
   } catch(e) {
     alert('Error saving field: ' + e.message);
