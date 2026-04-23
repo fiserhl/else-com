@@ -613,6 +613,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
         <button class="btn research-subtab active" data-subtab="queue" onclick="switchResearchTab('queue')" style="flex:1;border-radius:var(--radius);font-size:12px;padding:8px 12px;">📋 Review Queue <span id="queueBadge" style="background:var(--accent);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px;display:none;">0</span></button>
         <button class="btn research-subtab" data-subtab="run" onclick="switchResearchTab('run')" style="flex:1;border-radius:var(--radius);font-size:12px;padding:8px 12px;">🚀 Run Enrichment</button>
         <button class="btn research-subtab" data-subtab="history" onclick="switchResearchTab('history')" style="flex:1;border-radius:var(--radius);font-size:12px;padding:8px 12px;">📊 History</button>
+        <button class="btn research-subtab" data-subtab="auto" onclick="switchResearchTab('auto')" style="flex:1;border-radius:var(--radius);font-size:12px;padding:8px 12px;">🤖 Auto-Decisions <span id="autoBadge" style="background:#f57f17;color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px;display:none;">0</span></button>
       </div>
 
       <!-- QUEUE SUB-TAB -->
@@ -846,6 +847,13 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
       <div class="research-panel" id="panelHistory" style="display:none;">
         <div id="enrichmentHistoryContent" style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
           <p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">Loading history...</p>
+        </div>
+      </div>
+
+      <!-- AUTO-DECISIONS SUB-TAB (Phase 4) -->
+      <div class="research-panel" id="panelAuto" style="display:none;">
+        <div id="autoDecisionsContent">
+          <p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">Loading auto-decision dashboard...</p>
         </div>
       </div>
 
@@ -3140,10 +3148,11 @@ function switchResearchTab(tab) {
   document.querySelectorAll('.research-subtab').forEach(b => b.classList.remove('active'));
   document.querySelector(`.research-subtab[data-subtab="${tab}"]`).classList.add('active');
   document.querySelectorAll('.research-panel').forEach(p => p.style.display = 'none');
-  const panelMap = { queue:'panelQueue', run:'panelRun', history:'panelHistory' };
+  const panelMap = { queue:'panelQueue', run:'panelRun', history:'panelHistory', auto:'panelAuto' };
   document.getElementById(panelMap[tab]).style.display = 'block';
   if (tab === 'queue') loadEnrichmentQueue();
   if (tab === 'history') loadEnrichmentHistory();
+  if (tab === 'auto') loadAutoDecisions();
   loadEnrichDashboard();
 }
 
@@ -4334,6 +4343,414 @@ async function runSingleEnrich() {
 }
 
 // ─── Enrichment History ─────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// AUTO-DECISIONS DASHBOARD (Phase 4)
+// Surfaces the automated PDL pipeline: last run, stats, audit queue.
+// ═══════════════════════════════════════════════════════════════
+async function loadAutoDecisions() {
+  const container = document.getElementById('autoDecisionsContent');
+  container.innerHTML = '<p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">Loading auto-decision dashboard...</p>';
+  try {
+    // Fire all queries in parallel
+    const [runsRes, statsRes, pendingRes, recentRes, blockedRes, driftRes] = await Promise.all([
+      db.from('cron_runs').select('*').eq('run_kind','pdl_enrichment').order('started_at',{ascending:false}).limit(10),
+      db.from('v_automation_stats').select('*').limit(1),
+      db.from('v_pending_audits').select('*').eq('audit_status','pending').order('queued_at',{ascending:false}),
+      db.from('v_pending_audits').select('*').in('audit_status',['completed']).gte('audited_at', new Date(Date.now()-7*24*60*60*1000).toISOString()).order('audited_at',{ascending:false}).limit(50),
+      db.from('blocked_pdl_ids').select('*').order('blocked_at',{ascending:false}).limit(50),
+      db.from('v_pending_audits').select('*').eq('outcome','data_drift').order('audited_at',{ascending:false}).limit(20)
+    ]);
+    const runs    = runsRes.data    || [];
+    const stats   = (statsRes.data || [])[0] || {};
+    const pending = pendingRes.data || [];
+    const recent  = recentRes.data  || [];
+    const blocked = blockedRes.data || [];
+    const drift   = driftRes.data   || [];
+
+    // Update sub-tab badge with pending audit count
+    const badge = document.getElementById('autoBadge');
+    const totalNeedingEyes = pending.length + drift.length;
+    if (totalNeedingEyes > 0) { badge.textContent = totalNeedingEyes; badge.style.display = 'inline'; }
+    else { badge.style.display = 'none'; }
+
+    // Split pending into silver vs gold
+    const silverPending = pending.filter(p => p.audit_tier === 'silver');
+    const goldPending   = pending.filter(p => p.audit_tier === 'gold');
+    // Reverts from full audits (in v_pending_audits because the view is tied to queue, not action_taken; we need a separate query for reverts)
+    const reverts = recent.filter(r => r.action_taken === 'reverted');
+
+    let html = '';
+
+    // ─── LAST RUN BANNER ─────────────────────────────────────
+    const lastRun = runs[0];
+    if (lastRun) {
+      const when    = new Date(lastRun.started_at);
+      const whenStr = when.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + when.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+      const statusColors = { completed:'#2d8a4e', partial:'#f57f17', failed:'#c0392b', stopped_credits:'#f57f17', stopped_timeout:'#f57f17', in_progress:'#1565c0' };
+      const statusIcons  = { completed:'✓', partial:'⚠️', failed:'✗', stopped_credits:'💳', stopped_timeout:'⏱', in_progress:'⏳' };
+      const statusColor = statusColors[lastRun.status] || 'var(--text-muted)';
+      const statusIcon  = statusIcons[lastRun.status]  || '•';
+      const processed    = lastRun.processed      || 0;
+      const matched      = lastRun.pdl_matched    || 0;
+      const approved     = lastRun.auto_approved  || 0;
+      const rejected     = lastRun.auto_rejected  || 0;
+      const heldReview   = lastRun.held_for_review|| 0;
+      const creditsUsed  = lastRun.credits_used;
+      const creditsLeft  = lastRun.credits_remaining;
+      html += `<div class="edash-card" style="margin-bottom:12px;border-left:4px solid ${statusColor};">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+          <div>
+            <h4 style="margin-bottom:2px;">🤖 Last Automated Run</h4>
+            <div style="font-size:11px;color:var(--text-muted);">${whenStr} · triggered by <code style="font-size:10px;background:var(--border-light);padding:1px 5px;border-radius:3px;">${esc(lastRun.triggered_by || 'unknown')}</code></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-weight:600;color:${statusColor};font-size:13px;">
+            <span style="font-size:16px;">${statusIcon}</span><span>${esc(lastRun.status)}</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:4px;">
+          <div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--accent);">${processed}</div><div class="edash-kpi-label">Processed</div></div>
+          <div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--accent);">${matched}</div><div class="edash-kpi-label">PDL Matched</div></div>
+          <div class="edash-kpi"><div class="edash-kpi-num" style="color:#2d8a4e;">${approved}</div><div class="edash-kpi-label">Auto-Approved</div></div>
+          <div class="edash-kpi"><div class="edash-kpi-num" style="color:#c0392b;">${rejected}</div><div class="edash-kpi-label">Auto-Rejected</div></div>
+          <div class="edash-kpi"><div class="edash-kpi-num" style="color:${heldReview>0?'#f57f17':'var(--text-muted)'};">${heldReview}</div><div class="edash-kpi-label">Held for Review</div></div>
+          ${creditsUsed != null ? `<div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--gold);">${creditsUsed}</div><div class="edash-kpi-label">Credits Used</div></div>` : ''}
+          ${creditsLeft != null ? `<div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--text-secondary);">${creditsLeft}</div><div class="edash-kpi-label">Credits Left</div></div>` : ''}
+        </div>
+        ${lastRun.errors && lastRun.errors.length > 0 ? `<details style="margin-top:10px;font-size:11px;"><summary style="cursor:pointer;color:#c0392b;font-weight:600;">⚠️ ${lastRun.errors.length} error${lastRun.errors.length!==1?'s':''} — click to view</summary><pre style="font-size:10px;background:#fdecea;padding:8px;border-radius:4px;margin-top:6px;overflow-x:auto;">${esc(JSON.stringify(lastRun.errors, null, 2))}</pre></details>` : ''}
+      </div>`;
+    } else {
+      html += `<div class="edash-card" style="margin-bottom:12px;">
+        <h4 style="margin-bottom:4px;">🤖 Automated Runs</h4>
+        <p style="font-size:12px;color:var(--text-muted);margin:0;">No automated runs yet. First scheduled run: next Tuesday or Friday at 3 AM Central.</p>
+      </div>`;
+    }
+
+    // ─── 30-DAY STATS + BLOCKLIST ROW ────────────────────────
+    html += `<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="edash-card">
+        <h4>📊 30-Day Pipeline Stats</h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:4px;">
+          <div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--accent);">${stats.total_runs_30d || 0}</div><div class="edash-kpi-label">Runs</div></div>
+          <div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--accent);">${stats.total_processed || 0}</div><div class="edash-kpi-label">Processed</div></div>
+          <div class="edash-kpi"><div class="edash-kpi-num" style="color:#2d8a4e;">${stats.total_auto_approved || 0}</div><div class="edash-kpi-label">Approved</div></div>
+          <div class="edash-kpi"><div class="edash-kpi-num" style="color:#c0392b;">${stats.total_auto_rejected || 0}</div><div class="edash-kpi-label">Rejected</div></div>
+          <div class="edash-kpi"><div class="edash-kpi-num" style="color:${stats.total_held_for_review>0?'#f57f17':'var(--text-muted)'};">${stats.total_held_for_review || 0}</div><div class="edash-kpi-label">Human Review</div></div>
+          <div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--gold);">${stats.total_credits_used || 0}</div><div class="edash-kpi-label">Credits</div></div>
+        </div>
+      </div>
+      <div class="edash-card">
+        <h4>🚫 PDL Blocklist</h4>
+        <div style="text-align:center;padding:10px 0;">
+          <div class="edash-kpi-num" style="color:${blocked.length>0?'#c0392b':'var(--text-muted)'};">${blocked.length}</div>
+          <div class="edash-kpi-label" style="margin-bottom:8px;">Blocked PDL IDs</div>
+          ${blocked.length > 0 ? `<button class="btn" onclick="showBlocklistDetails()" style="font-size:11px;padding:4px 10px;">View All</button>` : `<div style="font-size:10px;color:var(--text-muted);">No wrong-person reverts yet</div>`}
+        </div>
+      </div>
+    </div>`;
+
+    // ─── AUDIT QUEUE SECTIONS ────────────────────────────────
+    html += `<div style="margin-bottom:8px;">
+      <h3 style="font-family:var(--serif);font-size:16px;font-weight:500;color:var(--accent);margin-bottom:2px;">Audit Queue</h3>
+      <p style="font-size:11px;color:var(--text-muted);">Auto-approvals awaiting verification. Silver tier is 100% audited; gold tier is 20% sampled.</p>
+    </div>`;
+
+    html += buildAuditSection('silver', '🥈 Silver Tier — LinkedIn Audit Required', 'Rare-name matches without Millsaps education in PDL data. All of these get checked.', silverPending);
+    html += buildAuditSection('gold',   '🥇 Gold Tier — Sampled for Audit',           'Millsaps-education-confirmed matches. 20% of these sampled for LinkedIn verification.', goldPending);
+    html += buildDriftSection(drift);
+    html += buildAuditSection('recent', '✅ Recently Confirmed (last 7 days)',          'Audits completed by Claude in Chrome. All verified and locked in.', recent.filter(r => r.outcome === 'confirmed'), true);
+    if (reverts.length) html += buildAuditSection('reverts', '↩️ Recent Reverts (last 7 days)', 'Auto-approvals that were reversed — either manually or via wrong-person audit.', reverts, true);
+
+    // ─── CRON RUNS HISTORY (COLLAPSIBLE) ─────────────────────
+    html += `<details style="margin-top:16px;">
+      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);padding:8px;">📅 Recent cron runs (last ${runs.length})</summary>
+      <div style="background:var(--surface);border:1px solid var(--border-light);border-radius:var(--radius);padding:12px;margin-top:8px;">
+        <table style="width:100%;font-size:11px;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border-light);">
+              <th style="text-align:left;padding:6px;">Run</th>
+              <th style="text-align:left;padding:6px;">Started</th>
+              <th style="text-align:left;padding:6px;">Status</th>
+              <th style="text-align:right;padding:6px;">Processed</th>
+              <th style="text-align:right;padding:6px;">Approved</th>
+              <th style="text-align:right;padding:6px;">Rejected</th>
+              <th style="text-align:right;padding:6px;">Review</th>
+              <th style="text-align:right;padding:6px;">Credits</th>
+              <th style="text-align:left;padding:6px;">Trigger</th>
+            </tr>
+          </thead>
+          <tbody>`;
+    for (const r of runs) {
+      const st = new Date(r.started_at);
+      const stStr = st.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + st.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+      html += `<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+        <td style="padding:6px;">#${r.run_id}</td>
+        <td style="padding:6px;">${stStr}</td>
+        <td style="padding:6px;"><span style="font-size:10px;padding:1px 6px;border-radius:4px;background:${(r.status==='completed')?'#e8f5e9':(r.status==='failed')?'#fdecea':'#fff8e1'};color:${(r.status==='completed')?'#2d8a4e':(r.status==='failed')?'#c0392b':'#f57f17'};">${esc(r.status)}</span></td>
+        <td style="padding:6px;text-align:right;">${r.processed || 0}</td>
+        <td style="padding:6px;text-align:right;color:#2d8a4e;">${r.auto_approved || 0}</td>
+        <td style="padding:6px;text-align:right;color:#c0392b;">${r.auto_rejected || 0}</td>
+        <td style="padding:6px;text-align:right;color:${r.held_for_review>0?'#f57f17':'var(--text-muted)'};">${r.held_for_review || 0}</td>
+        <td style="padding:6px;text-align:right;color:var(--gold);">${r.credits_used != null ? r.credits_used : '—'}</td>
+        <td style="padding:6px;color:var(--text-muted);font-size:10px;">${esc(r.triggered_by || '—')}</td>
+      </tr>`;
+    }
+    if (!runs.length) html += '<tr><td colspan="9" style="padding:16px;text-align:center;color:var(--text-muted);">No runs yet</td></tr>';
+    html += `</tbody></table></div></details>`;
+
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = `<div style="padding:16px;color:#c0392b;">Error loading auto-decisions: ${esc(e.message)}</div>`;
+    console.error('loadAutoDecisions error:', e);
+  }
+}
+
+// Build a collapsible section of audit records with action buttons.
+// tier: 'silver' | 'gold' | 'recent' | 'reverts'
+// readonly: if true, don't show action buttons (completed/reverted records)
+function buildAuditSection(tier, title, desc, items, readonly=false) {
+  const tierColor = tier === 'silver' ? '#6c7680' : tier === 'gold' ? '#C49A6C' : tier === 'reverts' ? '#c0392b' : '#2d8a4e';
+  if (!items.length) {
+    return `<div class="edash-card" style="margin-bottom:10px;border-left:3px solid ${tierColor};">
+      <h4 style="margin-bottom:2px;">${title} <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(0)</span></h4>
+      <p style="font-size:11px;color:var(--text-muted);margin:0;">${desc}</p>
+    </div>`;
+  }
+  let html = `<div class="edash-card" style="margin-bottom:10px;border-left:3px solid ${tierColor};padding:12px 16px;">
+    <div style="margin-bottom:10px;">
+      <h4 style="margin-bottom:2px;display:inline;">${title}</h4>
+      <span style="font-weight:400;color:var(--text-muted);font-size:11px;"> (${items.length})</span>
+      <p style="font-size:11px;color:var(--text-muted);margin:4px 0 0 0;">${desc}</p>
+    </div>`;
+  for (const a of items) {
+    html += renderAuditCard(a, readonly);
+  }
+  html += `</div>`;
+  return html;
+}
+
+// Build the data-drift section (same shape, but with Accept/Reject drift actions)
+function buildDriftSection(items) {
+  const tierColor = '#f57f17';
+  if (!items.length) {
+    return `<div class="edash-card" style="margin-bottom:10px;border-left:3px solid ${tierColor};">
+      <h4 style="margin-bottom:2px;">⚠️ Data Drift Found <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(0)</span></h4>
+      <p style="font-size:11px;color:var(--text-muted);margin:0;">Audits where LinkedIn shows newer data than PDL. None right now.</p>
+    </div>`;
+  }
+  let html = `<div class="edash-card" style="margin-bottom:10px;border-left:3px solid ${tierColor};padding:12px 16px;">
+    <div style="margin-bottom:10px;">
+      <h4 style="margin-bottom:2px;display:inline;">⚠️ Data Drift Found</h4>
+      <span style="font-weight:400;color:var(--text-muted);font-size:11px;"> (${items.length})</span>
+      <p style="font-size:11px;color:var(--text-muted);margin:4px 0 0 0;">LinkedIn shows more recent info than what PDL gave us. Review and accept the LinkedIn values if they look right.</p>
+    </div>`;
+  for (const a of items) {
+    html += renderDriftCard(a);
+  }
+  html += `</div>`;
+  return html;
+}
+
+// Render one audit record as an expandable card.
+function renderAuditCard(a, readonly=false) {
+  const fields = a.applied_fields || [];
+  const suggestions = a.suggested_updates || {};
+  const tierBadge = a.audit_tier === 'gold' ? '🥇 gold' : a.audit_tier === 'silver' ? '🥈 silver' : '—';
+  const outcomeBadge = a.outcome === 'confirmed' ? '✅ confirmed' 
+                      : a.outcome === 'data_drift' ? '⚠️ drift'
+                      : a.outcome === 'identity_mismatch' ? '❌ wrong person'
+                      : a.outcome === 'unreachable' ? '🔒 unreachable'
+                      : a.outcome === 'ambiguous' ? '❓ ambiguous'
+                      : a.action_taken === 'reverted' ? '↩️ reverted'
+                      : '⏳ pending';
+  const whenStr = a.audited_at 
+    ? new Date(a.audited_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + new Date(a.audited_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+    : 'not audited';
+  const lnUrl = a.contact_linkedin || (suggestions.linkedin_url || '');
+
+  let html = `<div class="enrich-card" id="aud-${a.audit_id}" style="margin-bottom:6px;">
+    <div class="enrich-card-header" onclick="document.getElementById('aud-${a.audit_id}').classList.toggle('expanded')">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="ec-arrow">▸</span>
+        <span class="ec-name">${esc(a.contact_name || ('ID:' + a.contact_id))}</span>
+        <span style="font-size:10px;color:var(--text-muted);">ID:${a.contact_id}</span>
+        <span style="font-size:10px;color:var(--text-muted);background:var(--border-light);padding:1px 6px;border-radius:4px;">${tierBadge}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="ec-conf ${a.confidence>=7?'ec-conf-high':a.confidence>=4?'ec-conf-med':'ec-conf-low'}">${a.confidence || '—'}/10</span>
+        <span style="font-size:11px;color:var(--text-muted);">${fields.length} field${fields.length!==1?'s':''}</span>
+        <span style="font-size:10px;color:var(--text-muted);">${outcomeBadge}</span>
+      </div>
+    </div>
+    <div class="enrich-card-body">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;padding:8px;background:rgba(0,0,0,0.02);border-radius:4px;">
+        <strong>Reasoning:</strong> ${esc(a.reasoning || 'n/a')}<br>
+        <strong>Last activity:</strong> ${whenStr}${a.audited_by ? ' by ' + esc(a.audited_by) : ''}
+      </div>
+      <table class="enrich-compare">
+        <tr><th style="width:25%;">Field</th><th style="width:35%;">Value Before</th><th style="width:40%;">Value After (PDL)</th></tr>`;
+  const compareFields = [['Email','email'],['Organization','organization'],['Title','title'],['LinkedIn','linkedin_url'],['Cell Phone','cell_phone'],['Phone','phone'],['City','city'],['State','state']];
+  const snap = a.pre_change_snapshot || {};
+  for (const [label, key] of compareFields) {
+    if (!fields.includes(key)) continue;
+    const before = snap[key] || '';
+    const after  = suggestions[key] || '';
+    html += `<tr>
+      <td class="ec-field">${label}</td>
+      <td>${before ? esc(before) : '<span class="ec-empty">empty</span>'}</td>
+      <td><span class="ec-new">${esc(after)}</span></td>
+    </tr>`;
+  }
+  html += `</table>`;
+
+  if (!readonly) {
+    html += `<div class="enrich-actions">
+      ${lnUrl ? `<a href="${esc(lnUrl)}" target="_blank" class="btn" style="font-size:12px;padding:6px 14px;text-decoration:none;background:#0077b5;color:white;">🔗 Open LinkedIn</a>` : ''}
+      <button class="btn btn-primary" onclick="confirmAuditManually(${a.audit_id})" style="font-size:12px;padding:6px 14px;background:#2d8a4e;color:white;">✅ Looks Right — Confirm</button>
+      <button class="btn" onclick="revertAudit(${a.audit_id}, 'manual_revert')" style="font-size:12px;padding:6px 14px;background:#fff8e1;color:#f57f17;">↩️ Revert (keep PDL ID)</button>
+      <button class="btn" onclick="revertAudit(${a.audit_id}, 'wrong_person')" style="font-size:12px;padding:6px 14px;background:#fdecea;color:#c0392b;">🚫 Revert — Wrong Person</button>
+    </div>`;
+  }
+  html += `</div></div>`;
+  return html;
+}
+
+// Render a drift audit card with LinkedIn findings and accept/reject drift actions.
+function renderDriftCard(a) {
+  const findings = a.findings || {};
+  const fields = a.applied_fields || [];
+  const snap = a.pre_change_snapshot || {};
+  const whenStr = a.audited_at ? new Date(a.audited_at).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : 'now';
+  const lnUrl = a.contact_linkedin || (a.suggested_updates?.linkedin_url || '');
+
+  let html = `<div class="enrich-card" id="drift-${a.audit_id}" style="margin-bottom:6px;">
+    <div class="enrich-card-header" onclick="document.getElementById('drift-${a.audit_id}').classList.toggle('expanded')">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="ec-arrow">▸</span>
+        <span class="ec-name">${esc(a.contact_name || ('ID:' + a.contact_id))}</span>
+        <span style="font-size:10px;color:var(--text-muted);">ID:${a.contact_id}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:10px;color:#f57f17;font-weight:600;">⚠️ LinkedIn has newer data</span>
+      </div>
+    </div>
+    <div class="enrich-card-body">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;padding:8px;background:rgba(0,0,0,0.02);border-radius:4px;">
+        <strong>Audit finding:</strong> ${esc(a.reasoning || 'LinkedIn shows different info than what was applied')}<br>
+        <strong>Audited:</strong> ${whenStr}${a.audited_by ? ' by ' + esc(a.audited_by) : ''}
+      </div>
+      <table class="enrich-compare">
+        <tr><th style="width:22%;">Field</th><th style="width:26%;">Before (DB)</th><th style="width:26%;">After PDL Apply</th><th style="width:26%;">LinkedIn Shows</th></tr>`;
+  const compareFields = [['Email','email'],['Organization','organization'],['Title','title'],['LinkedIn','linkedin_url'],['Cell Phone','cell_phone'],['Phone','phone'],['City','city'],['State','state']];
+  const driftData = findings.linkedin_values || {};
+  for (const [label, key] of compareFields) {
+    if (!driftData[key] && !fields.includes(key)) continue;
+    const before = snap[key] || '';
+    const after  = a.suggested_updates?.[key] || '';
+    const drifted = driftData[key] || '';
+    html += `<tr>
+      <td class="ec-field">${label}</td>
+      <td>${before ? esc(before) : '<span class="ec-empty">empty</span>'}</td>
+      <td>${after ? esc(after) : '<span class="ec-empty">—</span>'}</td>
+      <td>${drifted ? `<span class="ec-diff">${esc(drifted)}</span>` : '<span class="ec-empty">—</span>'}</td>
+    </tr>`;
+  }
+  html += `</table>
+      <div class="enrich-actions">
+        ${lnUrl ? `<a href="${esc(lnUrl)}" target="_blank" class="btn" style="font-size:12px;padding:6px 14px;text-decoration:none;background:#0077b5;color:white;">🔗 Verify on LinkedIn</a>` : ''}
+        <button class="btn btn-primary" onclick="acceptDrift(${a.audit_id})" style="font-size:12px;padding:6px 14px;background:#2d8a4e;color:white;">✅ Accept LinkedIn Values</button>
+        <button class="btn" onclick="confirmAuditManually(${a.audit_id})" style="font-size:12px;padding:6px 14px;background:#e3f2fd;color:#1565c0;">⏸ Keep PDL Values (No Change)</button>
+      </div>
+    </div>
+  </div>`;
+  return html;
+}
+
+// ─── Audit actions ──────────────────────────────────────
+async function confirmAuditManually(auditId) {
+  if (!confirm('Mark this audit as manually confirmed? (Record is correct; no changes needed.)')) return;
+  try {
+    const user = sessionStorage.getItem('else_user') || 'unknown';
+    const { error } = await db.from('enrichment_audits').update({
+      status: 'completed',
+      outcome: 'confirmed',
+      audited_by: user + ' (manual)',
+      audited_at: new Date().toISOString()
+    }).eq('audit_id', auditId);
+    if (error) throw error;
+    showEnrichToast('✅ Audit confirmed');
+    await loadAutoDecisions();
+  } catch(e) {
+    alert('Error confirming audit: ' + e.message);
+  }
+}
+
+async function revertAudit(auditId, reason) {
+  const label = reason === 'wrong_person' ? 'WRONG PERSON (will also block PDL ID from future matches)' : 'manual revert (will allow the same PDL ID to rematch later)';
+  if (!confirm(`Revert this auto-approval?\n\nReason: ${label}\n\nThe contact will be restored from snapshot. The queue row will be marked rejected.`)) return;
+  try {
+    const user = sessionStorage.getItem('else_user') || 'unknown';
+    const { data, error } = await db.rpc('revert_auto_approval', {
+      p_audit_id: auditId,
+      p_reason: reason,
+      p_reverted_by: user
+    });
+    if (error) throw error;
+    showEnrichToast(reason === 'wrong_person' ? '🚫 Reverted — PDL ID blocklisted' : '↩️ Reverted');
+    await loadAutoDecisions();
+    try { loadEnrichDashboard(); } catch(e) {}
+  } catch(e) {
+    alert('Error reverting audit: ' + e.message);
+    console.error('revertAudit:', e);
+  }
+}
+
+async function acceptDrift(auditId) {
+  if (!confirm('Accept the LinkedIn values for this contact?\n\nThis will overwrite the PDL-applied values with what LinkedIn currently shows. A new snapshot is saved so this is also revertible.')) return;
+  try {
+    // Pull the audit to get the drift findings
+    const { data: audit, error: getErr } = await db.from('enrichment_audits').select('*').eq('audit_id', auditId).single();
+    if (getErr) throw getErr;
+    if (!audit) { alert('Audit record not found (id ' + auditId + ').'); return; }
+    const linkedinVals = audit.findings?.linkedin_values || {};
+    if (!Object.keys(linkedinVals).length) {
+      alert('No LinkedIn values found in audit findings. Nothing to accept.');
+      return;
+    }
+    const user = sessionStorage.getItem('else_user') || 'unknown';
+    const { error } = await db.rpc('accept_drift_update', {
+      p_audit_id: auditId,
+      p_updates: linkedinVals,
+      p_accepted_by: user
+    });
+    if (error) throw error;
+    showEnrichToast('✅ LinkedIn values applied');
+    await loadAutoDecisions();
+    try { loadEnrichDashboard(); } catch(e) {}
+  } catch(e) {
+    alert('Error accepting drift: ' + e.message);
+    console.error('acceptDrift:', e);
+  }
+}
+
+async function showBlocklistDetails() {
+  try {
+    const { data: blocked } = await db.from('blocked_pdl_ids')
+      .select('*, contacts(name)')
+      .order('blocked_at', {ascending: false}).limit(100);
+    if (!blocked || !blocked.length) { alert('Blocklist is empty.'); return; }
+    let msg = `${blocked.length} PDL ID${blocked.length!==1?'s':''} blocked:\n\n`;
+    for (const b of blocked.slice(0, 20)) {
+      const name = b.contacts?.name || `Contact ${b.contact_id}`;
+      const when = new Date(b.blocked_at).toLocaleDateString();
+      msg += `• ${name} — PDL ${b.pdl_id.slice(0, 12)}... (${b.reason}, ${when})\n`;
+    }
+    if (blocked.length > 20) msg += `\n...and ${blocked.length - 20} more.`;
+    alert(msg);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+}
+
 async function loadEnrichmentHistory() {
   const container = document.getElementById('enrichmentHistoryContent');
   container.innerHTML = '<p style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">Loading...</p>';
