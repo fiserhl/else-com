@@ -4515,12 +4515,17 @@ function buildAuditSection(tier, title, desc, items, readonly=false) {
       <p style="font-size:11px;color:var(--text-muted);margin:0;">${desc}</p>
     </div>`;
   }
+  // Silver tier gets an extra warning banner — wrong-person-prone
+  const silverWarning = tier === 'silver' ? `<div style="background:#fff8e1;border:1px solid #f5c76e;border-radius:var(--radius);padding:8px 12px;margin-bottom:10px;font-size:11px;color:#7a5a00;">
+    <strong>⚠️ Silver tier is wrong-person-prone.</strong> These were approved on rare-name + confidence alone — no Millsaps education match. Check PDL's returned name and location carefully; if they don't match the contact, use "Revert — Wrong Person" to blocklist.
+  </div>` : '';
   let html = `<div class="edash-card" style="margin-bottom:10px;border-left:3px solid ${tierColor};padding:12px 16px;">
     <div style="margin-bottom:10px;">
       <h4 style="margin-bottom:2px;display:inline;">${title}</h4>
       <span style="font-weight:400;color:var(--text-muted);font-size:11px;"> (${items.length})</span>
       <p style="font-size:11px;color:var(--text-muted);margin:4px 0 0 0;">${desc}</p>
-    </div>`;
+    </div>
+    ${silverWarning}`;
   for (const a of items) {
     html += renderAuditCard(a, readonly);
   }
@@ -4565,8 +4570,52 @@ function renderAuditCard(a, readonly=false) {
   const whenStr = a.audited_at 
     ? new Date(a.audited_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + new Date(a.audited_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
     : 'not audited';
-  const lnUrl = a.contact_linkedin || (suggestions.linkedin_url || '');
 
+  // ── PDL IDENTITY PANEL ────────────────────────────────────
+  // Surfaces who PDL thinks this is, so the reviewer can spot wrong-person matches
+  // (like Augusto Medeiros → Tiarra Jones) without opening the raw JSON.
+  const pdl = a.pdl_response || {};
+  const pdlFullName = pdl.full_name || '';
+  const pdlFirst    = (pdl.first_name || '').toLowerCase().trim();
+  const pdlLast     = (pdl.last_name  || '').toLowerCase().trim();
+  const contactName = (a.contact_name || '').toLowerCase();
+  // Simple heuristic: warn if neither first nor last appears in contact name
+  const nameMismatch = pdlFirst && pdlLast && contactName &&
+    !contactName.includes(pdlFirst) && !contactName.includes(pdlLast);
+  const pdlLinkedin = pdl.linkedin_url || '';
+  const pdlLocation = pdl.location_name || '';
+  const pdlJobTitle = pdl.job_title || '';
+  const pdlCompany  = pdl.job_company_name || '';
+  const pdlIndustry = pdl.industry || '';
+  const pdlSex      = pdl.sex || '';
+  const matchedOn   = a.matched_on || (a.suggested_updates?._extra ? 'email' : '—');
+  const pdlEdu      = Array.isArray(pdl.education) ? pdl.education : [];
+
+  let pdlIdentityHtml = '';
+  if (pdlFullName || pdlLocation || pdlJobTitle || pdlEdu.length) {
+    pdlIdentityHtml = `<div style="background:${nameMismatch ? '#fdecea' : 'rgba(0,0,0,0.02)'};border:1px solid ${nameMismatch ? '#f5c76e' : 'var(--border-light)'};border-radius:var(--radius);padding:10px 12px;margin-bottom:12px;font-size:11px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">About this PDL match</div>
+      ${nameMismatch ? `<div style="background:#fdecea;border:1px solid #c0392b;border-radius:4px;padding:6px 8px;margin-bottom:8px;color:#c0392b;font-weight:600;">⚠️ Name mismatch warning: PDL returned a different name than your contact. Verify carefully before confirming.</div>` : ''}
+      <div style="display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;">
+        ${pdlFullName ? `<div style="color:var(--text-muted);">Name:</div><div style="font-weight:600;${nameMismatch?'color:#c0392b;':''}">${esc(pdlFullName)}</div>` : ''}
+        ${pdlSex ? `<div style="color:var(--text-muted);">Sex:</div><div>${esc(pdlSex)}</div>` : ''}
+        <div style="color:var(--text-muted);">Matched via:</div><div><code style="background:var(--border-light);padding:1px 5px;border-radius:3px;font-size:10px;">${esc(matchedOn)}</code></div>
+        ${pdlLocation ? `<div style="color:var(--text-muted);">Location:</div><div>${esc(pdlLocation)}</div>` : ''}
+        ${pdlJobTitle || pdlCompany ? `<div style="color:var(--text-muted);">Job:</div><div>${esc(pdlJobTitle)}${pdlCompany ? ' at <strong>' + esc(pdlCompany) + '</strong>' : ''}</div>` : ''}
+        ${pdlIndustry ? `<div style="color:var(--text-muted);">Industry:</div><div>${esc(pdlIndustry)}</div>` : ''}
+        ${pdlLinkedin ? `<div style="color:var(--text-muted);">LinkedIn:</div><div><a href="${esc(pdlLinkedin)}" target="_blank" style="color:#0077b5;text-decoration:underline;">${esc(pdlLinkedin.replace(/^https?:\/\//,''))}</a></div>` : ''}
+        ${pdlEdu.length ? `<div style="color:var(--text-muted);">Education:</div><div>${pdlEdu.map(e => {
+          const s = (e.school && e.school.name) || '';
+          const end = e.end_date || '';
+          const majors = Array.isArray(e.majors) && e.majors.length ? ' (' + e.majors.join(', ') + ')' : '';
+          const dateStr = end ? ' — ' + end : '';
+          return esc(s) + esc(majors) + dateStr;
+        }).filter(Boolean).join('<br>')}</div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  // ── CARD HEADER ──────────────────────────────────────────
   let html = `<div class="enrich-card" id="aud-${a.audit_id}" style="margin-bottom:6px;">
     <div class="enrich-card-header" onclick="document.getElementById('aud-${a.audit_id}').classList.toggle('expanded')">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -4574,6 +4623,7 @@ function renderAuditCard(a, readonly=false) {
         <span class="ec-name">${esc(a.contact_name || ('ID:' + a.contact_id))}</span>
         <span style="font-size:10px;color:var(--text-muted);">ID:${a.contact_id}</span>
         <span style="font-size:10px;color:var(--text-muted);background:var(--border-light);padding:1px 6px;border-radius:4px;">${tierBadge}</span>
+        ${nameMismatch ? `<span style="font-size:10px;color:#c0392b;font-weight:600;">⚠️ name mismatch</span>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
         <span class="ec-conf ${a.confidence>=7?'ec-conf-high':a.confidence>=4?'ec-conf-med':'ec-conf-low'}">${a.confidence || '—'}/10</span>
@@ -4583,11 +4633,12 @@ function renderAuditCard(a, readonly=false) {
     </div>
     <div class="enrich-card-body">
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;padding:8px;background:rgba(0,0,0,0.02);border-radius:4px;">
-        <strong>Reasoning:</strong> ${esc(a.reasoning || 'n/a')}<br>
+        <strong>Engine reasoning:</strong> ${esc(a.reasoning || 'n/a')}<br>
         <strong>Last activity:</strong> ${whenStr}${a.audited_by ? ' by ' + esc(a.audited_by) : ''}
       </div>
+      ${pdlIdentityHtml}
       <table class="enrich-compare">
-        <tr><th style="width:25%;">Field</th><th style="width:35%;">Value Before</th><th style="width:40%;">Value After (PDL)</th></tr>`;
+        <tr><th style="width:22%;">Field</th><th style="width:30%;">Value Before</th><th style="width:30%;">Value After (PDL)</th><th style="width:18%;">${readonly?'':'Action'}</th></tr>`;
   const compareFields = [['Email','email'],['Organization','organization'],['Title','title'],['LinkedIn','linkedin_url'],['Cell Phone','cell_phone'],['Phone','phone'],['City','city'],['State','state']];
   const snap = a.pre_change_snapshot || {};
   for (const [label, key] of compareFields) {
@@ -4598,17 +4649,20 @@ function renderAuditCard(a, readonly=false) {
       <td class="ec-field">${label}</td>
       <td>${before ? esc(before) : '<span class="ec-empty">empty</span>'}</td>
       <td><span class="ec-new">${esc(after)}</span></td>
+      <td>${readonly ? '' : `<button class="btn" onclick="partialRevertField(${a.audit_id}, '${key}')" style="font-size:10px;padding:3px 8px;background:#fff8e1;color:#f57f17;border:1px solid #f5c76e;">↶ Revert</button>`}</td>
     </tr>`;
   }
   html += `</table>`;
 
   if (!readonly) {
+    const linkButtons = `${pdlLinkedin || a.contact_linkedin ? `<a href="${esc(pdlLinkedin || a.contact_linkedin)}" target="_blank" class="btn" style="font-size:12px;padding:6px 14px;text-decoration:none;background:#0077b5;color:white;">🔗 Verify on LinkedIn</a>` : ''}
+      <button class="btn" onclick="openContactFromAudit(${a.contact_id})" style="font-size:12px;padding:6px 14px;background:#e3f2fd;color:#1565c0;">👤 Open Contact</button>`;
     html += `<div class="enrich-actions">
-      ${lnUrl ? `<a href="${esc(lnUrl)}" target="_blank" class="btn" style="font-size:12px;padding:6px 14px;text-decoration:none;background:#0077b5;color:white;">🔗 Open LinkedIn</a>` : ''}
+      ${linkButtons}
       <button class="btn btn-primary" onclick="confirmAuditManually(${a.audit_id})" style="font-size:12px;padding:6px 14px;background:#2d8a4e;color:white;">✅ Looks Right — Confirm</button>
-      <button class="btn" onclick="revertAudit(${a.audit_id}, 'manual_revert')" style="font-size:12px;padding:6px 14px;background:#fff8e1;color:#f57f17;">↩️ Revert (keep PDL ID)</button>
-      <button class="btn" onclick="revertAudit(${a.audit_id}, 'wrong_person')" style="font-size:12px;padding:6px 14px;background:#fdecea;color:#c0392b;">🚫 Revert — Wrong Person</button>
-    </div>`;
+      <button class="btn" onclick="revertAudit(${a.audit_id}, 'wrong_person')" style="font-size:12px;padding:6px 14px;background:#fdecea;color:#c0392b;">🚫 Revert All — Wrong Person</button>
+    </div>
+    <p style="font-size:10px;color:var(--text-muted);margin-top:6px;">Tip: to reject just some fields but keep others, use the per-field "↶ Revert" buttons above.</p>`;
   }
   html += `</div></div>`;
   return html;
@@ -4701,6 +4755,52 @@ async function revertAudit(auditId, reason) {
   } catch(e) {
     alert('Error reverting audit: ' + e.message);
     console.error('revertAudit:', e);
+  }
+}
+
+// ─── Phase 4.1: Per-field revert ─────────────────────────
+async function partialRevertField(auditId, field) {
+  if (!confirm(`Revert just the "${field}" field back to its value before the PDL auto-apply?\n\nOther auto-applied fields on this audit will NOT be touched.\n\nIf this was the last applied field, the audit will be marked fully reverted.`)) return;
+  try {
+    const user = sessionStorage.getItem('else_user') || 'unknown';
+    const { data, error } = await db.rpc('partial_revert_audit', {
+      p_audit_id: auditId,
+      p_fields_to_revert: [field],
+      p_reverted_by: user
+    });
+    if (error) throw error;
+    const result = Array.isArray(data) ? data[0] : data;
+    if (result) {
+      const msg = result.out_fully_reverted
+        ? `✓ Fully reverted (${field} was the last applied field)`
+        : `✓ Reverted ${field}${result.out_remaining && result.out_remaining.length ? ' — ' + result.out_remaining.length + ' field(s) still applied' : ''}`;
+      showEnrichToast(msg);
+    } else {
+      showEnrichToast('✓ Reverted ' + field);
+    }
+    await loadAutoDecisions();
+    try { loadEnrichDashboard(); } catch(e) {}
+  } catch(e) {
+    alert('Error reverting field: ' + e.message);
+    console.error('partialRevertField:', e);
+  }
+}
+
+// ─── Phase 4.1: Open contact from audit ──────────────────
+function openContactFromAudit(contactId) {
+  // The tab switch is handled by an event listener on .tab buttons (no named function).
+  // Click the Contacts tab, then open the contact modal after the list renders.
+  try {
+    const contactsTab = document.querySelector('.tab[data-tab="contacts"]');
+    if (contactsTab) contactsTab.click();
+    if (typeof openModal === 'function') {
+      // Small delay so the tab switch completes and the contact list renders
+      setTimeout(() => openModal(parseInt(contactId)), 200);
+    } else {
+      alert('Cannot open contact — modal function not found. Contact ID: ' + contactId);
+    }
+  } catch(e) {
+    alert('Error opening contact: ' + e.message);
   }
 }
 
