@@ -5319,14 +5319,20 @@ async function approveAlumniContact(contactId, selectedOnly, skipRefresh) {
       .select('*').eq('contact_id', contactId).eq('status', 'pending');
     if (!items || !items.length) { if (!skipRefresh) alert('No pending items found.'); return; }
 
-    // Determine which to apply
+    // Determine which to apply and which to reject (unchecked = skipped = reject)
     let toApply = [];
+    let toReject = [];
     if (selectedOnly) {
-      const checks = document.querySelectorAll(`input.alumni-field-check[data-qid]:checked`);
+      // Scope checkbox query to THIS card to avoid cross-contamination from other expanded cards
+      const card = document.getElementById(`aq-${contactId}`);
+      const checks = card
+        ? card.querySelectorAll('input.alumni-field-check[data-qid]:checked')
+        : document.querySelectorAll(`input.alumni-field-check[data-qid]:checked`);
       const checkedIds = new Set();
       checks.forEach(cb => checkedIds.add(parseInt(cb.dataset.qid)));
       toApply = items.filter(i => checkedIds.has(i.id));
-      if (!toApply.length) { alert('No fields selected. Check the boxes next to the fields you want to apply.'); return; }
+      toReject = items.filter(i => !checkedIds.has(i.id));
+      if (!toApply.length) { alert('No fields selected. Check the boxes next to the fields you want to apply, or click "Reject All" to dismiss this contact.'); return; }
     } else {
       toApply = items;
     }
@@ -5377,21 +5383,30 @@ async function approveAlumniContact(contactId, selectedOnly, skipRefresh) {
     await logContactHistory(contactId, 'updated', diffs.join('\n'), sessionStorage.getItem('else_user') || 'system', 'Alumni Spreadsheet Import');
 
     // Mark queue items as approved
+    const reviewedAt = new Date().toISOString();
     for (const id of appliedIds) {
       await db.from('alumni_spreadsheet_queue').update({
         status: 'approved',
-        reviewed_at: new Date().toISOString()
+        reviewed_at: reviewedAt
       }).eq('id', id);
     }
 
-    // Mark any remaining items for this contact as rejected if we did "Approve All"
-    if (!selectedOnly) {
-      const remainingIds = items.filter(i => !appliedIds.includes(i.id)).map(i => i.id);
-      // All were included in toApply when !selectedOnly, so nothing to reject
+    // Mark unchecked/unselected items as rejected so the contact drops out of the
+    // pending queue after one review decision (matches PDL Research behavior).
+    let rejectedCount = 0;
+    if (toReject.length > 0) {
+      const rejectIds = toReject.map(i => i.id);
+      const { error: rejErr } = await db.from('alumni_spreadsheet_queue').update({
+        status: 'rejected',
+        reviewed_at: reviewedAt
+      }).in('id', rejectIds);
+      if (rejErr) { console.error('Alumni reject-unchecked error:', rejErr); }
+      else { rejectedCount = rejectIds.length; }
     }
 
     if (!skipRefresh) {
-      showEnrichToast(`✅ ${contactName} — ${diffs.length} change${diffs.length !== 1 ? 's' : ''} applied`);
+      const skippedMsg = rejectedCount > 0 ? ` (${rejectedCount} skipped)` : '';
+      showEnrichToast(`✅ ${contactName} — ${diffs.length} change${diffs.length !== 1 ? 's' : ''} applied${skippedMsg}`);
       await loadAlumniQueue();
       await loadContacts();
       try { loadAlumniDashboard(); } catch(e) {}
@@ -5405,17 +5420,37 @@ async function approveAlumniContact(contactId, selectedOnly, skipRefresh) {
 
 async function rejectAlumniContact(contactId) {
   try {
+    // Grab pending row IDs first so we can verify the update took effect
+    const { data: pending, error: pErr } = await db.from('alumni_spreadsheet_queue')
+      .select('id').eq('contact_id', contactId).eq('status', 'pending');
+    if (pErr) throw pErr;
+    if (!pending || !pending.length) {
+      showEnrichToast('Nothing to reject — no pending items for this contact.');
+      await loadAlumniQueue();
+      return;
+    }
+
+    const pendingIds = pending.map(p => p.id);
     const { error } = await db.from('alumni_spreadsheet_queue').update({
       status: 'rejected',
       reviewed_at: new Date().toISOString()
-    }).eq('contact_id', contactId).eq('status', 'pending');
+    }).in('id', pendingIds);
     if (error) throw error;
 
-    showEnrichToast('❌ Alumni import rejected');
+    // Verify the update actually landed (catches silent RLS issues)
+    const { data: stillPending } = await db.from('alumni_spreadsheet_queue')
+      .select('id').in('id', pendingIds).eq('status', 'pending');
+    if (stillPending && stillPending.length > 0) {
+      console.error('Alumni reject: rows still pending after update', stillPending);
+      alert(`Warning: ${stillPending.length} row(s) did not update. Check RLS / app_secret.`);
+    }
+
+    showEnrichToast(`❌ Alumni import rejected (${pendingIds.length} item${pendingIds.length!==1?'s':''})`);
     await loadAlumniQueue();
     try { loadAlumniDashboard(); } catch(e) {}
   } catch(e) {
     alert('Error rejecting: ' + e.message);
+    console.error('Alumni reject error:', e);
   }
 }
 
