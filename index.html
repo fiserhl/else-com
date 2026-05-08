@@ -4345,157 +4345,167 @@ async function runSingleEnrich() {
 // ─── Enrichment History ─────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════
 // AUTO-DECISIONS DASHBOARD (Phase 4)
-// Surfaces the automated PDL pipeline: last run, stats, audit queue.
+// Shows pipeline stats, pending human review, recent auto-approvals
+// with one-click reversal, and recent auto-rejections.
 // ═══════════════════════════════════════════════════════════════
+
 async function loadAutoDecisions() {
   const container = document.getElementById('autoDecisionsContent');
   container.innerHTML = '<p style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">Loading auto-decision dashboard...</p>';
   try {
-    // Fire all queries in parallel
-    const [runsRes, statsRes, pendingRes, recentRes, blockedRes, driftRes] = await Promise.all([
-      db.from('cron_runs').select('*').eq('run_kind','pdl_enrichment').order('started_at',{ascending:false}).limit(10),
-      db.from('v_automation_stats').select('*').limit(1),
-      db.from('v_pending_audits').select('*').eq('audit_status','pending').order('queued_at',{ascending:false}),
-      db.from('v_pending_audits').select('*').in('audit_status',['completed']).gte('audited_at', new Date(Date.now()-7*24*60*60*1000).toISOString()).order('audited_at',{ascending:false}).limit(50),
-      db.from('blocked_pdl_ids').select('*').order('blocked_at',{ascending:false}).limit(50),
-      db.from('v_pending_audits').select('*').eq('outcome','data_drift').order('audited_at',{ascending:false}).limit(20)
+    const sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+
+    const [allStatsRes, weekRes, humanRes, recentApproveRes, recentRejectRes] = await Promise.all([
+      // All-time totals by decision type
+      db.from('enrichment_queue').select('auto_decision').not('auto_decision','is',null),
+      // This week's activity
+      db.from('v_auto_decisions').select('auto_decision').gte('auto_decision_at', sevenDaysAgo),
+      // Pending human review
+      db.from('v_auto_decisions')
+        .select('*')
+        .eq('auto_decision','human-review')
+        .eq('status','pending')
+        .order('confidence',{ascending:false})
+        .limit(100),
+      // Recently auto-approved (7-day reversal window)
+      db.from('v_auto_decisions')
+        .select('*')
+        .eq('auto_decision','auto-approve')
+        .eq('status','approved')
+        .gte('reviewed_at', sevenDaysAgo)
+        .order('reviewed_at',{ascending:false})
+        .limit(100),
+      // Recent auto-rejections (last 7 days, visibility only)
+      db.from('v_auto_decisions')
+        .select('id,contact_id,contact_name,confidence,auto_decision_reasoning,auto_decision_at')
+        .eq('auto_decision','auto-reject')
+        .gte('auto_decision_at', sevenDaysAgo)
+        .order('auto_decision_at',{ascending:false})
+        .limit(50)
     ]);
-    const runs    = runsRes.data    || [];
-    const stats   = (statsRes.data || [])[0] || {};
-    const pending = pendingRes.data || [];
-    const recent  = recentRes.data  || [];
-    const blocked = blockedRes.data || [];
-    const drift   = driftRes.data   || [];
 
-    // Update sub-tab badge with pending audit count
+    const allStats      = allStatsRes.data  || [];
+    const weekItems     = weekRes.data       || [];
+    const humanItems    = humanRes.data      || [];
+    const recentApprove = recentApproveRes.data || [];
+    const recentReject  = recentRejectRes.data  || [];
+
+    // Count by decision type (all-time)
+    const tally = (arr, key) => arr.filter(r => r.auto_decision === key).length;
+    const allApproved = tally(allStats,'auto-approve');
+    const allRejected = tally(allStats,'auto-reject');
+    const allReview   = tally(allStats,'human-review');
+    const allReverted = tally(allStats,'reverted');
+
+    // Count this week
+    const wkApproved = tally(weekItems,'auto-approve');
+    const wkRejected = tally(weekItems,'auto-reject');
+    const wkReview   = tally(weekItems,'human-review');
+
+    // Update orange badge on the Auto-Decisions tab
     const badge = document.getElementById('autoBadge');
-    const totalNeedingEyes = pending.length + drift.length;
-    if (totalNeedingEyes > 0) { badge.textContent = totalNeedingEyes; badge.style.display = 'inline'; }
-    else { badge.style.display = 'none'; }
-
-    // Split pending into silver vs gold
-    const silverPending = pending.filter(p => p.audit_tier === 'silver');
-    const goldPending   = pending.filter(p => p.audit_tier === 'gold');
-    // Reverts from full audits (in v_pending_audits because the view is tied to queue, not action_taken; we need a separate query for reverts)
-    const reverts = recent.filter(r => r.action_taken === 'reverted');
+    if (humanItems.length > 0) {
+      badge.textContent = humanItems.length;
+      badge.style.display = 'inline';
+    } else {
+      badge.style.display = 'none';
+    }
 
     let html = '';
 
-    // ─── LAST RUN BANNER ─────────────────────────────────────
-    const lastRun = runs[0];
-    if (lastRun) {
-      const when    = new Date(lastRun.started_at);
-      const whenStr = when.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + when.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-      const statusColors = { completed:'#2d8a4e', partial:'#f57f17', failed:'#c0392b', stopped_credits:'#f57f17', stopped_timeout:'#f57f17', in_progress:'#1565c0' };
-      const statusIcons  = { completed:'✓', partial:'⚠️', failed:'✗', stopped_credits:'💳', stopped_timeout:'⏱', in_progress:'⏳' };
-      const statusColor = statusColors[lastRun.status] || 'var(--text-muted)';
-      const statusIcon  = statusIcons[lastRun.status]  || '•';
-      const processed    = lastRun.processed      || 0;
-      const matched      = lastRun.pdl_matched    || 0;
-      const approved     = lastRun.auto_approved  || 0;
-      const rejected     = lastRun.auto_rejected  || 0;
-      const heldReview   = lastRun.held_for_review|| 0;
-      const creditsUsed  = lastRun.credits_used;
-      const creditsLeft  = lastRun.credits_remaining;
-      html += `<div class="edash-card" style="margin-bottom:12px;border-left:4px solid ${statusColor};">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-          <div>
-            <h4 style="margin-bottom:2px;">🤖 Last Automated Run</h4>
-            <div style="font-size:11px;color:var(--text-muted);">${whenStr} · triggered by <code style="font-size:10px;background:var(--border-light);padding:1px 5px;border-radius:3px;">${esc(lastRun.triggered_by || 'unknown')}</code></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;font-weight:600;color:${statusColor};font-size:13px;">
-            <span style="font-size:16px;">${statusIcon}</span><span>${esc(lastRun.status)}</span>
-          </div>
+    // ─── STATS BANNER ─────────────────────────────────────────
+    const lastActivity = allStats.length
+      ? allStats.sort((a,b) => 0).map(r=>r.auto_decision_at).filter(Boolean).sort().reverse()[0]
+      : null;
+    html += `<div class="edash-card" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+        <h4 style="margin:0;">🤖 Automated PDL Pipeline</h4>
+        <span style="font-size:11px;color:var(--text-muted);">Next run: Sunday 3 AM Central · <a href="#" onclick="event.preventDefault();loadAutoDecisions();" style="color:var(--accent);">↻ refresh</a></span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+        <div class="edash-kpi" style="border-left:3px solid #2d8a4e;">
+          <div class="edash-kpi-num" style="color:#2d8a4e;">${allApproved}</div>
+          <div class="edash-kpi-label">Auto-Approved (all time)</div>
+          <div style="font-size:10px;color:#2d8a4e;margin-top:2px;">+${wkApproved} this week</div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:4px;">
-          <div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--accent);">${processed}</div><div class="edash-kpi-label">Processed</div></div>
-          <div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--accent);">${matched}</div><div class="edash-kpi-label">PDL Matched</div></div>
-          <div class="edash-kpi"><div class="edash-kpi-num" style="color:#2d8a4e;">${approved}</div><div class="edash-kpi-label">Auto-Approved</div></div>
-          <div class="edash-kpi"><div class="edash-kpi-num" style="color:#c0392b;">${rejected}</div><div class="edash-kpi-label">Auto-Rejected</div></div>
-          <div class="edash-kpi"><div class="edash-kpi-num" style="color:${heldReview>0?'#f57f17':'var(--text-muted)'};">${heldReview}</div><div class="edash-kpi-label">Held for Review</div></div>
-          ${creditsUsed != null ? `<div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--gold);">${creditsUsed}</div><div class="edash-kpi-label">Credits Used</div></div>` : ''}
-          ${creditsLeft != null ? `<div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--text-secondary);">${creditsLeft}</div><div class="edash-kpi-label">Credits Left</div></div>` : ''}
+        <div class="edash-kpi" style="border-left:3px solid #c0392b;">
+          <div class="edash-kpi-num" style="color:#c0392b;">${allRejected}</div>
+          <div class="edash-kpi-label">Auto-Rejected (all time)</div>
+          <div style="font-size:10px;color:#c0392b;margin-top:2px;">+${wkRejected} this week</div>
         </div>
-        ${lastRun.errors && lastRun.errors.length > 0 ? `<details style="margin-top:10px;font-size:11px;"><summary style="cursor:pointer;color:#c0392b;font-weight:600;">⚠️ ${lastRun.errors.length} error${lastRun.errors.length!==1?'s':''} — click to view</summary><pre style="font-size:10px;background:#fdecea;padding:8px;border-radius:4px;margin-top:6px;overflow-x:auto;">${esc(JSON.stringify(lastRun.errors, null, 2))}</pre></details>` : ''}
+        <div class="edash-kpi" style="border-left:3px solid #f57f17;">
+          <div class="edash-kpi-num" style="color:${humanItems.length>0?'#f57f17':'var(--text-muted)'};">${allReview}</div>
+          <div class="edash-kpi-label">Queued for Review (all time)</div>
+          <div style="font-size:10px;color:#f57f17;margin-top:2px;">${humanItems.length} pending your review</div>
+        </div>
+        <div class="edash-kpi" style="border-left:3px solid var(--border);">
+          <div class="edash-kpi-num" style="color:var(--text-muted);">${allReverted}</div>
+          <div class="edash-kpi-label">Reverted (all time)</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">anytime via button below</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);background:rgba(0,0,0,0.02);border-radius:var(--radius);padding:8px 12px;">
+        <strong>Conservative mode active.</strong> Auto-reject floor: 1.5/10 (practically never fires). Location conflicts → human review. All auto-approvals are reversible for 7 days below.
+      </div>
+    </div>`;
+
+    // ─── PENDING HUMAN REVIEW ─────────────────────────────────
+    const hrColor = humanItems.length > 0 ? '#f57f17' : 'var(--text-muted)';
+    html += `<div class="edash-card" style="margin-bottom:12px;border-left:4px solid ${hrColor};">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div>
+          <h4 style="margin:0;">👀 Pending Human Review <span style="font-weight:400;font-size:12px;color:var(--text-muted);">(${humanItems.length})</span></h4>
+          <p style="font-size:11px;color:var(--text-muted);margin:2px 0 0 0;">These didn't meet auto-approve criteria — common names, overwrites, or mid-range confidence. Review each and approve or reject.</p>
+        </div>
+        ${humanItems.length > 1 ? `<button class="btn" onclick="bulkApproveHumanReview()" style="font-size:11px;padding:5px 12px;background:#e8f5e9;color:#2d8a4e;">✅ Approve All</button>` : ''}
       </div>`;
+    if (!humanItems.length) {
+      html += `<p style="font-size:12px;color:var(--text-muted);margin:0;padding:8px 0;">Nothing pending — you're all caught up. ✓</p>`;
     } else {
-      html += `<div class="edash-card" style="margin-bottom:12px;">
-        <h4 style="margin-bottom:4px;">🤖 Automated Runs</h4>
-        <p style="font-size:12px;color:var(--text-muted);margin:0;">No automated runs yet. First scheduled run: next Tuesday or Friday at 3 AM Central.</p>
+      for (const item of humanItems) {
+        html += renderAutoDecisionCard(item, 'review');
+      }
+    }
+    html += `</div>`;
+
+    // ─── RECENTLY AUTO-APPROVED (7-day reversal window) ───────
+    html += `<div class="edash-card" style="margin-bottom:12px;border-left:4px solid #2d8a4e;">
+      <div style="margin-bottom:10px;">
+        <h4 style="margin:0;">✅ Auto-Approved This Week <span style="font-weight:400;font-size:12px;color:var(--text-muted);">(${recentApprove.length})</span></h4>
+        <p style="font-size:11px;color:var(--text-muted);margin:2px 0 0 0;">The engine applied these automatically. Expand any card to see what changed and revert with one click if needed.</p>
       </div>`;
+    if (!recentApprove.length) {
+      html += `<p style="font-size:12px;color:var(--text-muted);margin:0;padding:8px 0;">No auto-approvals in the last 7 days yet.</p>`;
+    } else {
+      for (const item of recentApprove) {
+        html += renderAutoDecisionCard(item, 'approved');
+      }
     }
+    html += `</div>`;
 
-    // ─── 30-DAY STATS + BLOCKLIST ROW ────────────────────────
-    html += `<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:16px;">
-      <div class="edash-card">
-        <h4>📊 30-Day Pipeline Stats</h4>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:4px;">
-          <div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--accent);">${stats.total_runs_30d || 0}</div><div class="edash-kpi-label">Runs</div></div>
-          <div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--accent);">${stats.total_processed || 0}</div><div class="edash-kpi-label">Processed</div></div>
-          <div class="edash-kpi"><div class="edash-kpi-num" style="color:#2d8a4e;">${stats.total_auto_approved || 0}</div><div class="edash-kpi-label">Approved</div></div>
-          <div class="edash-kpi"><div class="edash-kpi-num" style="color:#c0392b;">${stats.total_auto_rejected || 0}</div><div class="edash-kpi-label">Rejected</div></div>
-          <div class="edash-kpi"><div class="edash-kpi-num" style="color:${stats.total_held_for_review>0?'#f57f17':'var(--text-muted)'};">${stats.total_held_for_review || 0}</div><div class="edash-kpi-label">Human Review</div></div>
-          <div class="edash-kpi"><div class="edash-kpi-num" style="color:var(--gold);">${stats.total_credits_used || 0}</div><div class="edash-kpi-label">Credits</div></div>
-        </div>
-      </div>
-      <div class="edash-card">
-        <h4>🚫 PDL Blocklist</h4>
-        <div style="text-align:center;padding:10px 0;">
-          <div class="edash-kpi-num" style="color:${blocked.length>0?'#c0392b':'var(--text-muted)'};">${blocked.length}</div>
-          <div class="edash-kpi-label" style="margin-bottom:8px;">Blocked PDL IDs</div>
-          ${blocked.length > 0 ? `<button class="btn" onclick="showBlocklistDetails()" style="font-size:11px;padding:4px 10px;">View All</button>` : `<div style="font-size:10px;color:var(--text-muted);">No wrong-person reverts yet</div>`}
-        </div>
-      </div>
-    </div>`;
-
-    // ─── AUDIT QUEUE SECTIONS ────────────────────────────────
-    html += `<div style="margin-bottom:8px;">
-      <h3 style="font-family:var(--serif);font-size:16px;font-weight:500;color:var(--accent);margin-bottom:2px;">Audit Queue</h3>
-      <p style="font-size:11px;color:var(--text-muted);">Auto-approvals awaiting verification. Silver tier is 100% audited; gold tier is 20% sampled.</p>
-    </div>`;
-
-    html += buildAuditSection('silver', '🥈 Silver Tier — LinkedIn Audit Required', 'Rare-name matches without Millsaps education in PDL data. All of these get checked.', silverPending);
-    html += buildAuditSection('gold',   '🥇 Gold Tier — Sampled for Audit',           'Millsaps-education-confirmed matches. 20% of these sampled for LinkedIn verification.', goldPending);
-    html += buildDriftSection(drift);
-    html += buildAuditSection('recent', '✅ Recently Confirmed (last 7 days)',          'Audits completed by Claude in Chrome. All verified and locked in.', recent.filter(r => r.outcome === 'confirmed'), true);
-    if (reverts.length) html += buildAuditSection('reverts', '↩️ Recent Reverts (last 7 days)', 'Auto-approvals that were reversed — either manually or via wrong-person audit.', reverts, true);
-
-    // ─── CRON RUNS HISTORY (COLLAPSIBLE) ─────────────────────
-    html += `<details style="margin-top:16px;">
-      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);padding:8px;">📅 Recent cron runs (last ${runs.length})</summary>
-      <div style="background:var(--surface);border:1px solid var(--border-light);border-radius:var(--radius);padding:12px;margin-top:8px;">
-        <table style="width:100%;font-size:11px;border-collapse:collapse;">
-          <thead>
-            <tr style="border-bottom:1px solid var(--border-light);">
-              <th style="text-align:left;padding:6px;">Run</th>
-              <th style="text-align:left;padding:6px;">Started</th>
-              <th style="text-align:left;padding:6px;">Status</th>
-              <th style="text-align:right;padding:6px;">Processed</th>
-              <th style="text-align:right;padding:6px;">Approved</th>
-              <th style="text-align:right;padding:6px;">Rejected</th>
-              <th style="text-align:right;padding:6px;">Review</th>
-              <th style="text-align:right;padding:6px;">Credits</th>
-              <th style="text-align:left;padding:6px;">Trigger</th>
-            </tr>
-          </thead>
-          <tbody>`;
-    for (const r of runs) {
-      const st = new Date(r.started_at);
-      const stStr = st.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + st.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-      html += `<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
-        <td style="padding:6px;">#${r.run_id}</td>
-        <td style="padding:6px;">${stStr}</td>
-        <td style="padding:6px;"><span style="font-size:10px;padding:1px 6px;border-radius:4px;background:${(r.status==='completed')?'#e8f5e9':(r.status==='failed')?'#fdecea':'#fff8e1'};color:${(r.status==='completed')?'#2d8a4e':(r.status==='failed')?'#c0392b':'#f57f17'};">${esc(r.status)}</span></td>
-        <td style="padding:6px;text-align:right;">${r.processed || 0}</td>
-        <td style="padding:6px;text-align:right;color:#2d8a4e;">${r.auto_approved || 0}</td>
-        <td style="padding:6px;text-align:right;color:#c0392b;">${r.auto_rejected || 0}</td>
-        <td style="padding:6px;text-align:right;color:${r.held_for_review>0?'#f57f17':'var(--text-muted)'};">${r.held_for_review || 0}</td>
-        <td style="padding:6px;text-align:right;color:var(--gold);">${r.credits_used != null ? r.credits_used : '—'}</td>
-        <td style="padding:6px;color:var(--text-muted);font-size:10px;">${esc(r.triggered_by || '—')}</td>
-      </tr>`;
+    // ─── RECENT AUTO-REJECTIONS (visibility only) ─────────────
+    if (recentReject.length) {
+      html += `<details style="margin-bottom:12px;">
+        <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);padding:8px;background:var(--surface);border-radius:var(--radius);">
+          🚫 Auto-Rejected This Week (${recentReject.length}) — click to view
+        </summary>
+        <div class="edash-card" style="border-left:4px solid #c0392b;margin-top:4px;">
+          <p style="font-size:11px;color:var(--text-muted);margin:0 0 10px 0;">These were rejected by the scoring engine. No contact changes were made. Shown for visibility only.</p>
+          <table style="width:100%;font-size:11px;border-collapse:collapse;">
+            <thead><tr style="border-bottom:1px solid var(--border-light);">
+              <th style="text-align:left;padding:5px;">Contact</th>
+              <th style="text-align:left;padding:5px;">Confidence</th>
+              <th style="text-align:left;padding:5px;">Reason</th>
+            </tr></thead><tbody>`;
+      for (const r of recentReject) {
+        html += `<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+          <td style="padding:5px;">${esc(r.contact_name || 'ID:'+r.contact_id)}</td>
+          <td style="padding:5px;color:#c0392b;">${r.confidence || '—'}/10</td>
+          <td style="padding:5px;color:var(--text-muted);font-size:10px;">${esc(r.auto_decision_reasoning || '—')}</td>
+        </tr>`;
+      }
+      html += `</tbody></table></div></details>`;
     }
-    if (!runs.length) html += '<tr><td colspan="9" style="padding:16px;text-align:center;color:var(--text-muted);">No runs yet</td></tr>';
-    html += `</tbody></table></div></details>`;
 
     container.innerHTML = html;
   } catch(e) {
@@ -4504,351 +4514,165 @@ async function loadAutoDecisions() {
   }
 }
 
-// Build a collapsible section of audit records with action buttons.
-// tier: 'silver' | 'gold' | 'recent' | 'reverts'
-// readonly: if true, don't show action buttons (completed/reverted records)
-function buildAuditSection(tier, title, desc, items, readonly=false) {
-  const tierColor = tier === 'silver' ? '#6c7680' : tier === 'gold' ? '#C49A6C' : tier === 'reverts' ? '#c0392b' : '#2d8a4e';
-  if (!items.length) {
-    return `<div class="edash-card" style="margin-bottom:10px;border-left:3px solid ${tierColor};">
-      <h4 style="margin-bottom:2px;">${title} <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(0)</span></h4>
-      <p style="font-size:11px;color:var(--text-muted);margin:0;">${desc}</p>
-    </div>`;
-  }
-  // Silver tier gets an extra warning banner — wrong-person-prone
-  const silverWarning = tier === 'silver' ? `<div style="background:#fff8e1;border:1px solid #f5c76e;border-radius:var(--radius);padding:8px 12px;margin-bottom:10px;font-size:11px;color:#7a5a00;">
-    <strong>⚠️ Silver tier is wrong-person-prone.</strong> These were approved on rare-name + confidence alone — no Millsaps education match. Check PDL's returned name and location carefully; if they don't match the contact, use "Revert — Wrong Person" to blocklist.
-  </div>` : '';
-  let html = `<div class="edash-card" style="margin-bottom:10px;border-left:3px solid ${tierColor};padding:12px 16px;">
-    <div style="margin-bottom:10px;">
-      <h4 style="margin-bottom:2px;display:inline;">${title}</h4>
-      <span style="font-weight:400;color:var(--text-muted);font-size:11px;"> (${items.length})</span>
-      <p style="font-size:11px;color:var(--text-muted);margin:4px 0 0 0;">${desc}</p>
-    </div>
-    ${silverWarning}`;
-  for (const a of items) {
-    html += renderAuditCard(a, readonly);
-  }
-  html += `</div>`;
-  return html;
-}
+// ─── Render one auto-decision card ─────────────────────────
+// mode: 'review' (pending human review) | 'approved' (recently auto-approved)
+function renderAutoDecisionCard(item, mode) {
+  const cardId   = `adc-${item.id}`;
+  const fields   = item.applied_fields || [];
+  const sugg     = item.suggested_updates || {};
+  const snap     = item.pre_change_snapshot || {};
+  const pdl      = item.pdl_response || {};
+  const extra    = sugg._extra || {};
 
-// Build the data-drift section (same shape, but with Accept/Reject drift actions)
-function buildDriftSection(items) {
-  const tierColor = '#f57f17';
-  if (!items.length) {
-    return `<div class="edash-card" style="margin-bottom:10px;border-left:3px solid ${tierColor};">
-      <h4 style="margin-bottom:2px;">⚠️ Data Drift Found <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(0)</span></h4>
-      <p style="font-size:11px;color:var(--text-muted);margin:0;">Audits where LinkedIn shows newer data than PDL. None right now.</p>
-    </div>`;
-  }
-  let html = `<div class="edash-card" style="margin-bottom:10px;border-left:3px solid ${tierColor};padding:12px 16px;">
-    <div style="margin-bottom:10px;">
-      <h4 style="margin-bottom:2px;display:inline;">⚠️ Data Drift Found</h4>
-      <span style="font-weight:400;color:var(--text-muted);font-size:11px;"> (${items.length})</span>
-      <p style="font-size:11px;color:var(--text-muted);margin:4px 0 0 0;">LinkedIn shows more recent info than what PDL gave us. Review and accept the LinkedIn values if they look right.</p>
-    </div>`;
-  for (const a of items) {
-    html += renderDriftCard(a);
-  }
-  html += `</div>`;
-  return html;
-}
+  const conf = parseFloat(item.confidence) || 0;
+  const confColor = conf >= 7 ? '#2d8a4e' : conf >= 4 ? '#f57f17' : '#c0392b';
 
-// Render one audit record as an expandable card.
-function renderAuditCard(a, readonly=false) {
-  const fields = a.applied_fields || [];
-  const suggestions = a.suggested_updates || {};
-  const tierBadge = a.audit_tier === 'gold' ? '🥇 gold' : a.audit_tier === 'silver' ? '🥈 silver' : '—';
-  const outcomeBadge = a.outcome === 'confirmed' ? '✅ confirmed' 
-                      : a.outcome === 'data_drift' ? '⚠️ drift'
-                      : a.outcome === 'identity_mismatch' ? '❌ wrong person'
-                      : a.outcome === 'unreachable' ? '🔒 unreachable'
-                      : a.outcome === 'ambiguous' ? '❓ ambiguous'
-                      : a.action_taken === 'reverted' ? '↩️ reverted'
-                      : '⏳ pending';
-  const whenStr = a.audited_at 
-    ? new Date(a.audited_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + new Date(a.audited_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
-    : 'not audited';
+  // Date/time string
+  const dt = item.reviewed_at || item.auto_decision_at;
+  const dtStr = dt ? new Date(dt).toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + new Date(dt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '—';
 
-  // ── PDL IDENTITY PANEL ────────────────────────────────────
-  // Surfaces who PDL thinks this is, so the reviewer can spot wrong-person matches
-  // (like Augusto Medeiros → Tiarra Jones) without opening the raw JSON.
-  const pdl = a.pdl_response || {};
-  const pdlFullName = pdl.full_name || '';
-  const pdlFirst    = (pdl.first_name || '').toLowerCase().trim();
-  const pdlLast     = (pdl.last_name  || '').toLowerCase().trim();
-  const contactName = (a.contact_name || '').toLowerCase();
-  // Simple heuristic: warn if neither first nor last appears in contact name
-  const nameMismatch = pdlFirst && pdlLast && contactName &&
-    !contactName.includes(pdlFirst) && !contactName.includes(pdlLast);
-  const pdlLinkedin = pdl.linkedin_url || '';
-  const pdlLocation = pdl.location_name || '';
-  const pdlJobTitle = pdl.job_title || '';
-  const pdlCompany  = pdl.job_company_name || '';
-  const pdlIndustry = pdl.industry || '';
-  const pdlSex      = pdl.sex || '';
-  const matchedOn   = a.matched_on || (a.suggested_updates?._extra ? 'email' : '—');
-  const pdlEdu      = Array.isArray(pdl.education) ? pdl.education : [];
+  // Fields to show in comparison table
+  const compareFields = [
+    ['Email','email'],['Organization','organization'],['Title','title'],
+    ['LinkedIn','linkedin_url'],['Phone','phone'],['City','city'],['State','state']
+  ];
+  const relevantFields = mode === 'approved' ? fields : Object.keys(sugg).filter(k => k !== '_extra' && k !== '_note');
 
-  let pdlIdentityHtml = '';
-  if (pdlFullName || pdlLocation || pdlJobTitle || pdlEdu.length) {
-    pdlIdentityHtml = `<div style="background:${nameMismatch ? '#fdecea' : 'rgba(0,0,0,0.02)'};border:1px solid ${nameMismatch ? '#f5c76e' : 'var(--border-light)'};border-radius:var(--radius);padding:10px 12px;margin-bottom:12px;font-size:11px;">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">About this PDL match</div>
-      ${nameMismatch ? `<div style="background:#fdecea;border:1px solid #c0392b;border-radius:4px;padding:6px 8px;margin-bottom:8px;color:#c0392b;font-weight:600;">⚠️ Name mismatch warning: PDL returned a different name than your contact. Verify carefully before confirming.</div>` : ''}
-      <div style="display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;">
-        ${pdlFullName ? `<div style="color:var(--text-muted);">Name:</div><div style="font-weight:600;${nameMismatch?'color:#c0392b;':''}">${esc(pdlFullName)}</div>` : ''}
-        ${pdlSex ? `<div style="color:var(--text-muted);">Sex:</div><div>${esc(pdlSex)}</div>` : ''}
-        <div style="color:var(--text-muted);">Matched via:</div><div><code style="background:var(--border-light);padding:1px 5px;border-radius:3px;font-size:10px;">${esc(matchedOn)}</code></div>
-        ${pdlLocation ? `<div style="color:var(--text-muted);">Location:</div><div>${esc(pdlLocation)}</div>` : ''}
-        ${pdlJobTitle || pdlCompany ? `<div style="color:var(--text-muted);">Job:</div><div>${esc(pdlJobTitle)}${pdlCompany ? ' at <strong>' + esc(pdlCompany) + '</strong>' : ''}</div>` : ''}
-        ${pdlIndustry ? `<div style="color:var(--text-muted);">Industry:</div><div>${esc(pdlIndustry)}</div>` : ''}
-        ${pdlLinkedin ? `<div style="color:var(--text-muted);">LinkedIn:</div><div><a href="${esc(pdlLinkedin)}" target="_blank" style="color:#0077b5;text-decoration:underline;">${esc(pdlLinkedin.replace(/^https?:\/\//,''))}</a></div>` : ''}
-        ${pdlEdu.length ? `<div style="color:var(--text-muted);">Education:</div><div>${pdlEdu.map(e => {
-          const s = (e.school && e.school.name) || '';
-          const end = e.end_date || '';
-          const majors = Array.isArray(e.majors) && e.majors.length ? ' (' + e.majors.join(', ') + ')' : '';
-          const dateStr = end ? ' — ' + end : '';
-          return esc(s) + esc(majors) + dateStr;
-        }).filter(Boolean).join('<br>')}</div>` : ''}
-      </div>
-    </div>`;
-  }
+  // PDL identity snippet
+  const pdlName = pdl.full_name || '';
+  const pdlLoc  = pdl.location_name || '';
+  const pdlJob  = [pdl.job_title, pdl.job_company_name].filter(Boolean).join(' @ ');
+  const pdlLink = item.contact_linkedin || pdl.linkedin_url || sugg.linkedin_url || '';
 
-  // ── CARD HEADER ──────────────────────────────────────────
-  let html = `<div class="enrich-card" id="aud-${a.audit_id}" style="margin-bottom:6px;">
-    <div class="enrich-card-header" onclick="document.getElementById('aud-${a.audit_id}').classList.toggle('expanded')">
+  let html = `<div class="enrich-card" id="${cardId}" style="margin-bottom:6px;">
+    <div class="enrich-card-header" onclick="document.getElementById('${cardId}').classList.toggle('expanded')">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span class="ec-arrow">▸</span>
-        <span class="ec-name">${esc(a.contact_name || ('ID:' + a.contact_id))}</span>
-        <span style="font-size:10px;color:var(--text-muted);">ID:${a.contact_id}</span>
-        <span style="font-size:10px;color:var(--text-muted);background:var(--border-light);padding:1px 6px;border-radius:4px;">${tierBadge}</span>
-        ${nameMismatch ? `<span style="font-size:10px;color:#c0392b;font-weight:600;">⚠️ name mismatch</span>` : ''}
+        <span class="ec-name">${esc(item.contact_name || 'ID:'+item.contact_id)}</span>
+        <span style="font-size:10px;color:var(--text-muted);">ID:${item.contact_id}</span>
+        ${mode === 'approved' ? `<span style="font-size:10px;color:#2d8a4e;font-weight:600;">✅ applied ${fields.length > 0 ? fields.join(', ') : 'no field changes'}</span>` : ''}
+        ${mode === 'review'   ? `<span style="font-size:10px;color:#f57f17;">awaiting review</span>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
-        <span class="ec-conf ${a.confidence>=7?'ec-conf-high':a.confidence>=4?'ec-conf-med':'ec-conf-low'}">${a.confidence || '—'}/10</span>
-        <span style="font-size:11px;color:var(--text-muted);">${fields.length} field${fields.length!==1?'s':''}</span>
-        <span style="font-size:10px;color:var(--text-muted);">${outcomeBadge}</span>
+        <span class="ec-conf ${conf>=7?'ec-conf-high':conf>=4?'ec-conf-med':'ec-conf-low'}">${conf}/10</span>
+        <span style="font-size:10px;color:var(--text-muted);">${dtStr}</span>
       </div>
     </div>
     <div class="enrich-card-body">
+      <!-- Reasoning -->
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;padding:8px;background:rgba(0,0,0,0.02);border-radius:4px;">
-        <strong>Engine reasoning:</strong> ${esc(a.reasoning || 'n/a')}<br>
-        <strong>Last activity:</strong> ${whenStr}${a.audited_by ? ' by ' + esc(a.audited_by) : ''}
-      </div>
-      ${pdlIdentityHtml}
-      <table class="enrich-compare">
-        <tr><th style="width:22%;">Field</th><th style="width:30%;">Value Before</th><th style="width:30%;">Value After (PDL)</th><th style="width:18%;">${readonly?'':'Action'}</th></tr>`;
-  const compareFields = [['Email','email'],['Organization','organization'],['Title','title'],['LinkedIn','linkedin_url'],['Cell Phone','cell_phone'],['Phone','phone'],['City','city'],['State','state']];
-  const snap = a.pre_change_snapshot || {};
-  for (const [label, key] of compareFields) {
-    if (!fields.includes(key)) continue;
-    const before = snap[key] || '';
-    const after  = suggestions[key] || '';
-    html += `<tr>
-      <td class="ec-field">${label}</td>
-      <td>${before ? esc(before) : '<span class="ec-empty">empty</span>'}</td>
-      <td><span class="ec-new">${esc(after)}</span></td>
-      <td>${readonly ? '' : `<button class="btn" onclick="partialRevertField(${a.audit_id}, '${key}')" style="font-size:10px;padding:3px 8px;background:#fff8e1;color:#f57f17;border:1px solid #f5c76e;">↶ Revert</button>`}</td>
-    </tr>`;
-  }
-  html += `</table>`;
+        <strong>Engine reasoning:</strong> ${esc(item.auto_decision_reasoning || '—')}
+      </div>`;
 
-  if (!readonly) {
-    const linkButtons = `${pdlLinkedin || a.contact_linkedin ? `<a href="${esc(pdlLinkedin || a.contact_linkedin)}" target="_blank" class="btn" style="font-size:12px;padding:6px 14px;text-decoration:none;background:#0077b5;color:white;">🔗 Verify on LinkedIn</a>` : ''}
-      <button class="btn" onclick="openContactFromAudit(${a.contact_id})" style="font-size:12px;padding:6px 14px;background:#e3f2fd;color:#1565c0;">👤 Open Contact</button>`;
-    html += `<div class="enrich-actions">
-      ${linkButtons}
-      <button class="btn btn-primary" onclick="confirmAuditManually(${a.audit_id})" style="font-size:12px;padding:6px 14px;background:#2d8a4e;color:white;">✅ Looks Right — Confirm</button>
-      <button class="btn" onclick="revertAudit(${a.audit_id}, 'wrong_person')" style="font-size:12px;padding:6px 14px;background:#fdecea;color:#c0392b;">🚫 Revert All — Wrong Person</button>
-    </div>
-    <p style="font-size:10px;color:var(--text-muted);margin-top:6px;">Tip: to reject just some fields but keep others, use the per-field "↶ Revert" buttons above.</p>`;
+  // PDL identity if available
+  if (pdlName || pdlLoc || pdlJob) {
+    html += `<div style="background:rgba(0,0,0,0.02);border:1px solid var(--border-light);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px;font-size:11px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:5px;">PDL returned</div>
+      <div style="display:grid;grid-template-columns:max-content 1fr;gap:3px 10px;">
+        ${pdlName ? `<div style="color:var(--text-muted);">Name:</div><div style="font-weight:600;">${esc(pdlName)}</div>` : ''}
+        ${pdlLoc  ? `<div style="color:var(--text-muted);">Location:</div><div>${esc(pdlLoc)}</div>` : ''}
+        ${pdlJob  ? `<div style="color:var(--text-muted);">Job:</div><div>${esc(pdlJob)}</div>` : ''}
+        ${pdlLink ? `<div style="color:var(--text-muted);">LinkedIn:</div><div><a href="${esc(pdlLink)}" target="_blank" style="color:#0077b5;">${esc(pdlLink.replace(/^https?:\/\//,''))}</a></div>` : ''}
+      </div>
+    </div>`;
   }
-  html += `</div></div>`;
+
+  // Before/after comparison table
+  const tableRows = compareFields.filter(([,k]) => relevantFields.includes(k) || (mode==='review' && sugg[k] && sugg[k] !== 'true'));
+  if (tableRows.length) {
+    html += `<table class="enrich-compare">
+      <tr><th style="width:22%;">Field</th><th style="width:39%;">${mode==='approved'?'Before (snapshot)':'Current'}</th><th style="width:39%;">PDL Suggestion</th></tr>`;
+    for (const [label, key] of tableRows) {
+      const before = snap[key] || '';
+      const after  = sugg[key] || (key === 'email' ? extra.personal_emails?.[0] : key === 'phone' ? extra.mobile_phone : '') || '';
+      if (!after || after === 'true') continue;
+      html += `<tr>
+        <td class="ec-field">${label}</td>
+        <td>${before ? esc(before) : '<span class="ec-empty">empty</span>'}</td>
+        <td><span class="${before?'ec-diff':'ec-new'}">${esc(after)}</span></td>
+      </tr>`;
+    }
+    html += `</table>`;
+  }
+
+  // Action buttons
+  html += `<div class="enrich-actions">`;
+  if (pdlLink) {
+    html += `<a href="${esc(pdlLink)}" target="_blank" class="btn" style="font-size:12px;padding:6px 14px;text-decoration:none;background:#0077b5;color:white;">🔗 LinkedIn</a>`;
+  }
+  html += `<button class="btn" onclick="openModal(${item.contact_id})" style="font-size:12px;padding:6px 14px;background:#e3f2fd;color:#1565c0;">👤 Open Contact</button>`;
+
+  if (mode === 'review') {
+    html += `
+      <button class="btn btn-primary" onclick="approveHumanReviewItem(${item.id})" style="font-size:12px;padding:6px 14px;background:#2d8a4e;color:white;">✅ Approve</button>
+      <button class="btn" onclick="rejectHumanReviewItem(${item.id})" style="font-size:12px;padding:6px 14px;background:#fdecea;color:#c0392b;">❌ Reject</button>`;
+  }
+  if (mode === 'approved') {
+    html += `
+      <button class="btn" onclick="revertAutoApproval(${item.id})" style="font-size:12px;padding:6px 14px;background:#fff8e1;color:#f57f17;border:1px solid #f5c76e;">↩ Revert</button>`;
+  }
+  html += `</div></div></div>`;
   return html;
 }
 
-// Render a drift audit card with LinkedIn findings and accept/reject drift actions.
-function renderDriftCard(a) {
-  const findings = a.findings || {};
-  const fields = a.applied_fields || [];
-  const snap = a.pre_change_snapshot || {};
-  const whenStr = a.audited_at ? new Date(a.audited_at).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : 'now';
-  const lnUrl = a.contact_linkedin || (a.suggested_updates?.linkedin_url || '');
-
-  let html = `<div class="enrich-card" id="drift-${a.audit_id}" style="margin-bottom:6px;">
-    <div class="enrich-card-header" onclick="document.getElementById('drift-${a.audit_id}').classList.toggle('expanded')">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span class="ec-arrow">▸</span>
-        <span class="ec-name">${esc(a.contact_name || ('ID:' + a.contact_id))}</span>
-        <span style="font-size:10px;color:var(--text-muted);">ID:${a.contact_id}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span style="font-size:10px;color:#f57f17;font-weight:600;">⚠️ LinkedIn has newer data</span>
-      </div>
-    </div>
-    <div class="enrich-card-body">
-      <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;padding:8px;background:rgba(0,0,0,0.02);border-radius:4px;">
-        <strong>Audit finding:</strong> ${esc(a.reasoning || 'LinkedIn shows different info than what was applied')}<br>
-        <strong>Audited:</strong> ${whenStr}${a.audited_by ? ' by ' + esc(a.audited_by) : ''}
-      </div>
-      <table class="enrich-compare">
-        <tr><th style="width:22%;">Field</th><th style="width:26%;">Before (DB)</th><th style="width:26%;">After PDL Apply</th><th style="width:26%;">LinkedIn Shows</th></tr>`;
-  const compareFields = [['Email','email'],['Organization','organization'],['Title','title'],['LinkedIn','linkedin_url'],['Cell Phone','cell_phone'],['Phone','phone'],['City','city'],['State','state']];
-  const driftData = findings.linkedin_values || {};
-  for (const [label, key] of compareFields) {
-    if (!driftData[key] && !fields.includes(key)) continue;
-    const before = snap[key] || '';
-    const after  = a.suggested_updates?.[key] || '';
-    const drifted = driftData[key] || '';
-    html += `<tr>
-      <td class="ec-field">${label}</td>
-      <td>${before ? esc(before) : '<span class="ec-empty">empty</span>'}</td>
-      <td>${after ? esc(after) : '<span class="ec-empty">—</span>'}</td>
-      <td>${drifted ? `<span class="ec-diff">${esc(drifted)}</span>` : '<span class="ec-empty">—</span>'}</td>
-    </tr>`;
-  }
-  html += `</table>
-      <div class="enrich-actions">
-        ${lnUrl ? `<a href="${esc(lnUrl)}" target="_blank" class="btn" style="font-size:12px;padding:6px 14px;text-decoration:none;background:#0077b5;color:white;">🔗 Verify on LinkedIn</a>` : ''}
-        <button class="btn btn-primary" onclick="acceptDrift(${a.audit_id})" style="font-size:12px;padding:6px 14px;background:#2d8a4e;color:white;">✅ Accept LinkedIn Values</button>
-        <button class="btn" onclick="confirmAuditManually(${a.audit_id})" style="font-size:12px;padding:6px 14px;background:#e3f2fd;color:#1565c0;">⏸ Keep PDL Values (No Change)</button>
-      </div>
-    </div>
-  </div>`;
-  return html;
-}
-
-// ─── Audit actions ──────────────────────────────────────
-async function confirmAuditManually(auditId) {
-  if (!confirm('Mark this audit as manually confirmed? (Record is correct; no changes needed.)')) return;
+// ─── Action handlers ────────────────────────────────────────
+async function approveHumanReviewItem(queueId) {
+  if (!confirm('Approve this record? The suggested fields will be applied to the contact.')) return;
   try {
-    const user = sessionStorage.getItem('else_user') || 'unknown';
-    const { error } = await db.from('enrichment_audits').update({
-      status: 'completed',
-      outcome: 'confirmed',
-      audited_by: user + ' (manual)',
-      audited_at: new Date().toISOString()
-    }).eq('audit_id', auditId);
+    const user = sessionStorage.getItem('else_user') || 'user';
+    const { error } = await db.rpc('pdl_approve_human_review', { p_queue_id: queueId, p_approved_by: user });
     if (error) throw error;
-    showEnrichToast('✅ Audit confirmed');
-    await loadAutoDecisions();
-  } catch(e) {
-    alert('Error confirming audit: ' + e.message);
-  }
-}
-
-async function revertAudit(auditId, reason) {
-  const label = reason === 'wrong_person' ? 'WRONG PERSON (will also block PDL ID from future matches)' : 'manual revert (will allow the same PDL ID to rematch later)';
-  if (!confirm(`Revert this auto-approval?\n\nReason: ${label}\n\nThe contact will be restored from snapshot. The queue row will be marked rejected.`)) return;
-  try {
-    const user = sessionStorage.getItem('else_user') || 'unknown';
-    const { data, error } = await db.rpc('revert_auto_approval', {
-      p_audit_id: auditId,
-      p_reason: reason,
-      p_reverted_by: user
-    });
-    if (error) throw error;
-    showEnrichToast(reason === 'wrong_person' ? '🚫 Reverted — PDL ID blocklisted' : '↩️ Reverted');
+    showEnrichToast('✅ Approved and applied');
     await loadAutoDecisions();
     try { loadEnrichDashboard(); } catch(e) {}
-  } catch(e) {
-    alert('Error reverting audit: ' + e.message);
-    console.error('revertAudit:', e);
-  }
+  } catch(e) { alert('Error approving: ' + e.message); }
 }
 
-// ─── Phase 4.1: Per-field revert ─────────────────────────
-async function partialRevertField(auditId, field) {
-  if (!confirm(`Revert just the "${field}" field back to its value before the PDL auto-apply?\n\nOther auto-applied fields on this audit will NOT be touched.\n\nIf this was the last applied field, the audit will be marked fully reverted.`)) return;
+async function rejectHumanReviewItem(queueId) {
+  if (!confirm('Reject this record? No changes will be made to the contact.')) return;
   try {
-    const user = sessionStorage.getItem('else_user') || 'unknown';
-    const { data, error } = await db.rpc('partial_revert_audit', {
-      p_audit_id: auditId,
-      p_fields_to_revert: [field],
-      p_reverted_by: user
+    const user = sessionStorage.getItem('else_user') || 'user';
+    const { error } = await db.rpc('pdl_reject_queue_record', {
+      p_queue_id:   queueId,
+      p_reasoning:  'Manually rejected during human review by ' + user
     });
     if (error) throw error;
-    const result = Array.isArray(data) ? data[0] : data;
-    if (result) {
-      const msg = result.out_fully_reverted
-        ? `✓ Fully reverted (${field} was the last applied field)`
-        : `✓ Reverted ${field}${result.out_remaining && result.out_remaining.length ? ' — ' + result.out_remaining.length + ' field(s) still applied' : ''}`;
-      showEnrichToast(msg);
-    } else {
-      showEnrichToast('✓ Reverted ' + field);
-    }
+    showEnrichToast('❌ Rejected');
     await loadAutoDecisions();
-    try { loadEnrichDashboard(); } catch(e) {}
-  } catch(e) {
-    alert('Error reverting field: ' + e.message);
-    console.error('partialRevertField:', e);
-  }
+  } catch(e) { alert('Error rejecting: ' + e.message); }
 }
 
-// ─── Phase 4.1: Open contact from audit ──────────────────
-function openContactFromAudit(contactId) {
-  // The tab switch is handled by an event listener on .tab buttons (no named function).
-  // Click the Contacts tab, then open the contact modal after the list renders.
+async function revertAutoApproval(queueId) {
+  if (!confirm('Revert this auto-approval?\n\nThe contact will be restored to exactly what it was before the automated change. This is logged in contact history.')) return;
   try {
-    const contactsTab = document.querySelector('.tab[data-tab="contacts"]');
-    if (contactsTab) contactsTab.click();
-    if (typeof openModal === 'function') {
-      // Small delay so the tab switch completes and the contact list renders
-      setTimeout(() => openModal(parseInt(contactId)), 200);
-    } else {
-      alert('Cannot open contact — modal function not found. Contact ID: ' + contactId);
-    }
-  } catch(e) {
-    alert('Error opening contact: ' + e.message);
-  }
-}
-
-async function acceptDrift(auditId) {
-  if (!confirm('Accept the LinkedIn values for this contact?\n\nThis will overwrite the PDL-applied values with what LinkedIn currently shows. A new snapshot is saved so this is also revertible.')) return;
-  try {
-    // Pull the audit to get the drift findings
-    const { data: audit, error: getErr } = await db.from('enrichment_audits').select('*').eq('audit_id', auditId).single();
-    if (getErr) throw getErr;
-    if (!audit) { alert('Audit record not found (id ' + auditId + ').'); return; }
-    const linkedinVals = audit.findings?.linkedin_values || {};
-    if (!Object.keys(linkedinVals).length) {
-      alert('No LinkedIn values found in audit findings. Nothing to accept.');
-      return;
-    }
-    const user = sessionStorage.getItem('else_user') || 'unknown';
-    const { error } = await db.rpc('accept_drift_update', {
-      p_audit_id: auditId,
-      p_updates: linkedinVals,
-      p_accepted_by: user
-    });
+    const user = sessionStorage.getItem('else_user') || 'user';
+    const { error } = await db.rpc('pdl_revert_auto_approval', { p_queue_id: queueId, p_reverted_by: user });
     if (error) throw error;
-    showEnrichToast('✅ LinkedIn values applied');
+    showEnrichToast('↩ Reverted — contact restored from snapshot');
     await loadAutoDecisions();
     try { loadEnrichDashboard(); } catch(e) {}
-  } catch(e) {
-    alert('Error accepting drift: ' + e.message);
-    console.error('acceptDrift:', e);
-  }
+  } catch(e) { alert('Error reverting: ' + e.message); }
 }
 
-async function showBlocklistDetails() {
+async function bulkApproveHumanReview() {
+  const count = document.querySelectorAll('[id^="adc-"]').length;
+  if (!confirm(`Approve all ${count} pending human-review records?\n\nThis will apply the suggested fields for each one. You can still revert individual records afterward.`)) return;
   try {
-    const { data: blocked } = await db.from('blocked_pdl_ids')
-      .select('*, contacts(name)')
-      .order('blocked_at', {ascending: false}).limit(100);
-    if (!blocked || !blocked.length) { alert('Blocklist is empty.'); return; }
-    let msg = `${blocked.length} PDL ID${blocked.length!==1?'s':''} blocked:\n\n`;
-    for (const b of blocked.slice(0, 20)) {
-      const name = b.contacts?.name || `Contact ${b.contact_id}`;
-      const when = new Date(b.blocked_at).toLocaleDateString();
-      msg += `• ${name} — PDL ${b.pdl_id.slice(0, 12)}... (${b.reason}, ${when})\n`;
+    const user = sessionStorage.getItem('else_user') || 'user';
+    // Fetch pending IDs fresh from DB
+    const { data: pending } = await db.from('enrichment_queue')
+      .select('id').eq('auto_decision','human-review').eq('status','pending');
+    if (!pending || !pending.length) { showEnrichToast('Nothing to approve'); return; }
+    let approved = 0, errors = 0;
+    for (const row of pending) {
+      const { error } = await db.rpc('pdl_approve_human_review', { p_queue_id: row.id, p_approved_by: user });
+      if (error) errors++;
+      else approved++;
     }
-    if (blocked.length > 20) msg += `\n...and ${blocked.length - 20} more.`;
-    alert(msg);
-  } catch(e) {
-    alert('Error: ' + e.message);
-  }
+    showEnrichToast(`✅ ${approved} approved${errors ? ', ' + errors + ' errors' : ''}`);
+    await loadAutoDecisions();
+    try { loadEnrichDashboard(); } catch(e) {}
+  } catch(e) { alert('Error bulk approving: ' + e.message); }
 }
 
 async function loadEnrichmentHistory() {
