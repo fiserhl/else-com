@@ -3765,6 +3765,20 @@ async function approveEnrichment(queueId, contactId, selectedOnly, skipRefresh) 
       }
     }
 
+    // Preserve old street address in notes if city or state is being updated and a street address exists
+    if ((fieldsToApply.city || fieldsToApply.state) && oldContact.address) {
+      const addressParts = [oldContact.address, oldContact.city, oldContact.state, oldContact.zip].filter(Boolean);
+      const oldAddressStr = addressParts.join(', ');
+      const archiveDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const archiveNote = `Previous address (archived ${archiveDate} before location update): ${oldAddressStr}`;
+      const currentNotes = fieldsToApply.notes || oldContact.notes || '';
+      if (!currentNotes.includes(oldContact.address)) {
+        fieldsToApply.notes = currentNotes ? currentNotes + ' | ' + archiveNote : archiveNote;
+        if (!appliedFieldNames.includes('notes')) appliedFieldNames.push('notes');
+        if (!('notes' in preChangeSnapshot)) preChangeSnapshot.notes = oldContact.notes || null;
+      }
+    }
+
     // Apply updates
     fieldsToApply.updated_at = new Date().toISOString();
     fieldsToApply.last_enriched_at = new Date().toISOString();
