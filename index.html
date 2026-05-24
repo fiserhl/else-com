@@ -3284,10 +3284,13 @@ function computeEnrichConfidence(contact, pdl) {
 // ─── Parse PDL into suggested updates ───────────────────────
 function parsePDLSuggestions(contact, pdl) {
   const suggestions = {};
+  const changeTypes = {};
   // Phone: mobile_phone is confirmed cell → cell_phone field
   // phone_numbers are generic (could be landline/office) → phone field
   const mobilePhone = pdl.mobile_phone || null;
   const genericPhone = (!mobilePhone && Array.isArray(pdl.phone_numbers) && pdl.phone_numbers.length) ? pdl.phone_numbers[0] : null;
+  // Normalize phone to digits-only for cross-format comparison
+  const normPhoneDigits = (p) => (p && typeof p === 'string') ? p.replace(/\D/g, '') : '';
   // Build fields with special handling for state, linkedin, and phone
   const rawFields = [
     ['organization', pdl.job_company_name],
@@ -3308,8 +3311,12 @@ function parsePDLSuggestions(contact, pdl) {
     if (key === 'state') {
       strVal = normalizeState(strVal);
       const currentNorm = normalizeState(contact[key]);
-      if (!currentNorm || currentNorm !== strVal) {
+      if (!currentNorm) {
         suggestions[key] = strVal;
+        changeTypes[key] = 'fill';
+      } else if (currentNorm !== strVal) {
+        suggestions[key] = strVal;
+        changeTypes[key] = 'overwrite';
       }
       continue;
     }
@@ -3319,36 +3326,52 @@ function parsePDLSuggestions(contact, pdl) {
       // Compare normalized
       const currentNorm = normalizeLinkedIn(contact[key]);
       const pdlNorm = normalizeLinkedIn(strVal);
-      if (!currentNorm || currentNorm !== pdlNorm) {
-        if (!contact[key]) {
-          suggestions[key] = strVal; // New — add it
-        }
-        // If we already have one and they normalize to different profiles, suggest update
-        else if (currentNorm !== pdlNorm) {
-          suggestions[key] = strVal;
-        }
+      if (!currentNorm) {
+        suggestions[key] = strVal;
+        changeTypes[key] = 'fill';
+      } else if (currentNorm !== pdlNorm) {
+        suggestions[key] = strVal;
+        changeTypes[key] = 'overwrite';
       }
       continue;
     }
     if (key === 'cell_phone') {
-      // Only suggest cell_phone if contact has no cell phone
+      // Only suggest cell_phone if contact has no cell phone.
+      // Also skip if the existing phone field already has the same number.
       if (!contact.cell_phone) {
-        suggestions[key] = strVal;
+        const pdlDigits = normPhoneDigits(strVal);
+        const phoneDigits = normPhoneDigits(contact.phone);
+        if (!pdlDigits || pdlDigits !== phoneDigits) {
+          suggestions[key] = strVal;
+          changeTypes[key] = 'fill';
+        }
       }
       continue;
     }
     if (key === 'phone') {
-      // Only suggest phone if contact has no phone AND no cell (don't overwrite cell with generic)
+      // Only suggest phone if contact has no phone.
+      // Also skip if the existing cell_phone already has the same number.
+      const pdlDigits = normPhoneDigits(strVal);
+      const cellDigits = normPhoneDigits(contact.cell_phone);
       if (!contact.phone && !contact.cell_phone) {
         suggestions[key] = strVal;
+        changeTypes[key] = 'fill';
+      } else if (!contact.phone && cellDigits && pdlDigits && pdlDigits !== cellDigits) {
+        // Has a cell but no landline; PDL has a *different* generic number → fill phone
+        suggestions[key] = strVal;
+        changeTypes[key] = 'fill';
       }
       continue;
     }
 
     // Default comparison for other fields
-    const current = contact[key] || '';
-    if (!current.trim() || current.trim().toLowerCase() !== strVal.toLowerCase()) {
+    const current = (contact[key] || '').toString().trim();
+    if (!current) {
       suggestions[key] = strVal;
+      changeTypes[key] = 'fill';
+    } else if (current.toLowerCase() !== strVal.toLowerCase()) {
+      suggestions[key] = strVal;
+      changeTypes[key] = 'overwrite';
     }
   }
   // Also capture extra data for display but not direct field mapping
@@ -3367,27 +3390,39 @@ function parsePDLSuggestions(contact, pdl) {
   const isPersonalEmail = (e) => personalDomains.some(d => e.toLowerCase().trim().endsWith('@' + d));
   const currentIsPersonal = currentEmail && isPersonalEmail(currentEmail);
   let bestEmail = null;
+  let emailChangeType = null;
 
   // Priority 1: personal email from PDL (durable, long-term)
   if (Array.isArray(pdl.personal_emails)) {
     bestEmail = pdl.personal_emails.find(e => typeof e === 'string' && !isMsapsEdu(e) && e.toLowerCase().trim() !== currentEmail);
-    if (bestEmail) bestEmail = bestEmail.trim();
+    if (bestEmail) {
+      bestEmail = bestEmail.trim();
+      if (!currentEmail) emailChangeType = 'fill';
+      else if (currentIsPersonal) emailChangeType = 'overwrite';
+      else emailChangeType = 'personalize_email';
+    }
   }
   // Priority 2: work email — but ONLY if contact has no email or has a non-personal email
   // Never suggest replacing an existing personal email with a work email
   if (!bestEmail && pdl.work_email && typeof pdl.work_email === 'string' && !isMsapsEdu(pdl.work_email) && pdl.work_email.toLowerCase().trim() !== currentEmail) {
     if (!currentIsPersonal) {
       bestEmail = pdl.work_email.trim();
+      emailChangeType = currentEmail ? 'overwrite' : 'fill';
     }
     // If they already have a personal email, work email still captured in _extra for reference
   }
   if (bestEmail) {
     suggestions.email = bestEmail;
+    if (emailChangeType) changeTypes.email = emailChangeType;
   }
   if (Array.isArray(pdl.education) && pdl.education.length) {
     suggestions._extra.education = pdl.education.filter(e => e.school && e.school.name && typeof e.school.name === 'string').map(e => ({
       school: e.school.name, degrees: e.degrees || [], majors: e.majors || [], end_date: e.end_date
     }));
+  }
+  // Attach change-type map so the UI doesn't have to recompute it.
+  if (Object.keys(changeTypes).length) {
+    suggestions._change_types = changeTypes;
   }
   return suggestions;
 }
@@ -4404,6 +4439,22 @@ async function loadAutoDecisions() {
     const recentApprove = recentApproveRes.data || [];
     const recentReject  = recentRejectRes.data  || [];
 
+    // Fetch live contact rows so the "Current" column reflects what's actually in the
+    // database right now (not the queue snapshot, which is empty until approval).
+    const liveContactIds = [...new Set([
+      ...humanItems.map(i => i.contact_id),
+      ...recentApprove.map(i => i.contact_id)
+    ])].filter(Boolean);
+    let liveContactsById = {};
+    if (liveContactIds.length) {
+      const { data: liveRows } = await db.from('contacts')
+        .select('contact_id,email,phone,cell_phone,organization,title,linkedin_url,city,state')
+        .in('contact_id', liveContactIds);
+      (liveRows || []).forEach(r => { liveContactsById[r.contact_id] = r; });
+    }
+    humanItems.forEach(i => { i._currentContact = liveContactsById[i.contact_id] || null; });
+    recentApprove.forEach(i => { i._currentContact = liveContactsById[i.contact_id] || null; });
+
     // Count by decision type (all-time)
     const tally = (arr, key) => arr.filter(r => r.auto_decision === key).length;
     const allApproved = tally(allStats,'auto-approve');
@@ -4548,9 +4599,14 @@ function renderAutoDecisionCard(item, mode) {
   // Fields to show in comparison table
   const compareFields = [
     ['Email','email'],['Organization','organization'],['Title','title'],
-    ['LinkedIn','linkedin_url'],['Phone','phone'],['City','city'],['State','state']
+    ['LinkedIn','linkedin_url'],['Cell Phone','cell_phone'],['Phone','phone'],
+    ['City','city'],['State','state']
   ];
-  const relevantFields = mode === 'approved' ? fields : Object.keys(sugg).filter(k => k !== '_extra' && k !== '_note');
+  const relevantFields = mode === 'approved' ? fields : Object.keys(sugg).filter(k => !k.startsWith('_'));
+  // Change-type lookup (emitted by parsePDLSuggestions / Edge Function v4+).
+  // Older queue records won't have this — fall back to inferring from Current.
+  const changeTypeMap = sugg._change_types || {};
+  const liveContact   = item._currentContact || null;
 
   // PDL identity snippet
   const pdlName = pdl.full_name || '';
@@ -4594,16 +4650,44 @@ function renderAutoDecisionCard(item, mode) {
   // Before/after comparison table
   const tableRows = compareFields.filter(([,k]) => relevantFields.includes(k) || (mode==='review' && sugg[k] && sugg[k] !== 'true'));
   if (tableRows.length) {
+    // Badge styles
+    const badgeFor = (t, before) => {
+      const inferred = t || (before ? 'overwrite' : 'fill');
+      if (inferred === 'fill')               return '<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:#e8f5e9;color:#2d8a4e;font-size:9px;font-weight:700;letter-spacing:0.3px;">FILL</span>';
+      if (inferred === 'overwrite')          return '<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:#fff3e0;color:#e65100;font-size:9px;font-weight:700;letter-spacing:0.3px;">OVERWRITE</span>';
+      if (inferred === 'personalize_email')  return '<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:#e1f5fe;color:#01579b;font-size:9px;font-weight:700;letter-spacing:0.3px;">PERSONAL→</span>';
+      return '';
+    };
     html += `<table class="enrich-compare">
-      <tr><th style="width:22%;">Field</th><th style="width:39%;">${mode==='approved'?'Before (snapshot)':'Current'}</th><th style="width:39%;">PDL Suggestion</th></tr>`;
+      <tr>
+        <th style="width:18%;">Field</th>
+        <th style="width:36%;">${mode==='approved'?'Before (snapshot)':'Current value'}</th>
+        <th style="width:36%;">PDL Suggestion</th>
+        <th style="width:10%;">Change</th>
+      </tr>`;
     for (const [label, key] of tableRows) {
-      const before = snap[key] || '';
-      const after  = sugg[key] || (key === 'email' ? extra.personal_emails?.[0] : key === 'phone' ? extra.mobile_phone : '') || '';
+      // Pick "Current" source:
+      //   review mode  → live contact row (what's in the DB right now)
+      //   approved mode → pre_change_snapshot (what was there *before* approval)
+      let before = '';
+      if (mode === 'approved') {
+        before = snap[key] || '';
+      } else if (liveContact && liveContact[key] != null) {
+        before = liveContact[key];
+      } else {
+        // Fallback for older records where _currentContact wasn't hydrated
+        before = snap[key] || '';
+      }
+      const after  = sugg[key] || '';
       if (!after || after === 'true') continue;
+      const changeType = changeTypeMap[key] || (before ? 'overwrite' : 'fill');
+      const beforeCellClass = before ? '' : 'ec-empty';
+      const afterCellClass  = before ? 'ec-diff' : 'ec-new';
       html += `<tr>
         <td class="ec-field">${label}</td>
         <td>${before ? esc(before) : '<span class="ec-empty">empty</span>'}</td>
-        <td><span class="${before?'ec-diff':'ec-new'}">${esc(after)}</span></td>
+        <td><span class="${afterCellClass}">${esc(after)}</span></td>
+        <td>${badgeFor(changeType, before)}</td>
       </tr>`;
     }
     html += `</table>`;
