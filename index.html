@@ -2955,8 +2955,9 @@ async function deleteRelationshipEvent(eventId) {
 // ═══════════════════════════════════════════════════════════════
 // PDL ENRICHMENT — Research Tab
 // ═══════════════════════════════════════════════════════════════
-const PDL_API_KEY = '3cc4f68a09a7c2bde2396770550b2432d9c5c1125f8b14068e0a25013bb199d9';
-const PDL_ENRICH_URL = 'https://api.peopledatalabs.com/v5/person/enrich';
+// PDL calls are routed through the pdl-proxy Edge Function so the API key
+// never ships in this (public) file. The key lives server-side only.
+const PDL_PROXY_URL = SUPABASE_URL + '/functions/v1/pdl-proxy';
 
 // ─── PDL Credit Tracking (live from API headers) ────────────
 window._pdlCredits = null; // { remaining, used, limit, asOf }
@@ -2964,19 +2965,7 @@ let enrichPreviewContacts = [];
 let selectedEnrichSingleId = null;
 
 // ─── PDL Credit Check (via Edge Function — bypasses CORS) ───
-function parsePDLCreditHeaders(resp) {
-  const remaining = resp.headers.get('x-totallimit-remaining');
-  const used = resp.headers.get('x-lifetime-used');
-  const purchasedRemaining = resp.headers.get('x-totallimit-purchased-remaining');
-  if (remaining !== null) {
-    window._pdlCredits = {
-      remaining: parseInt(remaining, 10),
-      used: used !== null ? parseInt(used, 10) : null,
-      purchased_remaining: purchasedRemaining !== null ? parseInt(purchasedRemaining, 10) : null,
-      asOf: new Date()
-    };
-  }
-}
+// (parsePDLCreditHeaders removed — credits now come from the pdl-proxy response)
 
 async function fetchPDLCredits() {
   try {
@@ -3158,20 +3147,43 @@ function switchResearchTab(tab) {
 
 // ─── PDL API Call ───────────────────────────────────────────
 async function callPDL(contact) {
-  const params = new URLSearchParams();
-  if (contact.first_name) params.set('first_name', contact.first_name);
-  if (contact.last_name) params.set('last_name', contact.last_name);
-  if (contact.email) params.set('email', contact.email);
-  if (contact.linkedin_url) params.set('profile', contact.linkedin_url);
-  if (contact.city && contact.state) params.set('location', `${contact.city}, ${contact.state}`);
-  else if (contact.city) params.set('location', contact.city);
-  if (contact.organization) params.set('company', contact.organization);
-
-  const resp = await fetch(`${PDL_ENRICH_URL}?${params}`, {
-    headers: { 'X-Api-Key': PDL_API_KEY }
-  });
-  parsePDLCreditHeaders(resp);
-  return { status: resp.status, data: await resp.json() };
+  // Route through the pdl-proxy Edge Function — same parameters as before,
+  // but the PDL API key stays server-side. The proxy returns HTTP 200 with
+  // { pdl_status, data, credits }; PDL's own status travels in pdl_status.
+  try {
+    const resp = await fetch(PDL_PROXY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-app-secret': 'd316cb840036aeffc93a26863b73ee1d39bb675722a682a07c642c219bbd33bc'
+      },
+      body: JSON.stringify({
+        first_name:   contact.first_name   || null,
+        last_name:    contact.last_name    || null,
+        email:        contact.email        || null,
+        linkedin_url: contact.linkedin_url || null,
+        city:         contact.city         || null,
+        state:        contact.state        || null,
+        organization: contact.organization || null
+      })
+    });
+    if (!resp.ok) {
+      return { status: resp.status, data: { error: { message: `Enrichment proxy returned ${resp.status}` } } };
+    }
+    const json = await resp.json();
+    // Keep the live credit display in sync (replaces the old header parsing)
+    if (json.credits && json.credits.remaining !== null && json.credits.remaining !== undefined) {
+      window._pdlCredits = {
+        remaining: parseInt(json.credits.remaining, 10),
+        used: json.credits.used !== null ? parseInt(json.credits.used, 10) : null,
+        purchased_remaining: json.credits.purchased_remaining !== null ? parseInt(json.credits.purchased_remaining, 10) : null,
+        asOf: new Date()
+      };
+    }
+    return { status: json.pdl_status, data: json.data || {} };
+  } catch(e) {
+    return { status: 0, data: { error: { message: 'Enrichment proxy unreachable: ' + e.message } } };
+  }
 }
 
 // ─── State abbreviation mapping ─────────────────────────────
@@ -3521,64 +3533,9 @@ async function useExtraEmail(contactId, queueId, newEmail) {
 }
 
 // ─── Inline Manual Edit from Review Queue ───────────────────
-function manualFieldEdit(cellId, contactId, queueId, field, currentVal) {
-  const cell = document.getElementById(cellId);
-  if (!cell || cell.querySelector('input.manual-edit-input')) return; // already editing
-  const escaped = (currentVal || '').replace(/"/g, '&quot;');
-  cell.innerHTML = `<div style="display:flex;align-items:center;gap:4px;">
-    <input class="manual-edit-input" type="text" value="${escaped}" style="flex:1;font-size:12px;padding:3px 6px;border:1px solid var(--accent);border-radius:4px;outline:none;min-width:0;" onkeydown="if(event.key==='Enter'){saveManualField('${cellId}',${contactId},${queueId},'${field}',this.value)}else if(event.key==='Escape'){loadEnrichmentQueue()}">
-    <button onclick="saveManualField('${cellId}',${contactId},${queueId},'${field}',this.previousElementSibling.value)" style="background:#2d8a4e;color:white;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;" title="Save">✓</button>
-    <button onclick="loadEnrichmentQueue()" style="background:var(--border-light);color:var(--text);border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;" title="Cancel">✕</button>
-  </div>`;
-  const inp = cell.querySelector('input.manual-edit-input');
-  inp.focus();
-  inp.select();
-}
-
-async function saveManualField(cellId, contactId, queueId, field, newValue) {
-  newValue = (newValue || '').trim();
-  if (!newValue && !confirm('Save an empty value? This will clear the field.')) return;
-  try {
-    const { data: contact } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
-    if (!contact) { alert('Contact not found.'); return; }
-    const oldValue = contact[field] || '';
-    if (oldValue === newValue) { showEnrichToast('ℹ️ No change made.'); await loadEnrichmentQueue(); return; }
-
-    const updateObj = { [field]: newValue || null, updated_at: new Date().toISOString() };
-
-    // Email-specific safety: uniqueness check + preserve old in notes
-    if (field === 'email' && newValue) {
-      const { data: emailCheck } = await db.from('contacts')
-        .select('contact_id, name').ilike('email', newValue).neq('contact_id', contactId).limit(1);
-      if (emailCheck && emailCheck.length > 0) {
-        alert(`Cannot use this email — "${newValue}" is already assigned to ${emailCheck[0].name} (ID:${emailCheck[0].contact_id}).`);
-        return;
-      }
-      if (oldValue && !oldValue.toLowerCase().includes('@millsaps.edu')) {
-        const notes = contact.notes || '';
-        if (!notes.toLowerCase().includes(oldValue.toLowerCase())) {
-          updateObj.notes = notes ? notes + ' | Previous email: ' + oldValue : 'Previous email: ' + oldValue;
-        }
-      }
-    }
-
-    await db.from('contacts').update(updateObj).eq('contact_id', contactId);
-
-    const fieldLabels = { email:'Email', organization:'Organization', title:'Title', linkedin_url:'LinkedIn', cell_phone:'Cell Phone', phone:'Phone', city:'City', state:'State' };
-    const label = fieldLabels[field] || field;
-    await logContactHistory(contactId, 'updated', `${label}: "${oldValue || '(empty)'}" → "${newValue || '(empty)'}" (manual edit during PDL review)`, sessionStorage.getItem('else_user') || 'unknown', 'Manual Edit');
-
-    // Auto-uncheck the PDL suggestion checkbox for this field
-    const checkbox = document.querySelector(`input.enrich-check[data-qid="${queueId}"][data-field="${field}"]`);
-    if (checkbox) checkbox.checked = false;
-
-    showEnrichToast(`✅ ${label} updated for ${contact.name}`);
-    await loadEnrichmentQueue();
-  } catch(e) {
-    alert('Error saving field: ' + e.message);
-    console.error('Manual field save error:', e);
-  }
-}
+// (manualFieldEdit / saveManualField removed — all review-tab editing now goes
+// through the unified field editor below, which saves in place without
+// reloading the queue and losing your scroll position.)
 
 // ─── Full Contact Record viewer (Review Queue + Human Review) ───────────────
 // Renders the COMPLETE contact record so reviewers can make real decisions.
@@ -3694,7 +3651,7 @@ function renderFullContactRecord(c, suggestions, ctx, refId) {
   return html;
 }
 
-// ─── Inline editing of any field inside the Full Record panel ───────────────
+// ─── Unified inline field editing (Review Queue table + Full Record panel) ──
 // Mirrors the main contact modal's save behavior: name auto-composed from
 // first+last, legacy city_state_zip rebuilt, email uniqueness enforced,
 // numeric fields validated, everything logged to contact_history.
@@ -3732,6 +3689,179 @@ function _fullRecMaps(ctx) {
     : { contacts: window._adContactMap || {}, sugg: window._adSuggMap || {}, panelPrefix: 'fullrecad-' };
 }
 
+// Core save logic shared by the queue table and full-record panel editors.
+// Returns { ok, msg?, unchanged?, contact? (fresh row), label }.
+async function applyContactFieldEdit(contactId, field, rawValue) {
+  const meta = FULLREC_FIELDS[field];
+  if (!meta) return { ok:false, msg:'This field is not inline-editable.' };
+  const newValue = (rawValue || '').trim();
+  let dbValue = newValue || null;
+  if (meta.type === 'number' && newValue) {
+    const n = parseInt(newValue, 10);
+    if (isNaN(n)) return { ok:false, msg: meta.label + ' must be a number.' };
+    dbValue = n;
+  }
+  const { data: contact, error: cErr } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
+  if (cErr || !contact) return { ok:false, msg:'Contact not found.' };
+  const oldValue = (contact[field] === null || contact[field] === undefined) ? '' : String(contact[field]);
+  if (oldValue === newValue) return { ok:true, unchanged:true, contact, label: meta.label };
+
+  const updateObj = { [field]: dbValue, updated_at: new Date().toISOString() };
+
+  // Email safety: uniqueness check + preserve old email in notes
+  if (field === 'email' && newValue) {
+    const { data: emailCheck } = await db.from('contacts')
+      .select('contact_id, name').ilike('email', newValue).neq('contact_id', contactId).limit(1);
+    if (emailCheck && emailCheck.length > 0) {
+      return { ok:false, msg:`Cannot use this email — "${newValue}" is already assigned to ${emailCheck[0].name} (ID:${emailCheck[0].contact_id}).` };
+    }
+    if (oldValue && !oldValue.toLowerCase().includes('@millsaps.edu')) {
+      const notes = contact.notes || '';
+      if (!notes.toLowerCase().includes(oldValue.toLowerCase())) {
+        updateObj.notes = notes ? notes + ' | Previous email: ' + oldValue : 'Previous email: ' + oldValue;
+      }
+    }
+  }
+
+  // Name recomposition (mirrors saveContact: name = first + last)
+  if (field === 'first_name' || field === 'last_name') {
+    const fn = field === 'first_name' ? newValue : (contact.first_name || '');
+    const ln = field === 'last_name'  ? newValue : (contact.last_name  || '');
+    if (!fn && !ln) return { ok:false, msg:'A contact must keep at least a first or last name.' };
+    updateObj.name = [fn, ln].filter(Boolean).join(' ');
+  }
+
+  // Legacy city_state_zip rebuild (mirrors saveContact)
+  if (field === 'city' || field === 'state' || field === 'zip') {
+    const cityV  = field === 'city'  ? newValue : (contact.city  || '');
+    const stateV = field === 'state' ? newValue : (contact.state || '');
+    const zipV   = field === 'zip'   ? newValue : (contact.zip   || '');
+    updateObj.city_state_zip = [cityV, stateV, zipV].filter(Boolean).join(', ') || null;
+  }
+
+  const { error: uErr } = await db.from('contacts').update(updateObj).eq('contact_id', contactId);
+  if (uErr) return { ok:false, msg: uErr.message };
+
+  await logContactHistory(contactId, 'updated',
+    `${meta.label}: "${oldValue || '(empty)'}" → "${newValue || '(empty)'}" (manual edit during PDL review)`,
+    sessionStorage.getItem('else_user') || 'unknown', 'Manual Edit');
+
+  const { data: fresh } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
+  return { ok:true, contact: fresh || contact, label: meta.label };
+}
+
+// Build the editor UI (input / select / textarea) into a cell. Shared.
+function _buildFieldEditor(cell, meta, currentVal, saveCall, cancelCall) {
+  const btns = `<button onclick="${saveCall}" style="background:#2d8a4e;color:white;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;" title="Save">✓ Save</button>
+    <button onclick="${cancelCall}" style="background:var(--border-light);color:var(--text);border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;" title="Cancel">✕</button>`;
+  if (meta.type === 'textarea') {
+    cell.innerHTML = `<textarea class="frc-edit-input" style="width:100%;min-height:90px;font-size:12px;padding:6px;border:1px solid var(--accent);border-radius:4px;outline:none;font-family:inherit;"></textarea>
+      <div style="display:flex;gap:6px;margin-top:4px;">${btns}</div>`;
+    const ta = cell.querySelector('textarea');
+    ta.value = currentVal;
+    ta.focus();
+    return;
+  }
+  if (meta.type === 'select') {
+    const srcSel = document.getElementById(meta.src);
+    let opts = '<option value="">—</option>';
+    if (srcSel) {
+      opts = [...srcSel.options].map(o =>
+        `<option value="${esc(o.value)}"${o.value === currentVal ? ' selected' : ''}>${esc(o.textContent || o.value || '—')}</option>`
+      ).join('');
+    }
+    cell.innerHTML = `<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+      <select class="frc-edit-input" style="font-size:12px;padding:3px 6px;border:1px solid var(--accent);border-radius:4px;outline:none;">${opts}</select>${btns}</div>`;
+    cell.querySelector('select').focus();
+    return;
+  }
+  cell.innerHTML = `<div style="display:flex;align-items:center;gap:4px;">
+    <input class="frc-edit-input" type="text" style="flex:1;font-size:12px;padding:3px 6px;border:1px solid var(--accent);border-radius:4px;outline:none;min-width:0;"
+      onkeydown="if(event.key==='Enter'){${saveCall}}else if(event.key==='Escape'){${cancelCall}}">${btns}</div>`;
+  const inp = cell.querySelector('input');
+  inp.value = currentVal;
+  inp.focus();
+  inp.select();
+}
+
+// ── Review Queue TABLE editors (cell ids: mc-{queueId}-{field}) ──────────────
+function toggleAllFields(queueId) {
+  const body = document.getElementById('allfields-' + queueId);
+  const btn = document.getElementById('allfieldsbtn-' + queueId);
+  if (!body) return;
+  if (body.style.display === 'none') {
+    body.style.display = '';
+    if (btn) btn.textContent = '▾ Hide extra fields';
+  } else {
+    body.style.display = 'none';
+    if (btn) btn.textContent = '▸ Show all fields (18 more — identity, alumni, address, CRM, notes)';
+  }
+}
+
+function updateQueueCellDisplay(queueId, contactId, field) {
+  const cell = document.getElementById(`mc-${queueId}-${field}`);
+  if (!cell) return;
+  const c = (window._eqContactMap || {})[contactId] || {};
+  const val = c[field];
+  const canEdit = !!FULLREC_FIELDS[field] && (sessionStorage.getItem('else_role') || '') !== 'readonly';
+  const editIcon = canEdit
+    ? `<span onclick="editQueueField(${queueId},${contactId},'${field}');event.stopPropagation();" style="cursor:pointer;opacity:0.4;margin-left:4px;font-size:11px;" title="Edit this field">✏️</span>`
+    : '';
+  const display = (val === null || val === undefined || String(val).trim() === '')
+    ? '<span class="ec-empty">empty</span>' : esc(String(val));
+  if (field === 'notes') {
+    cell.innerHTML = `<div style="white-space:pre-wrap;max-height:120px;overflow-y:auto;">${display}</div>${editIcon}`;
+  } else {
+    cell.innerHTML = display + editIcon;
+  }
+}
+
+function editQueueField(queueId, contactId, field) {
+  const meta = FULLREC_FIELDS[field];
+  const cell = document.getElementById(`mc-${queueId}-${field}`);
+  if (!meta || !cell || cell.querySelector('.frc-edit-input')) return;
+  const c = (window._eqContactMap || {})[contactId] || {};
+  const currentVal = (c[field] === null || c[field] === undefined) ? '' : String(c[field]);
+  _buildFieldEditor(cell, meta, currentVal,
+    `saveQueueField(${queueId},${contactId},'${field}')`,
+    `updateQueueCellDisplay(${queueId},${contactId},'${field}')`);
+}
+
+async function saveQueueField(queueId, contactId, field) {
+  const cell = document.getElementById(`mc-${queueId}-${field}`);
+  const inputEl = cell ? cell.querySelector('.frc-edit-input') : null;
+  if (!inputEl) return;
+  const newValue = (inputEl.value || '').trim();
+  const meta = FULLREC_FIELDS[field] || {};
+  if (!newValue && meta.type !== 'select' && !confirm('Save an empty value? This will clear the field.')) return;
+  try {
+    const result = await applyContactFieldEdit(contactId, field, newValue);
+    if (!result.ok) { alert(result.msg); return; }
+    // Refresh the cache so displays reflect the new value everywhere
+    if (result.contact) (window._eqContactMap || {})[contactId] = result.contact;
+    updateQueueCellDisplay(queueId, contactId, field);
+    // Name edits change the card header too — update it in place
+    if ((field === 'first_name' || field === 'last_name') && result.contact) {
+      const card = document.getElementById('eq-' + queueId);
+      const nameEl = card ? card.querySelector('.ec-name') : null;
+      if (nameEl) nameEl.textContent = result.contact.name || '';
+    }
+    if (result.unchanged) { showEnrichToast('ℹ️ No change made.'); return; }
+    // Uncheck the PDL suggestion box for this field — the human just set it
+    const checkbox = document.querySelector(`input.enrich-check[data-qid="${queueId}"][data-field="${field}"]`);
+    if (checkbox) checkbox.checked = false;
+    // Keep the Full Record panel in sync if it's open
+    const panel = document.getElementById('fullrec-' + queueId);
+    if (panel && panel.style.display !== 'none') rerenderFullRecPanel('eq', queueId, contactId);
+    showEnrichToast(`✅ ${result.label} updated for ${result.contact ? result.contact.name : 'contact'}`);
+    try { if (typeof loadContacts === 'function') loadContacts(); } catch(e) { /* non-fatal */ }
+  } catch(e) {
+    alert('Error saving ' + (meta.label || field) + ': ' + e.message);
+    console.error('Queue field save error:', e);
+  }
+}
+
+// ── Full Record PANEL editors (cell ids: frc-{ctx}-{refId}-{field}) ──────────
 function rerenderFullRecPanel(ctx, refId, contactId) {
   const m = _fullRecMaps(ctx);
   const panel = document.getElementById(m.panelPrefix + refId);
@@ -3748,128 +3878,40 @@ function editFullRecField(ctx, refId, contactId, field) {
   const m = _fullRecMaps(ctx);
   const c = m.contacts[contactId] || {};
   const currentVal = (c[field] === null || c[field] === undefined) ? '' : String(c[field]);
-
-  const saveCall = `saveFullRecField('${ctx}',${refId},${contactId},'${field}')`;
-  const cancelCall = `rerenderFullRecPanel('${ctx}',${refId},${contactId})`;
-  const btns = `<button onclick="${saveCall}" style="background:#2d8a4e;color:white;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;" title="Save">✓ Save</button>
-    <button onclick="${cancelCall}" style="background:var(--border-light);color:var(--text);border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;" title="Cancel">✕</button>`;
-
-  if (meta.type === 'textarea') {
-    cell.innerHTML = `<textarea class="frc-edit-input" style="width:100%;min-height:90px;font-size:12px;padding:6px;border:1px solid var(--accent);border-radius:4px;outline:none;font-family:inherit;"></textarea>
-      <div style="display:flex;gap:6px;margin-top:4px;">${btns}</div>`;
-    const ta = cell.querySelector('textarea');
-    ta.value = currentVal;
-    ta.focus();
-    return;
-  }
-
-  if (meta.type === 'select') {
-    const srcSel = document.getElementById(meta.src);
-    let opts = '<option value="">—</option>';
-    if (srcSel) {
-      opts = [...srcSel.options].map(o =>
-        `<option value="${esc(o.value)}"${o.value === currentVal ? ' selected' : ''}>${esc(o.textContent || o.value || '—')}</option>`
-      ).join('');
-    }
-    cell.innerHTML = `<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
-      <select class="frc-edit-input" style="font-size:12px;padding:3px 6px;border:1px solid var(--accent);border-radius:4px;outline:none;">${opts}</select>${btns}</div>`;
-    cell.querySelector('select').focus();
-    return;
-  }
-
-  // text / number
-  cell.innerHTML = `<div style="display:flex;align-items:center;gap:4px;">
-    <input class="frc-edit-input" type="text" style="flex:1;font-size:12px;padding:3px 6px;border:1px solid var(--accent);border-radius:4px;outline:none;min-width:0;"
-      onkeydown="if(event.key==='Enter'){${saveCall}}else if(event.key==='Escape'){${cancelCall}}">${btns}</div>`;
-  const inp = cell.querySelector('input');
-  inp.value = currentVal;
-  inp.focus();
-  inp.select();
+  _buildFieldEditor(cell, meta, currentVal,
+    `saveFullRecField('${ctx}',${refId},${contactId},'${field}')`,
+    `rerenderFullRecPanel('${ctx}',${refId},${contactId})`);
 }
 
 async function saveFullRecField(ctx, refId, contactId, field) {
-  const meta = FULLREC_FIELDS[field];
   const cell = document.getElementById(`frc-${ctx}-${refId}-${field}`);
-  if (!meta || !cell) return;
-  const inputEl = cell.querySelector('.frc-edit-input');
+  const inputEl = cell ? cell.querySelector('.frc-edit-input') : null;
   if (!inputEl) return;
-  let newValue = (inputEl.value || '').trim();
-
+  const newValue = (inputEl.value || '').trim();
+  const meta = FULLREC_FIELDS[field] || {};
   if (!newValue && meta.type !== 'select' && !confirm('Save an empty value? This will clear the field.')) return;
-
-  // Numeric validation
-  let dbValue = newValue || null;
-  if (meta.type === 'number' && newValue) {
-    const n = parseInt(newValue, 10);
-    if (isNaN(n)) { alert(meta.label + ' must be a number.'); return; }
-    dbValue = n;
-  }
-
   try {
-    const { data: contact, error: cErr } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
-    if (cErr || !contact) { alert('Contact not found.'); return; }
-    const oldValue = (contact[field] === null || contact[field] === undefined) ? '' : String(contact[field]);
-    if (oldValue === newValue) { showEnrichToast('ℹ️ No change made.'); rerenderFullRecPanel(ctx, refId, contactId); return; }
-
-    const updateObj = { [field]: dbValue, updated_at: new Date().toISOString() };
-
-    // Email safety: uniqueness check + preserve old email in notes (mirrors saveManualField)
-    if (field === 'email' && newValue) {
-      const { data: emailCheck } = await db.from('contacts')
-        .select('contact_id, name').ilike('email', newValue).neq('contact_id', contactId).limit(1);
-      if (emailCheck && emailCheck.length > 0) {
-        alert(`Cannot use this email — "${newValue}" is already assigned to ${emailCheck[0].name} (ID:${emailCheck[0].contact_id}).`);
-        return;
-      }
-      if (oldValue && !oldValue.toLowerCase().includes('@millsaps.edu')) {
-        const notes = contact.notes || '';
-        if (!notes.toLowerCase().includes(oldValue.toLowerCase())) {
-          updateObj.notes = notes ? notes + ' | Previous email: ' + oldValue : 'Previous email: ' + oldValue;
-        }
-      }
-    }
-
-    // Name recomposition (mirrors saveContact: name = first + last)
-    if (field === 'first_name' || field === 'last_name') {
-      const fn = field === 'first_name' ? newValue : (contact.first_name || '');
-      const ln = field === 'last_name'  ? newValue : (contact.last_name  || '');
-      if (!fn && !ln) { alert('A contact must keep at least a first or last name.'); return; }
-      updateObj.name = [fn, ln].filter(Boolean).join(' ');
-    }
-
-    // Legacy city_state_zip rebuild (mirrors saveContact)
-    if (field === 'city' || field === 'state' || field === 'zip') {
-      const cityV  = field === 'city'  ? newValue : (contact.city  || '');
-      const stateV = field === 'state' ? newValue : (contact.state || '');
-      const zipV   = field === 'zip'   ? newValue : (contact.zip   || '');
-      updateObj.city_state_zip = [cityV, stateV, zipV].filter(Boolean).join(', ') || null;
-    }
-
-    const { error: uErr } = await db.from('contacts').update(updateObj).eq('contact_id', contactId);
-    if (uErr) throw uErr;
-
-    await logContactHistory(contactId, 'updated',
-      `${meta.label}: "${oldValue || '(empty)'}" → "${newValue || '(empty)'}" (manual edit during PDL review — full record)`,
-      sessionStorage.getItem('else_user') || 'unknown', 'Manual Edit');
-
-    // Refresh the cached contact so the panel re-render shows the new values
+    const result = await applyContactFieldEdit(contactId, field, newValue);
+    if (!result.ok) { alert(result.msg); return; }
     const m = _fullRecMaps(ctx);
-    const { data: freshContact } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
-    if (freshContact) m.contacts[contactId] = freshContact;
-
-    // If this field also appears in the compare table (queue context), sync that cell + uncheck the PDL box
+    if (result.contact) m.contacts[contactId] = result.contact;
+    rerenderFullRecPanel(ctx, refId, contactId);
+    if (result.unchanged) { showEnrichToast('ℹ️ No change made.'); return; }
     if (ctx === 'eq') {
-      const compareCell = document.getElementById(`mc-${refId}-${field}`);
-      if (compareCell) compareCell.innerHTML = newValue ? esc(newValue) : '<span class="ec-empty">empty</span>';
+      // Sync the queue comparison table + uncheck the PDL box
+      updateQueueCellDisplay(refId, contactId, field);
       const checkbox = document.querySelector(`input.enrich-check[data-qid="${refId}"][data-field="${field}"]`);
       if (checkbox) checkbox.checked = false;
+      if ((field === 'first_name' || field === 'last_name') && result.contact) {
+        const card = document.getElementById('eq-' + refId);
+        const nameEl = card ? card.querySelector('.ec-name') : null;
+        if (nameEl) nameEl.textContent = result.contact.name || '';
+      }
     }
-
-    showEnrichToast(`✅ ${meta.label} updated for ${(freshContact && freshContact.name) || 'contact'}`);
-    rerenderFullRecPanel(ctx, refId, contactId);
+    showEnrichToast(`✅ ${result.label} updated for ${result.contact ? result.contact.name : 'contact'}`);
     try { if (typeof loadContacts === 'function') loadContacts(); } catch(e) { /* non-fatal */ }
   } catch(e) {
-    alert('Error saving ' + meta.label + ': ' + e.message);
+    alert('Error saving ' + (meta.label || field) + ': ' + e.message);
     console.error('Full record field save error:', e);
   }
 }
@@ -4003,7 +4045,19 @@ async function loadEnrichmentQueue() {
           <table class="enrich-compare">
             <tr><th style="width:30%;">Field</th><th style="width:35%;">Current Value</th><th style="width:35%;">PDL Suggestion</th></tr>`;
 
-      // Show comparison for each enrichable field
+      // ── COMPLETE RECORD comparison — every contact field, editable in place ──
+      // PDL-checked fields first (with suggestion checkboxes), then everything else.
+      const isReadonlyUser = (sessionStorage.getItem('else_role') || '') === 'readonly';
+      const qEditIcon = key => (!isReadonlyUser && FULLREC_FIELDS[key])
+        ? `<span onclick="editQueueField(${q.id},${q.contact_id},'${key}');event.stopPropagation();" style="cursor:pointer;opacity:0.4;margin-left:4px;font-size:11px;" title="Edit this field">✏️</span>`
+        : '';
+      const fmtCur = v => (v === null || v === undefined || String(v).trim() === '')
+        ? '<span class="ec-empty">empty</span>' : esc(String(v));
+      const secRow = t => `<tr><td colspan="3" style="background:var(--surface);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--accent);padding:5px 8px;border-top:1px solid var(--border-light);">${t}</td></tr>`;
+      const noPdl = '<span class="ec-empty">—</span>';
+
+      // PDL-compared fields: current (editable) | PDL suggestion (checkbox)
+      html += secRow('PDL-Compared Fields');
       const compareFields = [
         ['Email', 'email'],
         ['Organization', 'organization'], ['Title', 'title'], ['LinkedIn', 'linkedin_url'],
@@ -4013,24 +4067,47 @@ async function loadEnrichmentQueue() {
         const current = c[key] || '';
         const suggested = suggestions[key] || '';
         const cellId = `mc-${q.id}-${key}`;
-        const safeVal = (current || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-        const editBtn = `<span onclick="manualFieldEdit('${cellId}',${q.contact_id},${q.id},'${key}',this.dataset.val);event.stopPropagation();" data-val="${safeVal}" style="cursor:pointer;opacity:0.4;margin-left:4px;font-size:11px;" title="Edit manually">✏️</span>`;
-        let currentHtml, suggestedHtml;
+        let suggestedHtml;
         if (!current && suggested) {
-          currentHtml = `<span class="ec-empty">empty</span>${editBtn}`;
           suggestedHtml = `<label style="cursor:pointer;"><input type="checkbox" class="enrich-check" data-qid="${q.id}" data-field="${key}" checked> <span class="ec-new">${esc(suggested)} 🆕</span></label>`;
         } else if (current && suggested) {
-          currentHtml = `${esc(current)}${editBtn}`;
           suggestedHtml = `<label style="cursor:pointer;"><input type="checkbox" class="enrich-check" data-qid="${q.id}" data-field="${key}"> <span class="ec-diff">${esc(suggested)} ⚠️</span></label>`;
         } else if (current && !suggested) {
-          currentHtml = `${esc(current)}${editBtn}`;
           suggestedHtml = '<span class="ec-same">✅ no change</span>';
         } else {
-          currentHtml = `<span class="ec-empty">empty</span>${editBtn}`;
           suggestedHtml = '<span class="ec-empty">no data</span>';
         }
-        html += `<tr><td class="ec-field">${label}</td><td id="${cellId}">${currentHtml}</td><td>${suggestedHtml}</td></tr>`;
+        html += `<tr><td class="ec-field">${label}</td><td id="${cellId}">${fmtCur(current)}${qEditIcon(key)}</td><td>${suggestedHtml}</td></tr>`;
       }
+
+      // Toggle row + collapsed container for everything else on the record.
+      // PDL-compared fields stay visible; the other 18 fields expand on demand.
+      html += `<tbody><tr><td colspan="3" onclick="toggleAllFields(${q.id})" style="cursor:pointer;padding:7px 8px;background:var(--surface);border-top:1px solid var(--border-light);font-size:11px;font-weight:600;color:var(--accent);" title="Show or hide the rest of the contact record">
+        <span id="allfieldsbtn-${q.id}">▸ Show all fields (18 more — identity, alumni, address, CRM, notes)</span>
+      </td></tr></tbody>`;
+      html += `<tbody id="allfields-${q.id}" style="display:none;">`;
+
+      // Everything else on the record: current (editable) | — (PDL doesn't check these)
+      const otherSections = [
+        ['Identity', [['First Name','first_name'],['Last Name','last_name'],['Preferred Name','preferred_name'],['Formal Salutation','formal_salutation'],['Spouse','spouse_name']]],
+        ['Alumni / IDs', [['Grad Year','grad_year'],['Major','alum_major'],['Alum Status','alum_status'],['Alumni ID','alumni_id'],['Donor ID','donor_id']]],
+        ['Address', [['Street Address','address'],['Zip','zip']]],
+        ['CRM', [['Phone Type','phone_type'],['Pipeline','pipeline_status'],['Mailing Tier','mailing_tier'],['Assigned To','assigned_to']]]
+      ];
+      for (const [secTitle, fields] of otherSections) {
+        html += secRow(secTitle);
+        for (const [label, key] of fields) {
+          html += `<tr><td class="ec-field">${label}</td><td id="mc-${q.id}-${key}">${fmtCur(c[key])}${qEditIcon(key)}</td><td>${noPdl}</td></tr>`;
+        }
+      }
+      // Roles: read-only summary with a link to the full contact card (multi-select lives there)
+      html += `<tr><td class="ec-field">Roles</td><td>${(c.roles && c.roles.length) ? esc(c.roles.join(', ')) : '<span class="ec-empty">none</span>'}
+        ${!isReadonlyUser ? `<a href="#" onclick="event.preventDefault();openModal(${q.contact_id});" style="font-size:10px;color:var(--accent);text-decoration:underline;margin-left:6px;">edit roles →</a>` : ''}</td><td>${noPdl}</td></tr>`;
+      // Notes: full-width editable
+      html += secRow('Notes');
+      html += `<tr><td class="ec-field">Notes</td><td id="mc-${q.id}-notes" colspan="2">${c.notes && String(c.notes).trim() ? `<div style="white-space:pre-wrap;max-height:120px;overflow-y:auto;">${esc(c.notes)}</div>` : '<span class="ec-empty">empty</span>'}${qEditIcon('notes')}</td></tr>`;
+      html += `</tbody>`;
+
       html += '</table>';
 
       // Extra data section
