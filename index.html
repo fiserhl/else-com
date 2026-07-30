@@ -3456,6 +3456,15 @@ async function enrichAndQueue(contact) {
       const suggestions = parsePDLSuggestions(contact, pdl);
       const matchedOn = contact.email ? 'email' : contact.linkedin_url ? 'linkedin' : 'name';
       const hasSuggestions = Object.keys(suggestions).filter(k => k !== '_extra').length > 0;
+      // A DB unique index allows only one pending PDL row per contact.
+      // If a stale pending row exists, supersede it — this fresh pull replaces it.
+      if (hasSuggestions) {
+        await db.from('enrichment_queue')
+          .update({ status: 'superseded', reviewed_by: sessionStorage.getItem('else_user') || 'user', reviewed_at: new Date().toISOString() })
+          .eq('contact_id', contact.contact_id)
+          .eq('source', 'pdl')
+          .eq('status', 'pending');
+      }
       const { error } = await db.from('enrichment_queue').insert({
         contact_id: contact.contact_id,
         source: 'pdl',
@@ -3571,6 +3580,332 @@ async function saveManualField(cellId, contactId, queueId, field, newValue) {
   }
 }
 
+// ─── Full Contact Record viewer (Review Queue + Human Review) ───────────────
+// Renders the COMPLETE contact record so reviewers can make real decisions.
+// Fields PDL wants to change are highlighted with the proposed value inline.
+function contactDataQualityFlags(c) {
+  const flags = [];
+  const email = (c.email || '').toLowerCase().trim();
+  const notes = c.notes || '';
+  if (!email) flags.push('No email on file.');
+  else if (email.endsWith('@millsaps.edu') || email.endsWith('.millsaps.edu')) flags.push('Primary email is a millsaps.edu address (expired student email) — look for a personal email in PDL extras or notes.');
+  if (!c.phone && !c.cell_phone) flags.push('No phone number on file.');
+  try {
+    const emailsInNotes = (notes.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []).filter(e => e.toLowerCase() !== email);
+    if (emailsInNotes.length) flags.push('Email address found in notes (' + emailsInNotes[0] + ') — consider moving it to a structured field.');
+    if (/(\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}/.test(notes)) flags.push('Possible phone number in notes — consider moving it to the phone/cell field.');
+  } catch(e) { /* non-fatal */ }
+  if ((c.state || '').toUpperCase() === 'NONE') flags.push('State is "NONE" — flagged for research (left raw intentionally).');
+  else {
+    if (c.city && !c.state) flags.push('City present but state missing.');
+    if (!c.city && c.state) flags.push('State present but city missing.');
+  }
+  if (c.address && (!c.city || !c.zip)) flags.push('Street address present but city/zip incomplete — mailings may fail.');
+  if (!c.roles || !c.roles.length) flags.push('No roles assigned — this contact is invisible to role filters.');
+  if ((c.roles || []).includes('else_alum') && !c.grad_year) flags.push('Else alum without a grad year.');
+  if (!c.linkedin_url) flags.push('No LinkedIn URL on file.');
+  if (!c.assigned_to) flags.push('Not assigned to a team member.');
+  return flags;
+}
+
+function renderFullContactRecord(c, suggestions, ctx, refId) {
+  if (!c || !c.contact_id) return '<p style="font-size:12px;color:var(--text-muted);padding:8px;">Full contact record unavailable — try refreshing the queue.</p>';
+  const sugg = suggestions || {};
+  const flagged = {};
+  Object.keys(sugg).forEach(k => { if (!k.startsWith('_')) flagged[k] = sugg[k]; });
+  const editable = ctx && refId !== undefined && (sessionStorage.getItem('else_role') || '') !== 'readonly';
+
+  const fmtVal = v => {
+    if (v === null || v === undefined || String(v).trim() === '') return '<span class="ec-empty">empty</span>';
+    return esc(String(v));
+  };
+  const editIcon = field => editable && FULLREC_FIELDS[field]
+    ? `<span onclick="editFullRecField('${ctx}',${refId},${c.contact_id},'${field}');event.stopPropagation();" style="cursor:pointer;opacity:0.45;margin-left:6px;font-size:11px;" title="Edit this field">✏️</span>`
+    : '';
+  const row = (label, key, valOverride, editField) => {
+    const val = valOverride !== undefined ? valOverride : c[key];
+    const ef = editField !== undefined ? editField : key;
+    const isFlagged = key && Object.prototype.hasOwnProperty.call(flagged, key);
+    const cellId = (editable && ef) ? ` id="frc-${ctx}-${refId}-${ef}"` : '';
+    return `<tr${isFlagged ? ' style="background:#fff8e1;"' : ''}>
+      <td style="font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);white-space:nowrap;padding:3px 12px 3px 0;vertical-align:top;">${label}${isFlagged ? ' ⚠️' : ''}</td>
+      <td${cellId} style="font-size:12px;padding:3px 0;">${fmtVal(val)}${ef ? editIcon(ef) : ''}${isFlagged ? `<div style="font-size:11px;color:#e65100;margin-top:1px;">PDL suggests: <strong>${esc(String(flagged[key]))}</strong></div>` : ''}</td></tr>`;
+  };
+  const section = (title, rows) => `<div style="min-width:200px;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:4px;">${title}</div>
+    <table style="border-collapse:collapse;width:100%;">${rows.join('')}</table></div>`;
+
+  const sections = [];
+  sections.push(section('Identity', [
+    row('First Name', null, c.first_name, 'first_name'),
+    row('Last Name', null, c.last_name, 'last_name'),
+    row('Preferred', null, c.preferred_name, 'preferred_name'),
+    row('Salutation', null, c.formal_salutation, 'formal_salutation'),
+    row('Spouse', null, c.spouse_name, 'spouse_name')
+  ]));
+  sections.push(section('Alumni / IDs', [
+    row('Grad Year', null, c.grad_year, 'grad_year'),
+    row('Major', null, c.alum_major, 'alum_major'),
+    row('Alum Status', null, c.alum_status, 'alum_status'),
+    row('Alumni ID', null, c.alumni_id, 'alumni_id'),
+    row('Donor ID', null, c.donor_id, 'donor_id')
+  ]));
+  sections.push(section('Contact Info', [
+    row('Email', 'email'),
+    row('Cell Phone', 'cell_phone'),
+    row('Phone', 'phone'),
+    row('Phone Type', null, c.phone_type, 'phone_type'),
+    row('LinkedIn', 'linkedin_url')
+  ]));
+  sections.push(section('Address', [
+    row('Street', null, c.address, 'address'),
+    row('City', 'city'),
+    row('State', 'state'),
+    row('Zip', null, c.zip, 'zip')
+  ]));
+  sections.push(section('Professional', [
+    row('Organization', 'organization'),
+    row('Title', 'title')
+  ]));
+  sections.push(section('CRM', [
+    row('Roles', null, (c.roles || []).join(', '), null),
+    row('Pipeline', null, c.pipeline_status, 'pipeline_status'),
+    row('Mailing Tier', null, c.mailing_tier, 'mailing_tier'),
+    row('Assigned To', null, c.assigned_to, 'assigned_to'),
+    row('Last Enriched', null, c.last_enriched_at ? new Date(c.last_enriched_at).toLocaleDateString('en-US') : null, null)
+  ]));
+
+  let html = `<div style="background:var(--surface);border:1px solid var(--border-light);border-radius:var(--radius);padding:14px 16px;">
+    <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:10px;">📄 Complete Contact Record <span style="font-weight:400;color:var(--text-muted);">— yellow fields have a PDL suggestion${editable ? ' · click ✏️ to edit any field in place' : ''}</span>
+      ${editable ? `<a href="#" onclick="event.preventDefault();openModal(${c.contact_id});" style="font-size:11px;font-weight:400;color:var(--accent);margin-left:8px;text-decoration:underline;">edit roles / full card →</a>` : ''}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">${sections.join('')}</div>`;
+
+  html += `<div style="margin-top:12px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:4px;">Notes${editable ? `<span onclick="editFullRecField('${ctx}',${refId},${c.contact_id},'notes')" style="cursor:pointer;opacity:0.55;margin-left:6px;font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;" title="Edit notes">✏️ edit</span>` : ''}</div>
+    <div ${editable ? `id="frc-${ctx}-${refId}-notes"` : ''} style="font-size:12px;white-space:pre-wrap;background:rgba(0,0,0,0.02);border-radius:4px;padding:8px 10px;max-height:160px;overflow-y:auto;">${c.notes && c.notes.trim() ? esc(c.notes) : '<span class="ec-empty">empty</span>'}</div></div>`;
+
+  const dq = contactDataQualityFlags(c);
+  if (dq.length) {
+    html += `<div style="margin-top:12px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#e65100;margin-bottom:4px;">💡 Data Quality Suggestions</div>
+      <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text);line-height:1.7;">${dq.map(f => `<li>${esc(f)}</li>`).join('')}</ul></div>`;
+  } else {
+    html += `<div style="margin-top:12px;font-size:12px;color:#2d8a4e;">✅ No data quality issues detected on this record.</div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+// ─── Inline editing of any field inside the Full Record panel ───────────────
+// Mirrors the main contact modal's save behavior: name auto-composed from
+// first+last, legacy city_state_zip rebuilt, email uniqueness enforced,
+// numeric fields validated, everything logged to contact_history.
+const FULLREC_FIELDS = {
+  first_name:       { label:'First Name',   type:'text' },
+  last_name:        { label:'Last Name',    type:'text' },
+  preferred_name:   { label:'Preferred Name', type:'text' },
+  formal_salutation:{ label:'Formal Salutation', type:'text' },
+  spouse_name:      { label:'Spouse',       type:'text' },
+  grad_year:        { label:'Grad Year',    type:'number' },
+  alum_major:       { label:'Major',        type:'text' },
+  alum_status:      { label:'Alum Status',  type:'select', src:'f_alum_status' },
+  alumni_id:        { label:'Alumni ID',    type:'number' },
+  donor_id:         { label:'Donor ID',     type:'text' },
+  email:            { label:'Email',        type:'text' },
+  cell_phone:       { label:'Cell Phone',   type:'text' },
+  phone:            { label:'Phone',        type:'text' },
+  phone_type:       { label:'Phone Type',   type:'text' },
+  linkedin_url:     { label:'LinkedIn',     type:'text' },
+  address:          { label:'Street Address', type:'text' },
+  city:             { label:'City',         type:'text' },
+  state:            { label:'State',        type:'text' },
+  zip:              { label:'Zip',          type:'text' },
+  organization:     { label:'Organization', type:'text' },
+  title:            { label:'Title',        type:'text' },
+  pipeline_status:  { label:'Pipeline',     type:'select', src:'f_pipeline' },
+  mailing_tier:     { label:'Mailing Tier', type:'select', src:'f_tier' },
+  assigned_to:      { label:'Assigned To',  type:'select', src:'f_assigned' },
+  notes:            { label:'Notes',        type:'textarea' }
+};
+
+function _fullRecMaps(ctx) {
+  return ctx === 'eq'
+    ? { contacts: window._eqContactMap || {}, sugg: window._eqSuggMap || {}, panelPrefix: 'fullrec-' }
+    : { contacts: window._adContactMap || {}, sugg: window._adSuggMap || {}, panelPrefix: 'fullrecad-' };
+}
+
+function rerenderFullRecPanel(ctx, refId, contactId) {
+  const m = _fullRecMaps(ctx);
+  const panel = document.getElementById(m.panelPrefix + refId);
+  if (panel) {
+    panel.innerHTML = renderFullContactRecord(m.contacts[contactId], m.sugg[refId], ctx, refId);
+    panel.style.display = 'block';
+  }
+}
+
+function editFullRecField(ctx, refId, contactId, field) {
+  const meta = FULLREC_FIELDS[field];
+  const cell = document.getElementById(`frc-${ctx}-${refId}-${field}`);
+  if (!meta || !cell || cell.querySelector('.frc-edit-input')) return;
+  const m = _fullRecMaps(ctx);
+  const c = m.contacts[contactId] || {};
+  const currentVal = (c[field] === null || c[field] === undefined) ? '' : String(c[field]);
+
+  const saveCall = `saveFullRecField('${ctx}',${refId},${contactId},'${field}')`;
+  const cancelCall = `rerenderFullRecPanel('${ctx}',${refId},${contactId})`;
+  const btns = `<button onclick="${saveCall}" style="background:#2d8a4e;color:white;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;" title="Save">✓ Save</button>
+    <button onclick="${cancelCall}" style="background:var(--border-light);color:var(--text);border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;" title="Cancel">✕</button>`;
+
+  if (meta.type === 'textarea') {
+    cell.innerHTML = `<textarea class="frc-edit-input" style="width:100%;min-height:90px;font-size:12px;padding:6px;border:1px solid var(--accent);border-radius:4px;outline:none;font-family:inherit;"></textarea>
+      <div style="display:flex;gap:6px;margin-top:4px;">${btns}</div>`;
+    const ta = cell.querySelector('textarea');
+    ta.value = currentVal;
+    ta.focus();
+    return;
+  }
+
+  if (meta.type === 'select') {
+    const srcSel = document.getElementById(meta.src);
+    let opts = '<option value="">—</option>';
+    if (srcSel) {
+      opts = [...srcSel.options].map(o =>
+        `<option value="${esc(o.value)}"${o.value === currentVal ? ' selected' : ''}>${esc(o.textContent || o.value || '—')}</option>`
+      ).join('');
+    }
+    cell.innerHTML = `<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+      <select class="frc-edit-input" style="font-size:12px;padding:3px 6px;border:1px solid var(--accent);border-radius:4px;outline:none;">${opts}</select>${btns}</div>`;
+    cell.querySelector('select').focus();
+    return;
+  }
+
+  // text / number
+  cell.innerHTML = `<div style="display:flex;align-items:center;gap:4px;">
+    <input class="frc-edit-input" type="text" style="flex:1;font-size:12px;padding:3px 6px;border:1px solid var(--accent);border-radius:4px;outline:none;min-width:0;"
+      onkeydown="if(event.key==='Enter'){${saveCall}}else if(event.key==='Escape'){${cancelCall}}">${btns}</div>`;
+  const inp = cell.querySelector('input');
+  inp.value = currentVal;
+  inp.focus();
+  inp.select();
+}
+
+async function saveFullRecField(ctx, refId, contactId, field) {
+  const meta = FULLREC_FIELDS[field];
+  const cell = document.getElementById(`frc-${ctx}-${refId}-${field}`);
+  if (!meta || !cell) return;
+  const inputEl = cell.querySelector('.frc-edit-input');
+  if (!inputEl) return;
+  let newValue = (inputEl.value || '').trim();
+
+  if (!newValue && meta.type !== 'select' && !confirm('Save an empty value? This will clear the field.')) return;
+
+  // Numeric validation
+  let dbValue = newValue || null;
+  if (meta.type === 'number' && newValue) {
+    const n = parseInt(newValue, 10);
+    if (isNaN(n)) { alert(meta.label + ' must be a number.'); return; }
+    dbValue = n;
+  }
+
+  try {
+    const { data: contact, error: cErr } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
+    if (cErr || !contact) { alert('Contact not found.'); return; }
+    const oldValue = (contact[field] === null || contact[field] === undefined) ? '' : String(contact[field]);
+    if (oldValue === newValue) { showEnrichToast('ℹ️ No change made.'); rerenderFullRecPanel(ctx, refId, contactId); return; }
+
+    const updateObj = { [field]: dbValue, updated_at: new Date().toISOString() };
+
+    // Email safety: uniqueness check + preserve old email in notes (mirrors saveManualField)
+    if (field === 'email' && newValue) {
+      const { data: emailCheck } = await db.from('contacts')
+        .select('contact_id, name').ilike('email', newValue).neq('contact_id', contactId).limit(1);
+      if (emailCheck && emailCheck.length > 0) {
+        alert(`Cannot use this email — "${newValue}" is already assigned to ${emailCheck[0].name} (ID:${emailCheck[0].contact_id}).`);
+        return;
+      }
+      if (oldValue && !oldValue.toLowerCase().includes('@millsaps.edu')) {
+        const notes = contact.notes || '';
+        if (!notes.toLowerCase().includes(oldValue.toLowerCase())) {
+          updateObj.notes = notes ? notes + ' | Previous email: ' + oldValue : 'Previous email: ' + oldValue;
+        }
+      }
+    }
+
+    // Name recomposition (mirrors saveContact: name = first + last)
+    if (field === 'first_name' || field === 'last_name') {
+      const fn = field === 'first_name' ? newValue : (contact.first_name || '');
+      const ln = field === 'last_name'  ? newValue : (contact.last_name  || '');
+      if (!fn && !ln) { alert('A contact must keep at least a first or last name.'); return; }
+      updateObj.name = [fn, ln].filter(Boolean).join(' ');
+    }
+
+    // Legacy city_state_zip rebuild (mirrors saveContact)
+    if (field === 'city' || field === 'state' || field === 'zip') {
+      const cityV  = field === 'city'  ? newValue : (contact.city  || '');
+      const stateV = field === 'state' ? newValue : (contact.state || '');
+      const zipV   = field === 'zip'   ? newValue : (contact.zip   || '');
+      updateObj.city_state_zip = [cityV, stateV, zipV].filter(Boolean).join(', ') || null;
+    }
+
+    const { error: uErr } = await db.from('contacts').update(updateObj).eq('contact_id', contactId);
+    if (uErr) throw uErr;
+
+    await logContactHistory(contactId, 'updated',
+      `${meta.label}: "${oldValue || '(empty)'}" → "${newValue || '(empty)'}" (manual edit during PDL review — full record)`,
+      sessionStorage.getItem('else_user') || 'unknown', 'Manual Edit');
+
+    // Refresh the cached contact so the panel re-render shows the new values
+    const m = _fullRecMaps(ctx);
+    const { data: freshContact } = await db.from('contacts').select('*').eq('contact_id', contactId).single();
+    if (freshContact) m.contacts[contactId] = freshContact;
+
+    // If this field also appears in the compare table (queue context), sync that cell + uncheck the PDL box
+    if (ctx === 'eq') {
+      const compareCell = document.getElementById(`mc-${refId}-${field}`);
+      if (compareCell) compareCell.innerHTML = newValue ? esc(newValue) : '<span class="ec-empty">empty</span>';
+      const checkbox = document.querySelector(`input.enrich-check[data-qid="${refId}"][data-field="${field}"]`);
+      if (checkbox) checkbox.checked = false;
+    }
+
+    showEnrichToast(`✅ ${meta.label} updated for ${(freshContact && freshContact.name) || 'contact'}`);
+    rerenderFullRecPanel(ctx, refId, contactId);
+    try { if (typeof loadContacts === 'function') loadContacts(); } catch(e) { /* non-fatal */ }
+  } catch(e) {
+    alert('Error saving ' + meta.label + ': ' + e.message);
+    console.error('Full record field save error:', e);
+  }
+}
+
+function toggleFullRecord(queueId, contactId) {
+  const panel = document.getElementById('fullrec-' + queueId);
+  const btn = document.getElementById('fullrecbtn-' + queueId);
+  if (!panel) return;
+  if (panel.style.display === 'none') {
+    const c = (window._eqContactMap || {})[contactId];
+    const sugg = (window._eqSuggMap || {})[queueId];
+    panel.innerHTML = renderFullContactRecord(c, sugg, 'eq', queueId);
+    panel.style.display = 'block';
+    if (btn) btn.textContent = '📄 Hide Full Record';
+  } else {
+    panel.style.display = 'none';
+    if (btn) btn.textContent = '📄 Full Record';
+  }
+}
+
+function toggleFullRecordAD(itemId, contactId) {
+  const panel = document.getElementById('fullrecad-' + itemId);
+  const btn = document.getElementById('fullrecadbtn-' + itemId);
+  if (!panel) return;
+  if (panel.style.display === 'none') {
+    const c = (window._adContactMap || {})[contactId];
+    const sugg = (window._adSuggMap || {})[itemId];
+    panel.innerHTML = renderFullContactRecord(c, sugg, 'ad', itemId);
+    panel.style.display = 'block';
+    if (btn) btn.textContent = '📄 Hide Full Record';
+  } else {
+    panel.style.display = 'none';
+    if (btn) btn.textContent = '📄 Full Record';
+  }
+}
+
 async function loadEnrichmentQueue() {
   const container = document.getElementById('enrichmentQueueContent');
   container.innerHTML = '<p style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">Loading...</p>';
@@ -3614,9 +3949,13 @@ async function loadEnrichmentQueue() {
 
     // Get contact names for each queue item
     const contactIds = [...new Set(queue.map(q => q.contact_id))];
-    const { data: contacts } = await db.from('contacts').select('contact_id,name,first_name,last_name,email,organization,title,linkedin_url,city,state,phone,cell_phone').in('contact_id', contactIds);
+    // Fetch the COMPLETE contact record so reviewers can see everything, not just the 8 enrichable fields
+    const { data: contacts } = await db.from('contacts').select('*').in('contact_id', contactIds);
     const contactMap = {};
     (contacts || []).forEach(c => contactMap[c.contact_id] = c);
+    // Registry for lazy full-record rendering
+    window._eqContactMap = contactMap;
+    window._eqSuggMap = {};
 
     // Batch action toolbar
     html += `<div id="batchToolbar" style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border-light);position:sticky;top:0;z-index:5;">
@@ -3637,6 +3976,12 @@ async function loadEnrichmentQueue() {
       const suggestionKeys = Object.keys(suggestions).filter(k => k !== '_extra');
       const extra = suggestions._extra || {};
 
+      const pullDate = q.created_at ? new Date(q.created_at) : null;
+      const pullAgeDays = pullDate ? Math.floor((Date.now() - pullDate.getTime()) / 86400000) : null;
+      const pullStr = pullDate ? pullDate.toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '?';
+      const staleBadge = (pullAgeDays !== null && pullAgeDays > 30)
+        ? `<span style="font-size:10px;color:#e65100;background:#fff3e0;padding:1px 6px;border-radius:4px;" title="This PDL pull is ${pullAgeDays} days old — the person's job or location may have changed since.">⏰ ${pullAgeDays}d old</span>` : '';
+
       html += `<div class="enrich-card" id="eq-${q.id}">
         <div class="enrich-card-header">
           <div style="display:flex;align-items:center;gap:8px;">
@@ -3645,6 +3990,8 @@ async function loadEnrichmentQueue() {
             <span class="ec-name" onclick="document.getElementById('eq-${q.id}').classList.toggle('expanded')" style="cursor:pointer;">${esc(c.name || 'Unknown')}</span>
             <span style="font-size:11px;color:var(--text-muted);">ID:${q.contact_id}</span>
             <span style="font-size:10px;color:var(--text-muted);background:var(--border-light);padding:1px 6px;border-radius:4px;">matched on ${esc(q.matched_on || '?')}</span>
+            <span style="font-size:10px;color:var(--text-muted);background:var(--border-light);padding:1px 6px;border-radius:4px;" title="Date PDL data was pulled">📅 pulled ${pullStr}</span>
+            ${staleBadge}
           </div>
           <div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="document.getElementById('eq-${q.id}').classList.toggle('expanded')">
             <span class="ec-conf ${confClass}">${q.confidence}/10</span>
@@ -3714,11 +4061,16 @@ async function loadEnrichmentQueue() {
         html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-light);display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;font-size:12px;">${extraParts.join('')}</div>`;
       }
 
+      // Full record panel (lazy-rendered on toggle)
+      window._eqSuggMap[q.id] = suggestions;
+      html += `<div id="fullrec-${q.id}" style="display:none;margin-top:12px;"></div>`;
+
       // Action buttons
       html += `<div class="enrich-actions">
         <button class="btn btn-primary" onclick="approveEnrichment(${q.id}, ${q.contact_id}, true)" style="font-size:12px;padding:6px 14px;">✅ Approve Selected</button>
         <button class="btn" onclick="approveEnrichment(${q.id}, ${q.contact_id}, false)" style="font-size:12px;padding:6px 14px;background:#e8f5e9;color:#2d8a4e;">✅ Approve All</button>
         <button class="btn" onclick="rejectEnrichment(${q.id})" style="font-size:12px;padding:6px 14px;background:#fdecea;color:#c0392b;">❌ Reject</button>
+        <button class="btn" id="fullrecbtn-${q.id}" onclick="toggleFullRecord(${q.id}, ${q.contact_id})" style="font-size:12px;padding:6px 14px;background:var(--surface);color:var(--accent);margin-left:auto;">📄 Full Record</button>
       </div>`;
 
       html += '</div></div>';
@@ -4447,13 +4799,17 @@ async function loadAutoDecisions() {
     ])].filter(Boolean);
     let liveContactsById = {};
     if (liveContactIds.length) {
+      // Full record — reviewers need the complete contact, not just enrichable fields
       const { data: liveRows } = await db.from('contacts')
-        .select('contact_id,email,phone,cell_phone,organization,title,linkedin_url,city,state')
+        .select('*')
         .in('contact_id', liveContactIds);
       (liveRows || []).forEach(r => { liveContactsById[r.contact_id] = r; });
     }
     humanItems.forEach(i => { i._currentContact = liveContactsById[i.contact_id] || null; });
     recentApprove.forEach(i => { i._currentContact = liveContactsById[i.contact_id] || null; });
+    // Registry for the Full Record viewer
+    window._adContactMap = liveContactsById;
+    window._adSuggMap = {};
 
     // Count by decision type (all-time)
     const tally = (arr, key) => arr.filter(r => r.auto_decision === key).length;
@@ -4693,12 +5049,17 @@ function renderAutoDecisionCard(item, mode) {
     html += `</table>`;
   }
 
+  // Full record panel (lazy-rendered on toggle)
+  if (window._adSuggMap) window._adSuggMap[item.id] = sugg;
+  html += `<div id="fullrecad-${item.id}" style="display:none;margin-top:12px;"></div>`;
+
   // Action buttons
   html += `<div class="enrich-actions">`;
   if (pdlLink) {
     html += `<a href="${esc(pdlLink)}" target="_blank" class="btn" style="font-size:12px;padding:6px 14px;text-decoration:none;background:#0077b5;color:white;">🔗 LinkedIn</a>`;
   }
   html += `<button class="btn" onclick="openModal(${item.contact_id})" style="font-size:12px;padding:6px 14px;background:#e3f2fd;color:#1565c0;">👤 Open Contact</button>`;
+  html += `<button class="btn" id="fullrecadbtn-${item.id}" onclick="toggleFullRecordAD(${item.id}, ${item.contact_id})" style="font-size:12px;padding:6px 14px;background:var(--surface);color:var(--accent);">📄 Full Record</button>`;
 
   if (mode === 'review') {
     html += `
@@ -4926,6 +5287,20 @@ async function loadEnrichmentHistory() {
 async function reopenEnrichment(queueId) {
   if (!confirm('Re-open this record for review? It will appear in the pending queue.')) return;
   try {
+    // The DB allows only one pending PDL row per contact. If a newer pending
+    // row already exists for this contact, reopening would collide — explain instead.
+    const { data: thisRec } = await db.from('enrichment_queue').select('contact_id').eq('id', queueId).single();
+    if (thisRec) {
+      const { data: existingPending } = await db.from('enrichment_queue')
+        .select('id, created_at').eq('contact_id', thisRec.contact_id)
+        .eq('source','pdl').eq('status','pending').limit(1);
+      if (existingPending && existingPending.length > 0) {
+        alert('This contact already has a pending enrichment in the Review Queue (from ' +
+          new Date(existingPending[0].created_at).toLocaleDateString('en-US') +
+          '). Review that one instead — it has the freshest PDL data.');
+        return;
+      }
+    }
     await db.from('enrichment_queue').update({
       status: 'pending',
       reviewed_by: null,
