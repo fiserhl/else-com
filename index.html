@@ -2216,24 +2216,196 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.export-dropdown')) document.getElementById('exportMenu').classList.remove('open');
 });
 
+// ═══════════════════════════════════════════════════════════════
+// EXPORT: every contact field (giving data always excluded)
+// Replaces the old exportCSV() and exportExcel() functions.
+// ═══════════════════════════════════════════════════════════════
+
+// Known fields, in export order, with readable headers. Any field that
+// shows up on a contact but is not listed here is added at the end
+// automatically, so new database columns are never silently dropped.
+const EXPORT_COLUMNS = [
+  ['contact_id', 'Contact ID'],
+  ['name', 'Name'],
+  ['formal_salutation', 'Formal Salutation'],
+  ['first_name', 'First Name'],
+  ['last_name', 'Last Name'],
+  ['preferred_name', 'Preferred Name'],
+  ['__greeting_name', 'Greeting Name'],
+  ['correspondence_name_mode', 'Greeting Name Rule'],
+  ['spouse_name', 'Spouse / Partner Name'],
+  ['organization', 'Organization'],
+  ['title', 'Title'],
+  ['email', 'Email'],
+  ['phone', 'Phone'],
+  ['phone_type', 'Phone Type'],
+  ['cell_phone', 'Cell Phone'],
+  ['linkedin_url', 'LinkedIn'],
+  ['address', 'Address'],
+  ['city', 'City'],
+  ['state', 'State'],
+  ['zip', 'Zip'],
+  ['city_state_zip', 'City/State/Zip (legacy)'],
+  ['pipeline_status', 'Pipeline'],
+  ['assigned_to', 'Assigned'],
+  ['mailing_tier', 'Mailing Tier'],
+  ['roles', 'Roles'],
+  ['trips', 'Trips'],
+  ['contact_category', 'Contact Category'],
+  ['is_alum', 'Is Alum'],
+  ['alum_status', 'Alum Status'],
+  ['grad_year', 'Grad Year'],
+  ['alum_major', 'Major'],
+  ['alumni_id', 'Alumni ID'],
+  ['donor_id', 'Donor ID'],
+  ['exec_ed_other_specify', 'Exec Ed (Other)'],
+  ['last_contact_date', 'Last Contact Date'],
+  ['follow_up_date', 'Follow-up Date'],
+  ['last_activity_date', 'Last Activity Date'],
+  ['consent_marketing', 'Marketing Consent'],
+  ['consent_date', 'Consent Date'],
+  ['ferpa_protected', 'FERPA Protected'],
+  ['data_classification', 'Data Classification'],
+  ['gdpr_deletion_requested', 'Deletion Requested'],
+  ['gdpr_deletion_requested_date', 'Deletion Requested Date'],
+  ['name_needs_review', 'Name Needs Review'],
+  ['last_enriched_at', 'Last Enriched'],
+  ['created_at', 'Created'],
+  ['updated_at', 'Updated'],
+  ['notes', 'Notes'],
+];
+
+// Never exported, even if they appear on a contact record later.
+// Giving ratings are private to the Dean and Associate Dean.
+function isExcludedExportField(key) {
+  return /giving/i.test(key) || key.startsWith('_');
+}
+
+// Columns that should land in Excel as numbers rather than text.
+const EXPORT_NUMERIC = new Set(['contact_id', 'grad_year', 'alumni_id']);
+
+// Same rule the app uses for email greetings (getCorrespondenceName).
+function exportGreetingName(c) {
+  const mode = c.correspondence_name_mode || 'first_name';
+  if (mode === 'preferred_name' && c.preferred_name) return c.preferred_name;
+  if (mode === 'full_name') return c.name || '';
+  return c.first_name || (c.name || '').split(' ')[0];
+}
+
+function exportHeaderFromKey(key) {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+}
+
+// Work out the full column list for this set of contacts.
+function buildExportColumns(list) {
+  const known = new Set(EXPORT_COLUMNS.map(([k]) => k));
+  const extras = new Set();
+  list.forEach(c => Object.keys(c).forEach(k => {
+    if (known.has(k) || isExcludedExportField(k)) return;
+    const v = c[k];
+    if (v !== null && typeof v === 'object' && !Array.isArray(v)) return; // skip raw JSON blobs
+    extras.add(k);
+  }));
+  const notesCol = EXPORT_COLUMNS.find(([k]) => k === 'notes');
+  const base = EXPORT_COLUMNS.filter(([k]) => k !== 'notes' && (k === '__greeting_name' || !isExcludedExportField(k)));
+  const extraCols = [...extras].sort().map(k => [k, exportHeaderFromKey(k)]);
+  return [...base, ...extraCols, notesCol];
+}
+
+function exportValue(c, key) {
+  const v = key === '__greeting_name' ? exportGreetingName(c) : c[key];
+  if (v === null || v === undefined) return '';
+  if (Array.isArray(v)) return v.filter(x => x !== null && x !== '').join('; ');
+  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0, 10); // timestamps → date
+  return s;
+}
+
+function buildExportTable(list) {
+  const cols = buildExportColumns(list);
+  const headers = cols.map(([, label]) => label);
+  const rows = list.map(c => cols.map(([key]) => exportValue(c, key)));
+  return { cols, headers, rows };
+}
+
+function confirmContactExport(count) {
+  return confirm(`You are about to export ${count} contact records.\n\nThis data may contain sensitive information protected under FERPA and institutional privacy policies.\n\nPlease handle exported data responsibly:\n• Do not share outside authorized Else School personnel\n• Delete exported files when no longer needed\n• Do not store on unsecured devices\n\nProceed with export?`);
+}
+
+function exportFileStamp() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// Stops a cell from being read as a spreadsheet formula when the CSV is
+// opened in Excel. Phone numbers like +16015551234 are left alone.
+function csvSafe(s) {
+  return /^[=@\t\r]|^[+\-][^\d\s(]/.test(s) ? "'" + s : s;
+}
+
+function contactsToCSV(list) {
+  const { headers, rows } = buildExportTable(list);
+  const esc = v => `"${csvSafe(String(v)).replace(/"/g, '""')}"`;
+  // Leading BOM so Excel reads accented names (Mérida, etc.) correctly.
+  return '﻿' + [headers, ...rows].map(r => r.map(esc).join(',')).join('\r\n');
+}
+
 function exportCSV() {
   const filtered = getFiltered();
-  if (!confirm(`You are about to export ${filtered.length} contact records.\n\nThis data may contain sensitive information protected under FERPA and institutional privacy policies.\n\nPlease handle exported data responsibly:\n• Do not share outside authorized Else School personnel\n• Delete exported files when no longer needed\n• Do not store on unsecured devices\n\nProceed with export?`)) return;
+  if (!confirmContactExport(filtered.length)) return;
   const user = sessionStorage.getItem('else_user') || 'unknown';
-  console.log(`[AUDIT] ${new Date().toISOString()} — User "${user}" exported ${filtered.length} contacts as CSV`);
-  const headers = ['Name','Organization','Title','Email','Phone','Cell Phone','Address','City','State','Zip','Pipeline','Assigned','Mailing Tier','Roles','Notes'];
-  const rows = filtered.map(c => [
-    c.name, c.organization || '', c.title || '', c.email || '', c.phone || '', c.cell_phone || '',
-    c.address || '', c.city || '', c.state || '', c.zip || '',
-    c.pipeline_status || '', c.assigned_to || '', c.mailing_tier || '',
-    (c.roles || []).join('; '), c.notes || ''
-  ]);
-  let csv = [headers, ...rows].map(r => r.map(v => `"${(v+'').replace(/"/g,'""')}"`).join(',')).join('\n');
-  downloadFile(csv, 'else-contacts.csv', 'text/csv');
+  console.log(`[AUDIT] ${new Date().toISOString()} - User "${user}" exported ${filtered.length} contacts as CSV`);
+  downloadFile(contactsToCSV(filtered), `else-contacts-${exportFileStamp()}.csv`, 'text/csv;charset=utf-8');
   document.getElementById('exportMenu').classList.remove('open');
 }
 
-function exportExcel() { exportCSV(); }
+function loadSheetJS() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => (window.XLSX ? resolve(window.XLSX) : reject(new Error('Excel library did not load')));
+    s.onerror = () => reject(new Error('Could not load the Excel library'));
+    document.head.appendChild(s);
+  });
+}
+
+function contactsToWorkbook(XLSX, list) {
+  const { cols, headers, rows } = buildExportTable(list);
+  const typed = rows.map(r => r.map((v, i) => {
+    if (EXPORT_NUMERIC.has(cols[i][0]) && v !== '' && !isNaN(Number(v))) return Number(v);
+    return v;
+  }));
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...typed]);
+  ws['!cols'] = cols.map(([key], i) => {
+    if (key === 'notes') return { wch: 80 };
+    const longest = Math.max(headers[i].length, ...typed.slice(0, 500).map(r => String(r[i]).length));
+    return { wch: Math.min(Math.max(longest + 2, 8), 45) };
+  });
+  ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: headers.length - 1 } }) };
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Contacts');
+  return wb;
+}
+
+async function exportExcel() {
+  const filtered = getFiltered();
+  if (!confirmContactExport(filtered.length)) return;
+  document.getElementById('exportMenu').classList.remove('open');
+  let XLSX;
+  try {
+    XLSX = await loadSheetJS();
+  } catch (err) {
+    alert('The Excel library could not be loaded, so a CSV file (which Excel opens) will download instead.');
+    downloadFile(contactsToCSV(filtered), `else-contacts-${exportFileStamp()}.csv`, 'text/csv;charset=utf-8');
+    return;
+  }
+  const user = sessionStorage.getItem('else_user') || 'unknown';
+  console.log(`[AUDIT] ${new Date().toISOString()} - User "${user}" exported ${filtered.length} contacts as Excel`);
+  XLSX.writeFile(contactsToWorkbook(XLSX, filtered), `else-contacts-${exportFileStamp()}.xlsx`);
+}
 
 function exportMailchimp() {
   const filtered = getFiltered().filter(c => c.email);
