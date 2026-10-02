@@ -150,6 +150,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .pipeline-unassigned { background: var(--bg); color: var(--text-muted); }
 
 .mailing-tier { font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 3px; }
+.giving-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: #efeaf7; color: var(--purple); border: 1px solid #d8cdec; white-space: nowrap; }
 .tier-1 { background: #fce4ec; color: #c62828; }
 .tier-2 { background: #fff3e0; color: #e65100; }
 .tier-3 { background: #e3f2fd; color: #1565c0; }
@@ -472,6 +473,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
       <select id="filterStatus"><option value="all">All statuses</option></select>
       <select id="filterTeam"><option value="all">Assigned to…</option></select>
       <select id="filterTier"><option value="all">All mailing tiers</option></select>
+      <select id="filterGiving" style="display:none;"><option value="all">All giving ratings</option></select>
       <select id="sortBy" onchange="_renderCurrentLimit = _renderPageSize; renderList()" style="min-width:130px;">
         <option value="last_name">Sort: Last Name</option>
         <option value="first_name">Sort: First Name</option>
@@ -1288,6 +1290,7 @@ async function loadStaffProfile() {
 
 function clearLocalSession() {
   ['else_auth', 'else_user', 'else_role', 'else_gift', 'else_email'].forEach(k => sessionStorage.removeItem(k));
+  window._givingRatings = new Map();
 }
 
 async function doLogout() {
@@ -1619,9 +1622,51 @@ async function loadContacts() {
     if (data) {
       contacts = data;
       window._allContacts = data;
+      await loadGivingRatings();
       renderAll();
     } else { console.error('Error loading contacts:', error); }
   } catch(e) { console.error('Failed to load contacts:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GIVING RATINGS (gift-access staff only; kept apart from contact records and exports)
+// ═══════════════════════════════════════════════════════════════
+window._givingRatings = new Map();
+function hasGiftAccess() { return sessionStorage.getItem('else_gift') === '1'; }
+async function loadGivingRatings() {
+  window._givingRatings = new Map();
+  if (!hasGiftAccess()) return;
+  try {
+    const { data, error } = await db.from('giving_ratings').select('contact_id, rating').range(0, 9999);
+    if (error) { console.error('Giving ratings:', error.message); return; }
+    (data || []).forEach(r => window._givingRatings.set(r.contact_id, r.rating));
+  } catch (e) { console.error('Giving ratings:', e); }
+}
+function givingRatingOf(c) { return (hasGiftAccess() && window._givingRatings.get(c.contact_id)) || null; }
+function renderGivingControls() {
+  const sel = document.getElementById('filterGiving');
+  const sortSel = document.getElementById('sortBy');
+  let sortOpt = sortSel.querySelector('option[value="giving_rating"]');
+  if (!hasGiftAccess()) {
+    sel.value = 'all'; sel.style.display = 'none';
+    if (sortOpt) { if (sortSel.value === 'giving_rating') sortSel.value = 'last_name'; sortOpt.remove(); }
+    return;
+  }
+  const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  let rated = 0;
+  for (const c of contacts) { const r = givingRatingOf(c); if (r) { counts[r]++; rated++; } }
+  const cur = sel.value || 'all';
+  sel.innerHTML = '<option value="all">All giving ratings</option>'
+    + `<option value="rated">Any giving rating (${rated})</option>`
+    + [1, 2, 3, 4, 5].map(r => `<option value="${r}">Giving rating ${r} (${counts[r]})</option>`).join('')
+    + `<option value="none">No giving rating (${contacts.length - rated})</option>`;
+  sel.value = [...sel.options].some(o => o.value === cur) ? cur : 'all';
+  sel.style.display = '';
+  if (!sortOpt) {
+    sortOpt = document.createElement('option');
+    sortOpt.value = 'giving_rating'; sortOpt.textContent = 'Sort: Giving Rating';
+    sortSel.appendChild(sortOpt);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1632,6 +1677,7 @@ function getFiltered() {
   const status = document.getElementById('filterStatus').value;
   const team = document.getElementById('filterTeam').value;
   const tier = document.getElementById('filterTier').value;
+  const giving = hasGiftAccess() ? document.getElementById('filterGiving').value : 'all';
   return contacts.filter(c => {
     if (q) {
       const haystack = [c.name, c.organization, c.title, c.email, c.phone, c.cell_phone, c.address, c.city, c.state, c.zip, c.notes].filter(Boolean).join(' ').toLowerCase();
@@ -1642,6 +1688,12 @@ function getFiltered() {
     else if (team !== 'all') { if (!c.assigned_to || !c.assigned_to.includes(team)) return false; }
     if (tier === 'none') { if (c.mailing_tier) return false; }
     else if (tier !== 'all' && c.mailing_tier !== tier) return false;
+    if (giving !== 'all') {
+      const gr = givingRatingOf(c);
+      if (giving === 'rated') { if (!gr) return false; }
+      else if (giving === 'none') { if (gr) return false; }
+      else if (String(gr) !== giving) return false;
+    }
     if (activeRoleFilters.length > 0) {
       const roles = c.roles || [];
       const match = activeRoleFilters.some(fk => {
@@ -1663,7 +1715,7 @@ function getFiltered() {
 // ═══════════════════════════════════════════════════════════════
 // RENDERING
 // ═══════════════════════════════════════════════════════════════
-function renderAll() { _renderCurrentLimit = _renderPageSize; renderStats(); renderDropdowns(); renderRoleFilters(); renderLocationFilters(); renderList(); renderRoleCheckboxes(); updateTextPermissions(); }
+function renderAll() { _renderCurrentLimit = _renderPageSize; renderStats(); renderDropdowns(); renderGivingControls(); renderRoleFilters(); renderLocationFilters(); renderList(); renderRoleCheckboxes(); updateTextPermissions(); }
 
 function renderStats() {
   const total = contacts.length;
@@ -1947,6 +1999,7 @@ function renderList() {
     else if (sortKey === 'pipeline_status') { va = a.pipeline_status || 'zzz'; vb = b.pipeline_status || 'zzz'; }
     else if (sortKey === 'mailing_tier') { va = a.mailing_tier || '9'; vb = b.mailing_tier || '9'; }
     else if (sortKey === 'assigned_to') { va = a.assigned_to || 'zzz'; vb = b.assigned_to || 'zzz'; }
+    else if (sortKey === 'giving_rating') { va = String(givingRatingOf(a) || 9); vb = String(givingRatingOf(b) || 9); }
     else { va = a.name || ''; vb = b.name || ''; }
     const cmp = va.localeCompare(vb);
     if (cmp !== 0) return cmp;
@@ -1964,6 +2017,8 @@ function renderList() {
       return `<span class="tag ${d.tagClass}" title="${esc(d.parentLabel ? d.parentLabel + ' → ' + d.label : d.label)}">${esc(d.label)}</span>`;
     }).join('');
     const tierHtml = c.mailing_tier ? `<span class="mailing-tier tier-${esc(c.mailing_tier)}">${TIER_LABELS[c.mailing_tier] || ''}</span>` : '';
+    const gr = givingRatingOf(c);
+    const givingHtml = gr ? `<span class="giving-badge" title="Giving rating ${gr}">Giving ${gr}</span>` : '';
     let metaHtml = '';
     if (c.assigned_to) metaHtml += `<div class="assigned">→ ${esc(c.assigned_to)}</div>`;
     if (c.last_contact_date) metaHtml += `<div>Last: ${esc(c.last_contact_date)}</div>`;
@@ -1978,7 +2033,7 @@ function renderList() {
       <div onclick="event.stopPropagation()"><input type="checkbox" class="row-checkbox" data-id="${parseInt(c.contact_id)}" ${checked} onchange="toggleContactSelection(${parseInt(c.contact_id)}, this)"></div>
       <div><div class="contact-name">${esc(c.name)}</div><div class="contact-org">${esc(c.organization || '')}${c.city || c.state ? ' · ' + esc([c.city, c.state].filter(Boolean).join(', ')) : ''}</div></div>
       <div class="contact-title-cell">${esc(c.title || '')}</div>
-      <div class="contact-tags">${tagHtml}${tierHtml ? ' ' + tierHtml : ''}</div>
+      <div class="contact-tags">${tagHtml}${tierHtml ? ' ' + tierHtml : ''}${givingHtml ? ' ' + givingHtml : ''}</div>
       <div><span class="pipeline-badge ${pipelineClass(c.pipeline_status)}">${esc(c.pipeline_status || 'Unassigned')}</span></div>
       <div class="contact-meta">${metaHtml}</div>
       <div onclick="event.stopPropagation()" style="display:flex;gap:3px;">
@@ -2452,6 +2507,7 @@ document.getElementById('searchInput').addEventListener('input', () => { _render
 document.getElementById('filterStatus').addEventListener('change', () => { _renderCurrentLimit = _renderPageSize; renderList(); });
 document.getElementById('filterTeam').addEventListener('change', () => { _renderCurrentLimit = _renderPageSize; renderList(); });
 document.getElementById('filterTier').addEventListener('change', () => { _renderCurrentLimit = _renderPageSize; renderList(); });
+document.getElementById('filterGiving').addEventListener('change', () => { _renderCurrentLimit = _renderPageSize; renderList(); });
 document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === document.getElementById('modalOverlay')) closeModal(); });
 document.getElementById('settingsOverlay').addEventListener('click', e => { if (e.target === document.getElementById('settingsOverlay')) closeSettings(); });
 document.getElementById('emailOverlay').addEventListener('click', e => { if (e.target === document.getElementById('emailOverlay')) closeEmailModal(); });
