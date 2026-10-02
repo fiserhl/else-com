@@ -427,6 +427,13 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
     <button onclick="saveNewPassword()" style="width:100%;padding:10px;background:var(--purple);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;">Save password and sign in</button>
     <p id="setPassMsg" style="color:var(--red);font-size:12px;margin-top:12px;display:none;"></p>
   </div>
+  <div id="confirmPanel" style="display:none;background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:48px 40px;width:380px;max-width:90vw;text-align:center;">
+    <h2 id="confirmTitle" style="font-family:var(--serif);font-size:22px;font-weight:500;color:var(--purple);margin-bottom:8px;">Welcome</h2>
+    <p id="confirmText" style="font-size:13px;color:var(--text-muted);margin-bottom:24px;line-height:1.5;">Click Continue to set your password for the Else School Contact Database.</p>
+    <button id="confirmBtn" onclick="confirmEmailLink()" style="width:100%;padding:10px;background:var(--purple);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;">Continue</button>
+    <p id="confirmMsg" style="color:var(--red);font-size:12px;margin-top:12px;display:none;"></p>
+    <p style="margin-top:14px;"><a href="#" onclick="backToSignIn();return false;" style="font-size:12px;color:var(--purple);">Back to sign in</a></p>
+  </div>
 </div>
 
 <!-- ═══════════ MAIN APP ═══════════ -->
@@ -1117,6 +1124,23 @@ const AUTH_LINK_TYPE = (function () {
   const q = new URLSearchParams(location.search || '');
   return h.get('type') || q.get('type') || null;
 })();
+// Invitation and reset emails link here as #token_hash=...&type=invite|recovery. The one-time token is used
+// only when the person clicks Continue, so email security scanners that open links cannot use it up.
+const AUTH_LINK = (function () {
+  const h = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+  const th = h.get('token_hash'), ty = h.get('type');
+  if (th && (ty === 'invite' || ty === 'recovery')) {
+    history.replaceState(null, '', location.pathname + location.search);
+    return { token_hash: th, type: ty };
+  }
+  return null;
+})();
+// A link that expired before it was opened comes back with an error in the address
+const AUTH_LINK_ERROR = (function () {
+  const h = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+  const q = new URLSearchParams(location.search || '');
+  return h.get('error_description') || q.get('error_description') || null;
+})();
 // Each person signs in with their own account (Supabase Auth). The anon key alone opens nothing.
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: window.sessionStorage, storageKey: 'else-crm-auth' }
@@ -1273,6 +1297,7 @@ async function doLogout() {
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loginCard').style.display = 'block';
   document.getElementById('setPassPanel').style.display = 'none';
+  document.getElementById('confirmPanel').style.display = 'none';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
   document.getElementById('loginError').style.display = 'none';
@@ -1289,7 +1314,44 @@ async function forgotPassword() {
   info.style.display = 'block';
 }
 
+function showConfirmLink() {
+  document.getElementById('appContainer').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginCard').style.display = 'none';
+  document.getElementById('setPassPanel').style.display = 'none';
+  document.getElementById('confirmPanel').style.display = 'block';
+  const reset = AUTH_LINK && AUTH_LINK.type === 'recovery';
+  document.getElementById('confirmTitle').textContent = reset ? 'Reset your password' : 'Welcome';
+  document.getElementById('confirmText').textContent = reset
+    ? 'Click Continue to choose a new password for the Else School Contact Database.'
+    : 'Click Continue to set your password for the Else School Contact Database.';
+}
+
+async function confirmEmailLink() {
+  const btn = document.getElementById('confirmBtn');
+  const msg = document.getElementById('confirmMsg');
+  msg.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'One moment...';
+  let data = null, error = null;
+  try { ({ data, error } = await db.auth.verifyOtp({ token_hash: AUTH_LINK.token_hash, type: AUTH_LINK.type })); }
+  catch (e) { error = e; }
+  btn.disabled = false; btn.textContent = 'Continue';
+  if (error || !data || !data.session) {
+    msg.textContent = 'This link has expired or was already used. Go back to sign in, type your email and click "Forgot your password?" to get a new one.';
+    msg.style.display = 'block';
+    return;
+  }
+  showSetPassword(AUTH_LINK.type);
+}
+
+function backToSignIn() {
+  document.getElementById('confirmPanel').style.display = 'none';
+  document.getElementById('setPassPanel').style.display = 'none';
+  document.getElementById('loginCard').style.display = 'block';
+}
+
 function showSetPassword(kind) {
+  document.getElementById('confirmPanel').style.display = 'none';
   document.getElementById('appContainer').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loginCard').style.display = 'none';
@@ -1333,6 +1395,13 @@ function showApp() {
   resetSessionTimer();
 }
 (async function initAuth() {
+  if (AUTH_LINK) { showConfirmLink(); return; }
+  if (AUTH_LINK_ERROR) {
+    const errEl = document.getElementById('loginError');
+    errEl.textContent = 'That link has expired or was already used. Type your email and click "Forgot your password?" for a new one.';
+    errEl.style.display = 'block';
+    history.replaceState(null, '', location.pathname);
+  }
   const { data } = await db.auth.getSession();
   if (data && data.session && (AUTH_LINK_TYPE === 'invite' || AUTH_LINK_TYPE === 'recovery')) { showSetPassword(AUTH_LINK_TYPE); return; }
   if (data && data.session && await loadStaffProfile()) { showApp(); return; }
