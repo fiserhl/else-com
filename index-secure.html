@@ -388,6 +388,51 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
 .loc-st:hover { background:rgba(0,0,0,0.04); }
 .loc-st:has(input:checked) { background:rgba(51,6,98,0.1); font-weight:600; }
 .loc-st input { accent-color:var(--purple); width:12px; height:12px; }
+/* ═══════════ CUSTOM LISTS ═══════════ */
+.clist-panel { display: none; padding: 14px 32px 16px; background: var(--surface-alt); border-bottom: 1px solid var(--border-light); }
+.clist-panel.open { display: block; }
+.clist-grid { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(280px, 1.3fr); gap: 18px; align-items: start; }
+.clist-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; }
+.clist-card h4 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.clist-new { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.clist-new input { flex: 1 1 160px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--sans); font-size: 12px; min-width: 0; }
+.clist-saved { max-height: 300px; overflow-y: auto; }
+.clist-item { display: flex; align-items: center; gap: 8px; padding: 7px 6px; border-top: 1px solid var(--border-light); font-size: 12px; }
+.clist-item:first-child { border-top: none; }
+.clist-item.active { background: var(--accent-bg); border-radius: var(--radius); }
+.clist-item .clist-iname { flex: 1; min-width: 0; cursor: pointer; }
+.clist-item .clist-iname b { color: var(--accent); font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clist-item .clist-imeta { color: var(--text-muted); font-size: 11px; }
+.clist-item .btn { font-size: 11px; padding: 3px 8px; }
+.clist-empty { color: var(--text-muted); font-size: 12px; padding: 8px 2px; }
+.clist-members { max-height: 300px; overflow-y: auto; }
+.clist-member { display: flex; align-items: center; gap: 8px; padding: 5px 4px; border-top: 1px solid var(--border-light); font-size: 12px; }
+.clist-member:first-child { border-top: none; }
+.clist-member .clist-mname { flex: 1; min-width: 0; cursor: pointer; }
+.clist-member .clist-mname span { color: var(--text-muted); font-size: 11px; }
+.clist-x { border: none; background: none; color: var(--gray); cursor: pointer; font-size: 15px; line-height: 1; padding: 2px 6px; border-radius: var(--radius); }
+.clist-x:hover { background: var(--red-bg); color: var(--red); }
+.clist-warn { font-size: 11px; color: var(--orange); background: var(--orange-bg); border-radius: var(--radius); padding: 5px 8px; margin-bottom: 8px; }
+.clist-flag { font-size: 10px; color: var(--orange); white-space: nowrap; }
+.clist-bar { display: none; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 32px; background: var(--accent-bg); border-bottom: 1px solid var(--border); font-size: 12px; color: var(--accent); }
+.clist-bar.open { display: flex; }
+.clist-bar b { font-weight: 700; }
+.clist-bar .clist-hint { color: var(--text-secondary); }
+.clist-bar label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font-weight: 600; }
+.clist-bar .btn { font-size: 11px; padding: 4px 10px; }
+.clist-bar .clist-spacer { flex: 1; }
+.clist-add { font-size: 11px; font-weight: 600; font-family: var(--sans); padding: 3px 8px; border-radius: var(--radius); border: 1px solid var(--accent); background: var(--surface); color: var(--accent); cursor: pointer; white-space: nowrap; }
+.clist-add:hover { background: var(--accent-bg); }
+.clist-add.on { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+.clist-add.on:hover { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+.clist-on-tag { font-size: 11px; font-weight: 600; color: var(--green); white-space: nowrap; }
+.clist-toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--purple); color: #fff; padding: 9px 18px; border-radius: var(--radius-lg); font-size: 12px; font-family: var(--sans); box-shadow: var(--shadow-lg); z-index: 10000; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.clist-toast.show { opacity: 1; }
+@media (max-width: 768px) {
+  .clist-panel { padding: 12px 16px; }
+  .clist-grid { grid-template-columns: 1fr; }
+  .clist-bar { padding: 8px 16px; }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -486,6 +531,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
       </select>
       <button class="btn btn-filter" id="filterToggleBtn" onclick="toggleFilterPanel()">☷ Roles</button>
       <button class="btn btn-filter" id="locationToggleBtn" onclick="toggleLocationPanel()">📍 Location</button>
+      <button class="btn btn-filter" id="clistToggleBtn" onclick="clistTogglePanel()" title="Hand-picked lists you can save, reuse and export">📋 Lists</button>
       <div class="toolbar-right">
         <button class="btn btn-email" onclick="openGroupEmailSelector()">✉ Group Email</button>
         <button class="btn btn-text" id="groupTextBtn" onclick="openGroupTextSelector()">💬 Group Text</button>
@@ -504,11 +550,14 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
     <div class="filter-group" id="roleFilters"></div>
     <div id="subChipsContainer"></div>
     <div class="filter-group" id="locationFilters"></div>
+    <div class="clist-panel" id="clistPanel"></div>
+    <div class="clist-bar" id="clistBar"></div>
 
     <div class="select-all-bar" id="selectionBar">
       <input type="checkbox" onchange="toggleSelectAll(this)" style="accent-color:var(--accent);">
       <span class="sel-count">0 selected</span>
       <button class="btn btn-email" onclick="emailSelectedContacts()">✉ Email Selected</button>
+      <button class="btn edit-only" onclick="clistAddSelected()">📋 Add selected to list</button>
       <button class="btn" onclick="selectedContactIds.clear(); document.querySelectorAll('.row-checkbox').forEach(c=>c.checked=false); updateSelectionBar();">Clear</button>
     </div>
 
@@ -1105,7 +1154,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(33,20,95,
       <div class="history-body" id="historyBody"></div>
     </div>
     <div class="modal-actions">
-      <div class="left-actions"><button class="btn btn-danger edit-only" id="deleteBtn" onclick="deleteContact()" style="display:none">Delete</button></div>
+      <div class="left-actions"><button class="btn btn-danger edit-only" id="deleteBtn" onclick="deleteContact()" style="display:none">Delete</button> <button class="btn edit-only" id="clistModalBtn" onclick="clistToggleFromModal()" style="display:none"></button></div>
       <div style="display:flex;gap:8px;">
         <button class="btn" onclick="closeModal()">Cancel</button>
         <button class="btn btn-primary edit-only" onclick="saveContact()">Save Contact</button>
@@ -1147,6 +1196,359 @@ const AUTH_LINK_ERROR = (function () {
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: window.sessionStorage, storageKey: 'else-crm-auth' }
 });
+
+// ═══════════════════════════════════════════════════════════════
+// CUSTOM LISTS: hand-picked lists of contacts, saved for reuse.
+// Stored in mailing_lists (list_type = 'custom') and
+// mailing_list_memberships. "Show only this list" narrows the main
+// view, so the existing Export menu and Group Email work on it.
+// ═══════════════════════════════════════════════════════════════
+let clistLists = [];          // saved lists: {id, name, description, created_by, updated_at, count}
+let clistActive = null;       // the list being worked on
+let clistMembers = new Set(); // contact_ids on the active list
+let clistShowOnly = false;
+let clistPanelOpen = false;
+let clistBusy = false;
+
+function clistUser() { return sessionStorage.getItem('else_user') || 'unknown'; }
+function clistRole() { return sessionStorage.getItem('else_role') || 'editor'; }
+function clistCanEdit() { return clistRole() !== 'readonly'; }
+function clistCanDiscard(l) {
+  return clistRole() === 'admin' || (!!l && (l.created_by || '').toLowerCase() === clistUser().toLowerCase());
+}
+function clistContact(id) { return contacts.find(c => c.contact_id === id); }
+function clistFmtDate(s) {
+  if (!s) return '';
+  const d = new Date(s);
+  return isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function clistToast(msg) {
+  let t = document.getElementById('clistToast');
+  if (!t) { t = document.createElement('div'); t.id = 'clistToast'; t.className = 'clist-toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), 2400);
+}
+function clistErr(prefix, error) {
+  console.error('[Custom Lists]', prefix, error);
+  alert(`${prefix}\n\n${(error && error.message) || error || 'Unknown error'}`);
+}
+
+// ─── Data ───
+async function clistLoad() {
+  try {
+    const { data, error } = await db.from('mailing_lists')
+      .select('mailing_list_id, list_name, description, created_by, created_at, updated_at, mailing_list_memberships(count)')
+      .eq('list_type', 'custom')
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    clistLists = (data || []).map(r => ({
+      id: r.mailing_list_id, name: r.list_name, description: r.description || '',
+      created_by: r.created_by || '', created_at: r.created_at, updated_at: r.updated_at,
+      count: (r.mailing_list_memberships && r.mailing_list_memberships[0] && r.mailing_list_memberships[0].count) || 0
+    }));
+    if (clistActive) {
+      const fresh = clistLists.find(l => l.id === clistActive.id);
+      if (fresh) clistActive = fresh; else clistClose(true);
+    }
+  } catch (e) { console.error('[Custom Lists] load failed', e); }
+  clistRenderPanel();
+  clistRenderBar();
+}
+
+async function clistFetchMembers(listId) {
+  const { data, error } = await db.from('mailing_list_memberships')
+    .select('contact_id').eq('mailing_list_id', listId).range(0, 9999);
+  if (error) throw error;
+  return new Set((data || []).map(r => r.contact_id));
+}
+
+// ─── Open / close ───
+function clistTogglePanel() {
+  clistPanelOpen = !clistPanelOpen;
+  document.getElementById('clistPanel').classList.toggle('open', clistPanelOpen);
+  if (clistPanelOpen) clistLoad(); else clistRenderPanel();
+}
+
+async function clistOpen(listId) {
+  const l = clistLists.find(x => x.id === listId);
+  if (!l) return;
+  try {
+    clistMembers = await clistFetchMembers(listId);
+  } catch (e) { clistErr('Could not open that list.', e); return; }
+  clistActive = l;
+  clistActive.count = clistMembers.size;
+  clistRefreshAll();
+}
+
+function clistClose(silent) {
+  clistActive = null;
+  clistMembers = new Set();
+  clistShowOnly = false;
+  if (!silent) clistRefreshAll();
+}
+
+function clistToggleShowOnly(on) {
+  clistShowOnly = !!on;
+  if (typeof _renderCurrentLimit !== 'undefined' && typeof _renderPageSize !== 'undefined') _renderCurrentLimit = _renderPageSize;
+  clistRefreshAll();
+}
+
+// ─── Create / rename / discard ───
+async function clistCreate() {
+  if (!clistCanEdit() || clistBusy) return;
+  const nameEl = document.getElementById('clistNewName');
+  const noteEl = document.getElementById('clistNewNote');
+  const name = (nameEl.value || '').trim();
+  if (!name) { nameEl.focus(); return; }
+  clistBusy = true;
+  try {
+    const { data, error } = await db.from('mailing_lists')
+      .insert({ list_name: name, description: (noteEl.value || '').trim() || null, list_type: 'custom', owner: clistUser(), created_by: clistUser() })
+      .select('mailing_list_id').single();
+    if (error) {
+      if (error.code === '23505') { alert(`There is already a list named "${name}". Please choose another name.`); return; }
+      throw error;
+    }
+    nameEl.value = ''; noteEl.value = '';
+    await clistLoad();
+    await clistOpen(data.mailing_list_id);
+    clistToast(`List "${name}" created. Search for people and click + Add.`);
+    const s = document.getElementById('searchInput'); if (s) s.focus();
+  } catch (e) { clistErr('Could not create the list.', e); }
+  finally { clistBusy = false; }
+}
+
+async function clistRename(listId) {
+  const l = clistLists.find(x => x.id === listId);
+  if (!l || !clistCanEdit()) return;
+  const name = (prompt('Rename this list:', l.name) || '').trim();
+  if (!name || name === l.name) return;
+  const note = prompt('Note (optional):', l.description || '');
+  const { error } = await db.from('mailing_lists')
+    .update({ list_name: name, description: note === null ? l.description || null : (note.trim() || null) })
+    .eq('mailing_list_id', listId);
+  if (error) {
+    if (error.code === '23505') { alert(`There is already a list named "${name}".`); return; }
+    clistErr('Could not rename the list.', error); return;
+  }
+  await clistLoad();
+  clistToast('List renamed.');
+}
+
+async function clistDiscard(listId) {
+  const l = clistLists.find(x => x.id === listId);
+  if (!l) return;
+  if (!clistCanDiscard(l)) { alert('Only the person who made this list, or an admin, can discard it.'); return; }
+  if (!confirm(`Discard the list "${l.name}" (${l.count} ${l.count === 1 ? 'person' : 'people'})?\n\nThis removes the list only. No contact records are changed. This cannot be undone.`)) return;
+  const { data, error } = await db.from('mailing_lists').delete().eq('mailing_list_id', listId).select('mailing_list_id');
+  if (error) { clistErr('Could not discard the list.', error); return; }
+  if (!data || data.length === 0) { alert('The list was not discarded. You may not have permission to discard it.'); return; }
+  if (clistActive && clistActive.id === listId) clistClose(true);
+  await clistLoad();
+  clistRefreshAll();
+  clistToast(`List "${l.name}" discarded.`);
+}
+
+// ─── Membership ───
+async function clistAdd(contactId) {
+  if (!clistActive || !clistCanEdit()) return;
+  const listId = clistActive.id;
+  clistMembers.add(contactId);
+  clistAfterMembershipChange(contactId);
+  const { error } = await db.from('mailing_list_memberships')
+    .upsert({ contact_id: contactId, mailing_list_id: listId, added_by: clistUser() }, { onConflict: 'contact_id,mailing_list_id', ignoreDuplicates: true });
+  if (error) { clistMembers.delete(contactId); clistAfterMembershipChange(contactId); clistErr('Could not add to the list.', error); }
+}
+
+async function clistRemove(contactId) {
+  if (!clistActive || !clistCanEdit()) return;
+  const listId = clistActive.id;
+  clistMembers.delete(contactId);
+  clistAfterMembershipChange(contactId);
+  const { error } = await db.from('mailing_list_memberships').delete().eq('mailing_list_id', listId).eq('contact_id', contactId);
+  if (error) { clistMembers.add(contactId); clistAfterMembershipChange(contactId); clistErr('Could not remove from the list.', error); }
+}
+
+function clistToggle(contactId) {
+  if (clistMembers.has(contactId)) clistRemove(contactId); else clistAdd(contactId);
+}
+
+async function clistAddSelected() {
+  if (!clistCanEdit()) return;
+  if (!clistActive) { alert('Open or create a list first: click 📋 Lists.'); return; }
+  const ids = [...selectedContactIds].filter(id => !clistMembers.has(id));
+  if (ids.length === 0) { clistToast('Everyone selected is already on this list.'); return; }
+  const listId = clistActive.id;
+  try {
+    for (let i = 0; i < ids.length; i += 500) {
+      const rows = ids.slice(i, i + 500).map(id => ({ contact_id: id, mailing_list_id: listId, added_by: clistUser() }));
+      const { error } = await db.from('mailing_list_memberships').upsert(rows, { onConflict: 'contact_id,mailing_list_id', ignoreDuplicates: true });
+      if (error) throw error;
+      rows.forEach(r => clistMembers.add(r.contact_id));
+    }
+  } catch (e) { clistErr('Some contacts could not be added.', e); }
+  clistActive.count = clistMembers.size;
+  clistRefreshAll();
+  clistToast(`Added ${ids.length} to "${clistActive.name}".`);
+}
+
+function clistAfterMembershipChange(contactId) {
+  if (clistActive) {
+    clistActive.count = clistMembers.size;
+    const l = clistLists.find(x => x.id === clistActive.id);
+    if (l) l.count = clistMembers.size;
+  }
+  if (clistShowOnly) { renderList(); }
+  else {
+    document.querySelectorAll(`[data-clist-id="${parseInt(contactId)}"]`).forEach(el => { el.outerHTML = clistRowButton(clistContact(contactId) || { contact_id: contactId }); });
+  }
+  clistRenderBar();
+  clistRenderPanel();
+  clistSyncModalBtn();
+}
+
+// ─── Hooks used by the rest of the page ───
+function clistPassesFilter(c) {
+  return !(clistShowOnly && clistActive && !clistMembers.has(c.contact_id));
+}
+
+function clistRowButton(c) {
+  if (!clistActive || !c) return '';
+  const id = parseInt(c.contact_id);
+  const on = clistMembers.has(c.contact_id);
+  if (!clistCanEdit()) return on ? `<span class="clist-on-tag" data-clist-id="${id}" title="On ${esc(clistActive.name)}">✓ On list</span>` : `<span data-clist-id="${id}"></span>`;
+  return on
+    ? `<button class="clist-add on" data-clist-id="${id}" onclick="clistToggle(${id})" title="On ${esc(clistActive.name)}. Click to remove." onmouseenter="this.textContent='× Remove'" onmouseleave="this.textContent='✓ On list'">✓ On list</button>`
+    : `<button class="clist-add" data-clist-id="${id}" onclick="clistToggle(${id})" title="Add to ${esc(clistActive.name)}">+ Add</button>`;
+}
+
+function clistExportBase() {
+  if (!(clistActive && clistShowOnly)) return 'else-contacts';
+  const slug = clistActive.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
+  return 'else-list-' + (slug || 'custom');
+}
+
+function clistMailchimpTag() {
+  return (clistActive && clistShowOnly) ? clistActive.name.replace(/,/g, ' ') : '';
+}
+
+function clistSyncModalBtn() {
+  const btn = document.getElementById('clistModalBtn');
+  if (!btn) return;
+  if (!clistActive || !editingId || !clistCanEdit()) { btn.style.display = 'none'; return; }
+  const on = clistMembers.has(editingId);
+  btn.style.display = 'inline-flex';
+  btn.textContent = on ? `✓ On "${clistActive.name}" (remove)` : `📋 Add to "${clistActive.name}"`;
+}
+function clistToggleFromModal() { if (editingId) clistToggle(editingId); }
+
+// ─── Rendering ───
+function clistRefreshAll() {
+  clistRenderPanel();
+  clistRenderBar();
+  renderList();
+  clistSyncModalBtn();
+}
+
+function clistRenderBar() {
+  const bar = document.getElementById('clistBar');
+  if (!bar) return;
+  if (!clistActive) { bar.classList.remove('open'); bar.innerHTML = ''; return; }
+  const n = clistMembers.size;
+  bar.classList.add('open');
+  bar.innerHTML = `
+    <span>📋 Working list: <b>${esc(clistActive.name)}</b> · ${n} ${n === 1 ? 'person' : 'people'}</span>
+    <label><input type="checkbox" ${clistShowOnly ? 'checked' : ''} onchange="clistToggleShowOnly(this.checked)" style="accent-color:var(--accent);"> Show only this list</label>
+    <span class="clist-hint">${clistShowOnly ? 'Export and Group Email now use just this list.' : (clistCanEdit() ? 'Search above, then click + Add on each person.' : '')}</span>
+    <span class="clist-spacer"></span>
+    <button class="btn" onclick="if(!clistPanelOpen) clistTogglePanel()">Manage</button>
+    <button class="btn" onclick="clistClose()">Done</button>`;
+}
+
+function clistRenderPanel() {
+  const btn = document.getElementById('clistToggleBtn');
+  if (btn) btn.classList.toggle('has-active', !!clistActive);
+  const panel = document.getElementById('clistPanel');
+  if (!panel || !clistPanelOpen) return;
+  const canEdit = clistCanEdit();
+  const keepName = (document.getElementById('clistNewName') || {}).value || '';
+  const keepNote = (document.getElementById('clistNewNote') || {}).value || '';
+  const keepFocus = document.activeElement && document.activeElement.id;
+  const keepScroll = (panel.querySelector('.clist-members') || {}).scrollTop || 0;
+
+  const savedHtml = clistLists.length === 0
+    ? `<div class="clist-empty">No saved lists yet.${canEdit ? ' Name one above to start.' : ''}</div>`
+    : clistLists.map(l => {
+        const isActive = clistActive && clistActive.id === l.id;
+        return `<div class="clist-item${isActive ? ' active' : ''}">
+          <div class="clist-iname" onclick="clistOpen(${l.id})" title="${esc(l.description || 'Open this list')}">
+            <b>${esc(l.name)}</b>
+            <div class="clist-imeta">${l.count} ${l.count === 1 ? 'person' : 'people'}${l.created_by ? ' · ' + esc(l.created_by) : ''} · updated ${esc(clistFmtDate(l.updated_at))}</div>
+          </div>
+          ${isActive ? '<span class="clist-imeta">open</span>' : `<button class="btn" onclick="clistOpen(${l.id})">Open</button>`}
+          ${canEdit ? `<button class="btn" onclick="clistRename(${l.id})">Rename</button>` : ''}
+          ${canEdit && clistCanDiscard(l) ? `<button class="btn btn-danger" onclick="clistDiscard(${l.id})">Discard</button>` : ''}
+        </div>`;
+      }).join('');
+
+  let membersHtml;
+  if (!clistActive) {
+    membersHtml = `<div class="clist-empty">Open a list to see who is on it.</div>`;
+  } else {
+    const members = [...clistMembers].map(id => clistContact(id)).filter(Boolean)
+      .sort((a, b) => (a.last_name || a.name || '').localeCompare(b.last_name || b.name || ''));
+    const missingRecords = clistMembers.size - members.length;
+    const noEmail = members.filter(c => !(c.email && c.email.trim())).length;
+    const noAddr = members.filter(c => !(c.address && c.address.trim() && c.city)).length;
+    const warns = [];
+    if (noEmail) warns.push(`${noEmail} without an email`);
+    if (noAddr) warns.push(`${noAddr} without a full mailing address`);
+    if (missingRecords > 0) warns.push(`${missingRecords} not found in the current contact list`);
+    membersHtml = `
+      ${clistActive.description ? `<div class="clist-imeta" style="margin-bottom:8px;">${esc(clistActive.description)}</div>` : ''}
+      ${warns.length ? `<div class="clist-warn">⚠ ${warns.join(' · ')}</div>` : ''}
+      <div class="clist-members">
+        ${members.length === 0 ? `<div class="clist-empty">Nobody on this list yet.${canEdit ? ' Search above and click + Add, or check rows and use "Add selected to list."' : ''}</div>` :
+          members.map(c => {
+            const id = parseInt(c.contact_id);
+            const flags = [];
+            if (!(c.email && c.email.trim())) flags.push('no email');
+            if (!(c.address && c.address.trim() && c.city)) flags.push('no address');
+            return `<div class="clist-member">
+              <div class="clist-mname" onclick="openModal(${id})">${esc(c.name)} <span>${esc(c.organization || '')}</span></div>
+              ${flags.length ? `<span class="clist-flag">${flags.join(', ')}</span>` : ''}
+              ${canEdit ? `<button class="clist-x" onclick="clistRemove(${id})" title="Remove from list">×</button>` : ''}
+            </div>`;
+          }).join('')}
+      </div>`;
+  }
+
+  panel.innerHTML = `
+    <div class="clist-grid">
+      <div class="clist-card">
+        <h4><span>Saved lists</span><button class="btn" onclick="clistTogglePanel()" style="font-size:11px;padding:2px 8px;">Close</button></h4>
+        ${canEdit ? `<div class="clist-new">
+          <input type="text" id="clistNewName" placeholder="New list name" maxlength="120" onkeydown="if(event.key==='Enter') clistCreate()">
+          <input type="text" id="clistNewNote" placeholder="Note (optional)" maxlength="300" onkeydown="if(event.key==='Enter') clistCreate()">
+          <button class="btn btn-primary" onclick="clistCreate()">+ New list</button>
+        </div>` : ''}
+        <div class="clist-saved">${savedHtml}</div>
+      </div>
+      <div class="clist-card">
+        <h4><span>${clistActive ? 'On this list: ' + esc(clistActive.name) + ' (' + clistMembers.size + ')' : 'List members'}</span>
+          ${clistActive ? `<span style="display:flex;gap:6px;">
+            <button class="btn" onclick="clistToggleShowOnly(${clistShowOnly ? 'false' : 'true'})" style="font-size:11px;padding:2px 8px;">${clistShowOnly ? 'Show all contacts' : 'Show only this list'}</button>
+          </span>` : ''}</h4>
+        ${membersHtml}
+      </div>
+    </div>`;
+  const n = document.getElementById('clistNewName'); if (n) n.value = keepName;
+  const t = document.getElementById('clistNewNote'); if (t) t.value = keepNote;
+  if (keepFocus === 'clistNewName' || keepFocus === 'clistNewNote') { const f = document.getElementById(keepFocus); if (f) f.focus(); }
+  const m = panel.querySelector('.clist-members'); if (m) m.scrollTop = keepScroll;
+}
 // Headers for Edge Function calls: the signed-in person's token
 async function authHeaders(extra) {
   const { data } = await db.auth.getSession();
@@ -1624,6 +2026,7 @@ async function loadContacts() {
       window._allContacts = data;
       await loadGivingRatings();
       renderAll();
+      clistLoad();
     } else { console.error('Error loading contacts:', error); }
   } catch(e) { console.error('Failed to load contacts:', e); }
 }
@@ -1679,6 +2082,7 @@ function getFiltered() {
   const tier = document.getElementById('filterTier').value;
   const giving = hasGiftAccess() ? document.getElementById('filterGiving').value : 'all';
   return contacts.filter(c => {
+    if (!clistPassesFilter(c)) return false;
     if (q) {
       const haystack = [c.name, c.organization, c.title, c.email, c.phone, c.cell_phone, c.address, c.city, c.state, c.zip, c.notes].filter(Boolean).join(' ').toLowerCase();
       if (!haystack.includes(q)) return false;
@@ -2037,6 +2441,7 @@ function renderList() {
       <div><span class="pipeline-badge ${pipelineClass(c.pipeline_status)}">${esc(c.pipeline_status || 'Unassigned')}</span></div>
       <div class="contact-meta">${metaHtml}</div>
       <div onclick="event.stopPropagation()" style="display:flex;gap:3px;">
+        ${clistRowButton(c)}
         ${hasEmail ? `<button class="email-icon-btn" onclick="emailSingleContact(${parseInt(c.contact_id)})" title="Email ${esc(c.name)}">✉</button>` : ''}
         ${hasCell ? `<button class="text-icon-btn" onclick="textSingleContact(${parseInt(c.contact_id)})" title="Text ${esc(c.name)}">📱</button>` : ''}
       </div>
@@ -2133,6 +2538,7 @@ function openModal(id) {
   editingId = id || null;
   document.getElementById('modalTitle').textContent = id ? 'Edit Contact' : 'Add Contact';
   document.getElementById('deleteBtn').style.display = id ? 'inline-flex' : 'none';
+  clistSyncModalBtn();
   ['f_first_name','f_last_name','f_preferred_name','f_name','f_org','f_title','f_email','f_phone','f_cell_phone','f_linkedin','f_address','f_city','f_zip','f_notes','f_formal_salutation','f_spouse_name','f_grad_year','f_alum_major','f_alumni_id','f_donor_id'].forEach(f => document.getElementById(f).value = '');
   document.getElementById('f_alum_status').value = '';
   document.getElementById('f_state').value = '';
@@ -2600,7 +3006,7 @@ function exportCSV() {
   if (!confirmContactExport(filtered.length)) return;
   const user = sessionStorage.getItem('else_user') || 'unknown';
   console.log(`[AUDIT] ${new Date().toISOString()} - User "${user}" exported ${filtered.length} contacts as CSV`);
-  downloadFile(contactsToCSV(filtered), `else-contacts-${exportFileStamp()}.csv`, 'text/csv;charset=utf-8');
+  downloadFile(contactsToCSV(filtered), `${clistExportBase()}-${exportFileStamp()}.csv`, 'text/csv;charset=utf-8');
   document.getElementById('exportMenu').classList.remove('open');
 }
 
@@ -2642,12 +3048,12 @@ async function exportExcel() {
     XLSX = await loadSheetJS();
   } catch (err) {
     alert('The Excel library could not be loaded, so a CSV file (which Excel opens) will download instead.');
-    downloadFile(contactsToCSV(filtered), `else-contacts-${exportFileStamp()}.csv`, 'text/csv;charset=utf-8');
+    downloadFile(contactsToCSV(filtered), `${clistExportBase()}-${exportFileStamp()}.csv`, 'text/csv;charset=utf-8');
     return;
   }
   const user = sessionStorage.getItem('else_user') || 'unknown';
   console.log(`[AUDIT] ${new Date().toISOString()} - User "${user}" exported ${filtered.length} contacts as Excel`);
-  XLSX.writeFile(contactsToWorkbook(XLSX, filtered), `else-contacts-${exportFileStamp()}.xlsx`);
+  XLSX.writeFile(contactsToWorkbook(XLSX, filtered), `${clistExportBase()}-${exportFileStamp()}.xlsx`);
 }
 
 function exportMailchimp() {
@@ -2657,10 +3063,10 @@ function exportMailchimp() {
   console.log(`[AUDIT] ${new Date().toISOString()} — User "${user}" exported ${filtered.length} contacts as Mailchimp CSV`);
   const headers = ['Email Address','First Name','Last Name','TAGS'];
   const rows = filtered.map(c => {
-    return [c.email, c.first_name || '', c.last_name || '', (c.roles || []).join(',')];
+    return [c.email, c.first_name || '', c.last_name || '', [...(c.roles || []), clistMailchimpTag()].filter(Boolean).join(',')];
   });
   let csv = [headers, ...rows].map(r => r.map(v => `"${(v+'').replace(/"/g,'""')}"`).join(',')).join('\n');
-  downloadFile(csv, 'else-mailchimp-import.csv', 'text/csv');
+  downloadFile(csv, clistExportBase() === 'else-contacts' ? 'else-mailchimp-import.csv' : `${clistExportBase()}-mailchimp.csv`, 'text/csv');
   document.getElementById('exportMenu').classList.remove('open');
 }
 
