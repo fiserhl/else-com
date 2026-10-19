@@ -1374,10 +1374,31 @@ function clistRowButton(c) {
     : `<button class="clist-add" data-clist-id="${id}" onclick="clistToggle(${id})" title="Add to ${esc(clistActive.name)}">+ Add</button>`;
 }
 
-function clistExportBase() {
-  if (!(clistActive && clistShowOnly)) return 'else-contacts';
+function clistExportBase(force) {
+  if (!(clistActive && (clistShowOnly || force))) return 'else-contacts';
   const slug = clistActive.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
   return 'else-list-' + (slug || 'custom');
+}
+
+// Export just the working list's members, whatever filters are on.
+async function clistExport(kind) {
+  if (!clistActive) return;
+  const list = [...clistMembers].map(id => clistContact(id)).filter(Boolean)
+    .sort((a, b) => (a.last_name || a.name || '').localeCompare(b.last_name || b.name || ''));
+  if (list.length === 0) { alert('This list has nobody on it yet.'); return; }
+  if (!confirmContactExport(list.length)) return;
+  const base = clistExportBase(true) + '-' + exportFileStamp();
+  console.log(`[AUDIT] ${new Date().toISOString()} - User "${clistUser()}" exported list "${clistActive.name}" (${list.length} contacts) as ${kind}`);
+  if (kind === 'excel') {
+    try {
+      const XLSX = await loadSheetJS();
+      XLSX.writeFile(contactsToWorkbook(XLSX, list), base + '.xlsx');
+      return;
+    } catch (e) {
+      alert('The Excel library could not be loaded, so a CSV file (which Excel opens) will download instead.');
+    }
+  }
+  downloadFile(contactsToCSV(list), base + '.csv', 'text/csv;charset=utf-8');
 }
 
 function clistMailchimpTag() {
@@ -1411,8 +1432,10 @@ function clistRenderBar() {
   bar.innerHTML = `
     <span>📋 Working list: <b>${esc(clistActive.name)}</b> · ${n} ${n === 1 ? 'person' : 'people'}</span>
     <label><input type="checkbox" ${clistShowOnly ? 'checked' : ''} onchange="clistToggleShowOnly(this.checked)" style="accent-color:var(--accent);"> Show only this list</label>
-    <span class="clist-hint">${clistShowOnly ? 'Export and Group Email now use just this list.' : (clistCanEdit() ? 'Search above, then click + Add on each person.' : '')}</span>
+    <span class="clist-hint">${clistShowOnly ? 'The Export menu and Group Email now use just this list.' : (clistCanEdit() ? 'Search above, then click + Add on each person.' : '')}</span>
     <span class="clist-spacer"></span>
+    <button class="btn" onclick="clistExport('excel')" title="Download this list as an Excel file">↓ Excel</button>
+    <button class="btn" onclick="clistExport('csv')" title="Download this list as a CSV file">↓ CSV</button>
     <button class="btn" onclick="if(!clistPanelOpen) clistTogglePanel()">Manage</button>
     <button class="btn" onclick="clistClose()">Done</button>`;
 }
@@ -1489,6 +1512,8 @@ function clistRenderPanel() {
       <div class="clist-card">
         <h4><span>${clistActive ? 'On this list: ' + esc(clistActive.name) + ' (' + clistMembers.size + ')' : 'List members'}</span>
           ${clistActive ? `<span style="display:flex;gap:6px;">
+            <button class="btn" onclick="clistExport('excel')" style="font-size:11px;padding:2px 8px;">↓ Excel</button>
+            <button class="btn" onclick="clistExport('csv')" style="font-size:11px;padding:2px 8px;">↓ CSV</button>
             <button class="btn" onclick="clistToggleShowOnly(${clistShowOnly ? 'false' : 'true'})" style="font-size:11px;padding:2px 8px;">${clistShowOnly ? 'Show all contacts' : 'Show only this list'}</button>
           </span>` : ''}</h4>
         ${membersHtml}
